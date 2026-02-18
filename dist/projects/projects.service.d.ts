@@ -4,16 +4,27 @@ import { ProjectTeamMember } from './entities/project-team-member.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { Deliverable } from '../deliverables/entities/deliverable.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuthService } from '../auth/auth.service';
 export declare class ProjectsService {
     private projectsRepository;
     private teamMembersRepository;
     private tasksRepository;
     private deliverablesRepository;
     private notificationsService;
-    constructor(projectsRepository: Repository<Project>, teamMembersRepository: Repository<ProjectTeamMember>, tasksRepository: Repository<Task>, deliverablesRepository: Repository<Deliverable>, notificationsService: NotificationsService);
+    private authService;
+    constructor(projectsRepository: Repository<Project>, teamMembersRepository: Repository<ProjectTeamMember>, tasksRepository: Repository<Task>, deliverablesRepository: Repository<Deliverable>, notificationsService: NotificationsService, authService: AuthService);
     create(createProjectDto: CreateProjectDto, userId: string): Promise<Project>;
+    createFromWebhook(webhookDto: CreateProjectWebhookDto): Promise<Project>;
+    getWebhookPM(): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: import("../users/entities/user.entity").UserRole;
+        message: string;
+    }>;
     private generateDeliverables;
     private generateIntakeTasks;
     findAll(userId: string, userRole: string): Promise<Project[]>;

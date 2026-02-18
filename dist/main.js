@@ -6,9 +6,25 @@ const app_module_1 = require("./app.module");
 async function bootstrap() {
     try {
         const app = await core_1.NestFactory.create(app_module_1.AppModule);
+        const allowedOrigins = [
+            'http://localhost:3001',
+            'https://projectmanagementtoolfrontend-production-fbc2.up.railway.app',
+        ];
         app.enableCors({
-            origin: 'http://localhost:3001',
+            origin: (origin, callback) => {
+                if (!origin)
+                    return callback(null, true);
+                if (allowedOrigins.indexOf(origin) !== -1) {
+                    return callback(null, true);
+                }
+                if (process.env.NODE_ENV === 'production' && origin.includes('.up.railway.app')) {
+                    return callback(null, true);
+                }
+                callback(new Error('Not allowed by CORS'));
+            },
             credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization'],
         });
         app.useGlobalPipes(new common_1.ValidationPipe({
             whitelist: true,

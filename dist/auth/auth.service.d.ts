@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 export declare class AuthService {
@@ -12,7 +12,7 @@ export declare class AuthService {
             id: string;
             name: string;
             email: string;
-            role: import("../users/entities/user.entity").UserRole;
+            role: UserRole;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -23,7 +23,7 @@ export declare class AuthService {
             id: string;
             name: string;
             email: string;
-            role: import("../users/entities/user.entity").UserRole;
+            role: UserRole;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -31,4 +31,5 @@ export declare class AuthService {
     }>;
     validateUser(userId: string): Promise<User>;
     getAllUsers(): Promise<User[]>;
+    getOrCreateWebhookPM(): Promise<User>;
 }

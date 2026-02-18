@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -21,13 +54,15 @@ const project_team_member_entity_1 = require("./entities/project-team-member.ent
 const task_entity_1 = require("../tasks/entities/task.entity");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
+const auth_service_1 = require("../auth/auth.service");
 let ProjectsService = class ProjectsService {
-    constructor(projectsRepository, teamMembersRepository, tasksRepository, deliverablesRepository, notificationsService) {
+    constructor(projectsRepository, teamMembersRepository, tasksRepository, deliverablesRepository, notificationsService, authService) {
         this.projectsRepository = projectsRepository;
         this.teamMembersRepository = teamMembersRepository;
         this.tasksRepository = tasksRepository;
         this.deliverablesRepository = deliverablesRepository;
         this.notificationsService = notificationsService;
+        this.authService = authService;
     }
     async create(createProjectDto, userId) {
         const project = this.projectsRepository.create({
@@ -45,6 +80,42 @@ let ProjectsService = class ProjectsService {
             relations: ['tasks', 'deliverables', 'pm'],
         });
         return projectWithRelations;
+    }
+    async createFromWebhook(webhookDto) {
+        let pmId = webhookDto.pmId;
+        if (!pmId) {
+            const webhookPM = await this.authService.getOrCreateWebhookPM();
+            pmId = webhookPM.id;
+            console.log(`[Webhook] Using webhook PM account: ${pmId} (${webhookPM.name})`);
+        }
+        console.log(`[Webhook] Creating project: ${webhookDto.clientName} (${webhookDto.clientType}) - Package: ${webhookDto.package}, PM: ${pmId}, Source: ${webhookDto.sourceEmail || 'unknown'}`);
+        const createProjectDto = {
+            clientName: webhookDto.clientName,
+            clientType: webhookDto.clientType,
+            package: webhookDto.package,
+            customDeliverables: webhookDto.customDeliverables,
+            priority: webhookDto.priority,
+            pmId: pmId,
+            targetCloseMonth: webhookDto.targetCloseMonth,
+            notes: webhookDto.notes
+                ? `${webhookDto.notes}${webhookDto.sourceEmail ? `\n\nSource: ${webhookDto.sourceEmail}` : ''}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
+                : webhookDto.sourceEmail
+                    ? `Created via webhook from: ${webhookDto.sourceEmail}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
+                    : 'Created via webhook',
+        };
+        const project = await this.create(createProjectDto, pmId);
+        console.log(`[Webhook] Project created successfully: ${project.id} - ${project.clientName}`);
+        return project;
+    }
+    async getWebhookPM() {
+        const webhookPM = await this.authService.getOrCreateWebhookPM();
+        return {
+            id: webhookPM.id,
+            name: webhookPM.name,
+            email: webhookPM.email,
+            role: webhookPM.role,
+            message: 'Use this pmId in your webhook requests, or omit pmId to use this account automatically',
+        };
     }
     generateDeliverables(projectId, packageType, clientType, customDeliverables) {
         const deliverables = [];
@@ -330,7 +401,7 @@ let ProjectsService = class ProjectsService {
             if (designTasks.length === 0) {
                 return;
             }
-            const { DeliverableHistory } = await Promise.resolve().then(() => require('../deliverables/entities/deliverable-history.entity'));
+            const { DeliverableHistory } = await Promise.resolve().then(() => __importStar(require('../deliverables/entities/deliverable-history.entity')));
             const historyRepository = this.projectsRepository.manager.getRepository(DeliverableHistory);
             let allDesignFilesApproved = true;
             for (const task of designTasks) {
@@ -580,6 +651,7 @@ exports.ProjectsService = ProjectsService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        notifications_service_1.NotificationsService])
+        notifications_service_1.NotificationsService,
+        auth_service_1.AuthService])
 ], ProjectsService);
 //# sourceMappingURL=projects.service.js.map

@@ -31,7 +31,13 @@ export class ProjectsController {
   @UseGuards(WebhookGuard)
   @HttpCode(HttpStatus.CREATED)
   async createFromWebhook(@Body() webhookDto: CreateProjectWebhookDto) {
-    return this.projectsService.createFromWebhook(webhookDto);
+    try {
+      return await this.projectsService.createFromWebhook(webhookDto);
+    } catch (error: any) {
+      console.error('[ProjectsController] Error in createFromWebhook:', error);
+      console.error('[ProjectsController] Error stack:', error.stack);
+      throw error;
+    }
   }
 
   @Get('webhook/pm')

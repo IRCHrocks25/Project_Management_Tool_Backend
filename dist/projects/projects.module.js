@@ -16,6 +16,8 @@ const project_team_member_entity_1 = require("./entities/project-team-member.ent
 const task_entity_1 = require("../tasks/entities/task.entity");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const notifications_module_1 = require("../notifications/notifications.module");
+const auth_module_1 = require("../auth/auth.module");
+const webhook_guard_1 = require("./guards/webhook.guard");
 let ProjectsModule = class ProjectsModule {
 };
 exports.ProjectsModule = ProjectsModule;
@@ -24,9 +26,10 @@ exports.ProjectsModule = ProjectsModule = __decorate([
         imports: [
             typeorm_1.TypeOrmModule.forFeature([project_entity_1.Project, project_team_member_entity_1.ProjectTeamMember, task_entity_1.Task, deliverable_entity_1.Deliverable]),
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
+            auth_module_1.AuthModule,
         ],
         controllers: [projects_controller_1.ProjectsController],
-        providers: [projects_service_1.ProjectsService],
+        providers: [projects_service_1.ProjectsService, webhook_guard_1.WebhookGuard],
         exports: [projects_service_1.ProjectsService],
     })
 ], ProjectsModule);

@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -157,7 +158,7 @@ export class AuthService {
 
     if (!webhookPM) {
       // Create webhook PM account if it doesn't exist
-      const randomPassword = require('crypto').randomBytes(32).toString('hex');
+      const randomPassword = crypto.randomBytes(32).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
       webhookPM = this.usersRepository.create({

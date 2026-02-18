@@ -16,13 +16,28 @@ exports.ProjectsController = void 0;
 const common_1 = require("@nestjs/common");
 const projects_service_1 = require("./projects.service");
 const create_project_dto_1 = require("./dto/create-project.dto");
+const create_project_webhook_dto_1 = require("./dto/create-project-webhook.dto");
 const update_project_stage_dto_1 = require("./dto/update-project-stage.dto");
+const webhook_guard_1 = require("./guards/webhook.guard");
 let ProjectsController = class ProjectsController {
     constructor(projectsService) {
         this.projectsService = projectsService;
     }
     async create(createProjectDto, req) {
         return this.projectsService.create(createProjectDto, req.user?.userId);
+    }
+    async createFromWebhook(webhookDto) {
+        try {
+            return await this.projectsService.createFromWebhook(webhookDto);
+        }
+        catch (error) {
+            console.error('[ProjectsController] Error in createFromWebhook:', error);
+            console.error('[ProjectsController] Error stack:', error.stack);
+            throw error;
+        }
+    }
+    async getWebhookPM() {
+        return this.projectsService.getWebhookPM();
     }
     async findAll(req) {
         return this.projectsService.findAll(req.user?.userId, req.user?.role);
@@ -68,6 +83,22 @@ __decorate([
     __metadata("design:paramtypes", [create_project_dto_1.CreateProjectDto, Object]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('webhook'),
+    (0, common_1.UseGuards)(webhook_guard_1.WebhookGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_project_webhook_dto_1.CreateProjectWebhookDto]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "createFromWebhook", null);
+__decorate([
+    (0, common_1.Get)('webhook/pm'),
+    (0, common_1.UseGuards)(webhook_guard_1.WebhookGuard),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "getWebhookPM", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),

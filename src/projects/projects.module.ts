@@ -8,6 +8,7 @@ import { Task } from '../tasks/entities/task.entity';
 import { Deliverable } from '../deliverables/entities/deliverable.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
+import { WebhookGuard } from './guards/webhook.guard';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { AuthModule } from '../auth/auth.module';
     AuthModule,
   ],
   controllers: [ProjectsController],
-  providers: [ProjectsService],
+  providers: [ProjectsService, WebhookGuard],
   exports: [ProjectsService],
 })
 export class ProjectsModule {}

@@ -8,7 +8,7 @@
   "scripts": {
     "preinstall": "npm rebuild bcrypt --build-from-source || true",
     "build": "node node_modules/@nestjs/cli/bin/nest.js build",
-    "build:railway": "rm -rf node_modules/bcrypt && npm install bcrypt@^5.1.1 --build-from-source --no-save && npm run build",
+    "build:railway": "rm -rf node_modules/bcrypt && npm_config_build_from_source=true npm_config_bcrypt_build_from_source=true npm install bcrypt@^5.1.1 --no-save && npm run build",
     "postinstall": "npm rebuild bcrypt --build-from-source || true",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/main",

@@ -6,9 +6,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "prebuild": "npm rebuild bcrypt",
     "build": "node node_modules/@nestjs/cli/bin/nest.js build",
-    "postinstall": "npm rebuild bcrypt",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/main",
     "start:dev": "cross-env NODE_OPTIONS=\"--no-deprecation --max-http-header-size=16384\" node node_modules/@nestjs/cli/bin/nest.js start --watch",

@@ -7,6 +7,7 @@
   "license": "MIT",
   "scripts": {
     "build": "node node_modules/@nestjs/cli/bin/nest.js build",
+    "build:railway": "npm ci && rm -rf node_modules/bcrypt && npm install bcrypt --build-from-source && npm run build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/main",
     "start:dev": "cross-env NODE_OPTIONS=\"--no-deprecation --max-http-header-size=16384\" node node_modules/@nestjs/cli/bin/nest.js start --watch",

@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -141,6 +141,37 @@ export class AuthService {
       order: { name: 'ASC' },
     });
     return users;
+  }
+
+  /**
+   * Get or create a dedicated webhook PM account
+   * This account is used for projects created via webhook
+   */
+  async getOrCreateWebhookPM(): Promise<User> {
+    const webhookEmail = 'webhook@katalyst.pm';
+    
+    // Try to find existing webhook PM
+    let webhookPM = await this.usersRepository.findOne({
+      where: { email: webhookEmail },
+    });
+
+    if (!webhookPM) {
+      // Create webhook PM account if it doesn't exist
+      const randomPassword = require('crypto').randomBytes(32).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      webhookPM = this.usersRepository.create({
+        email: webhookEmail,
+        password: hashedPassword,
+        name: 'Webhook System',
+        role: UserRole.PROJECT_MANAGER,
+      });
+
+      webhookPM = await this.usersRepository.save(webhookPM);
+      console.log(`[AuthService] Created webhook PM account: ${webhookPM.id}`);
+    }
+
+    return webhookPM;
   }
 }
 

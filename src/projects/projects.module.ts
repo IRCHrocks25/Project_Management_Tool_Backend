@@ -7,11 +7,13 @@ import { ProjectTeamMember } from './entities/project-team-member.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { Deliverable } from '../deliverables/entities/deliverable.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Project, ProjectTeamMember, Task, Deliverable]),
     forwardRef(() => NotificationsModule),
+    AuthModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],

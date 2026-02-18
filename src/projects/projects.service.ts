@@ -6,8 +6,10 @@ import { ProjectTeamMember } from './entities/project-team-member.entity';
 import { Task, TaskType, TaskStatus } from '../tasks/entities/task.entity';
 import { Deliverable, DeliverableType, DeliverableStatus } from '../deliverables/entities/deliverable.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class ProjectsService {
@@ -22,6 +24,7 @@ export class ProjectsService {
     private deliverablesRepository: Repository<Deliverable>,
     @Inject(forwardRef(() => NotificationsService))
     private notificationsService: NotificationsService,
+    private authService: AuthService,
   ) {}
 
   async create(createProjectDto: CreateProjectDto, userId: string) {
@@ -54,6 +57,53 @@ export class ProjectsService {
     });
 
     return projectWithRelations;
+  }
+
+  async createFromWebhook(webhookDto: CreateProjectWebhookDto) {
+    // Get or create webhook PM account if pmId not provided
+    let pmId = webhookDto.pmId;
+    if (!pmId) {
+      const webhookPM = await this.authService.getOrCreateWebhookPM();
+      pmId = webhookPM.id;
+      console.log(`[Webhook] Using webhook PM account: ${pmId} (${webhookPM.name})`);
+    }
+
+    // Log webhook project creation for audit purposes
+    console.log(`[Webhook] Creating project: ${webhookDto.clientName} (${webhookDto.clientType}) - Package: ${webhookDto.package}, PM: ${pmId}, Source: ${webhookDto.sourceEmail || 'unknown'}`);
+
+    // Convert webhook DTO to regular DTO format
+    const createProjectDto: CreateProjectDto = {
+      clientName: webhookDto.clientName,
+      clientType: webhookDto.clientType,
+      package: webhookDto.package,
+      customDeliverables: webhookDto.customDeliverables,
+      priority: webhookDto.priority,
+      pmId: pmId,
+      targetCloseMonth: webhookDto.targetCloseMonth,
+      notes: webhookDto.notes 
+        ? `${webhookDto.notes}${webhookDto.sourceEmail ? `\n\nSource: ${webhookDto.sourceEmail}` : ''}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
+        : webhookDto.sourceEmail 
+          ? `Created via webhook from: ${webhookDto.sourceEmail}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
+          : 'Created via webhook',
+    };
+
+    // Use the existing create method with the webhook's pmId
+    const project = await this.create(createProjectDto, pmId);
+    
+    console.log(`[Webhook] Project created successfully: ${project.id} - ${project.clientName}`);
+    
+    return project;
+  }
+
+  async getWebhookPM() {
+    const webhookPM = await this.authService.getOrCreateWebhookPM();
+    return {
+      id: webhookPM.id,
+      name: webhookPM.name,
+      email: webhookPM.email,
+      role: webhookPM.role,
+      message: 'Use this pmId in your webhook requests, or omit pmId to use this account automatically',
+    };
   }
 
   private generateDeliverables(projectId: string, packageType: PackageType, clientType: ClientType, customDeliverables?: string[]): Deliverable[] {

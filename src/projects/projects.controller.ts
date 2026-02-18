@@ -13,7 +13,9 @@ import {
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
+import { WebhookGuard } from './guards/webhook.guard';
 
 @Controller('projects')
 export class ProjectsController {
@@ -23,6 +25,19 @@ export class ProjectsController {
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createProjectDto: CreateProjectDto, @Request() req: any) {
     return this.projectsService.create(createProjectDto, req.user?.userId);
+  }
+
+  @Post('webhook')
+  @UseGuards(WebhookGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createFromWebhook(@Body() webhookDto: CreateProjectWebhookDto) {
+    return this.projectsService.createFromWebhook(webhookDto);
+  }
+
+  @Get('webhook/pm')
+  @UseGuards(WebhookGuard)
+  async getWebhookPM() {
+    return this.projectsService.getWebhookPM();
   }
 
   @Get()

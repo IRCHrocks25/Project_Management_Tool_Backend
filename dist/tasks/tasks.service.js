@@ -98,7 +98,7 @@ let TasksService = class TasksService {
         }
         return task;
     }
-    async updateStatus(id, status, isCompleted, fileUrl, deliverableType) {
+    async updateStatus(id, status, isCompleted, fileUrl, deliverableType, deliverableId) {
         const task = await this.findOne(id);
         const wasCompleted = task.isCompleted;
         const wasInReview = task.status === task_entity_1.TaskStatus.IN_REVIEW;
@@ -109,6 +109,9 @@ let TasksService = class TasksService {
         }
         if (fileUrl !== undefined) {
             task.fileUrl = fileUrl;
+        }
+        if (deliverableId !== undefined) {
+            task.deliverableId = deliverableId;
         }
         const savedTask = await this.tasksRepository.save(task);
         if (isChangingToInReview && (task.type === task_entity_1.TaskType.COPY || task.type === task_entity_1.TaskType.DESIGN)) {
@@ -129,7 +132,16 @@ let TasksService = class TasksService {
                     const deliverables = await this.deliverablesRepository.find({
                         where: { projectId: task.projectId },
                     });
-                    const targetDeliverable = deliverables.find(d => d.type === deliverableType);
+                    let targetDeliverable = null;
+                    if (deliverableId) {
+                        targetDeliverable = deliverables.find(d => d.id === deliverableId);
+                    }
+                    else {
+                        targetDeliverable = deliverables.find(d => d.type === deliverableType);
+                        if (!targetDeliverable && deliverableType === 'Other') {
+                            targetDeliverable = deliverables.find(d => d.type === 'Other' && d.customType);
+                        }
+                    }
                     if (targetDeliverable) {
                         targetDeliverable.fileUrl = fileUrl;
                         if (targetDeliverable.status === deliverable_entity_1.DeliverableStatus.REVISION) {

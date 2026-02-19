@@ -90,6 +90,10 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Task.prototype, "isCompleted", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Task.prototype, "isArchived", void 0);
+__decorate([
     (0, typeorm_1.Column)('text', { nullable: true }),
     __metadata("design:type", String)
 ], Task.prototype, "fileUrl", void 0);

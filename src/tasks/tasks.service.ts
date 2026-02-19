@@ -115,7 +115,7 @@ export class TasksService {
     return task;
   }
 
-  async updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string) {
+  async updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string) {
     const task = await this.findOne(id);
     const wasCompleted = task.isCompleted;
     const wasInReview = task.status === TaskStatus.IN_REVIEW; // Check BEFORE updating status
@@ -127,6 +127,10 @@ export class TasksService {
     }
     if (fileUrl !== undefined) {
       task.fileUrl = fileUrl;
+    }
+    // Update deliverableId if provided (important for linking tasks to specific deliverables, especially custom ones)
+    if (deliverableId !== undefined) {
+      task.deliverableId = deliverableId;
     }
     const savedTask = await this.tasksRepository.save(task);
 
@@ -163,8 +167,21 @@ export class TasksService {
             where: { projectId: task.projectId },
           });
 
-          // Find the specific deliverable type that was selected
-          const targetDeliverable = deliverables.find(d => d.type === deliverableType);
+          // Find the specific deliverable - prefer deliverableId if provided (more accurate for custom deliverables)
+          let targetDeliverable: any = null;
+          
+          if (deliverableId) {
+            // Use deliverableId if provided (most accurate, especially for custom deliverables)
+            targetDeliverable = deliverables.find(d => d.id === deliverableId);
+          } else {
+            // Fallback to matching by type
+            targetDeliverable = deliverables.find(d => d.type === deliverableType);
+            
+            // If not found and deliverableType is 'Other', get the first custom deliverable
+            if (!targetDeliverable && deliverableType === 'Other') {
+              targetDeliverable = deliverables.find(d => d.type === 'Other' && d.customType);
+            }
+          }
           
           if (targetDeliverable) {
             // Update the selected deliverable

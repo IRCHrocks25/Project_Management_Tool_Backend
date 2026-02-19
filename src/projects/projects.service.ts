@@ -257,6 +257,10 @@ export class ProjectsService {
         queryBuilder.where('project.pmId = :userId', { userId });
       }
 
+      // Exclude archived and completed projects from main list
+      queryBuilder.andWhere('project.isArchived = :isArchived', { isArchived: false });
+      queryBuilder.andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
+
       const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
 
       // Load tasks separately to handle enum mismatch gracefully
@@ -690,6 +694,47 @@ export class ProjectsService {
     return this.projectsRepository.save(project);
   }
 
+  async archiveProject(id: string) {
+    const project = await this.findOne(id);
+    project.isArchived = true;
+    await this.projectsRepository.save(project);
+
+    // Archive all tasks for this project
+    const tasks = await this.tasksRepository.find({
+      where: { projectId: id },
+    });
+    for (const task of tasks) {
+      task.isArchived = true;
+    }
+    if (tasks.length > 0) {
+      await this.tasksRepository.save(tasks);
+    }
+
+    return project;
+  }
+
+  async completeProject(id: string) {
+    const project = await this.findOne(id);
+    project.isCompleted = true;
+    project.stage = ProjectStage.CLOSED;
+    project.closedAt = new Date();
+    await this.projectsRepository.save(project);
+
+    // Complete all tasks for this project
+    const tasks = await this.tasksRepository.find({
+      where: { projectId: id },
+    });
+    for (const task of tasks) {
+      task.isCompleted = true;
+      task.status = TaskStatus.COMPLETED;
+    }
+    if (tasks.length > 0) {
+      await this.tasksRepository.save(tasks);
+    }
+
+    return project;
+  }
+
   async getStats(userId: string, userRole: string) {
     const queryBuilder = this.projectsRepository.createQueryBuilder('project');
 
@@ -856,7 +901,7 @@ export class ProjectsService {
       const deliverableHistory = await this.deliverableHistoryRepository.find({
         where: { deliverableId: deliverable.id },
         relations: ['user', 'deliverable'],
-        order: { createdAt: 'DESC' },
+        order: { createdAt: 'ASC' },
       });
 
       for (const history of deliverableHistory) {
@@ -903,7 +948,7 @@ export class ProjectsService {
       const tasks = await this.tasksRepository.find({
         where: { projectId },
         relations: ['assignedTo', 'project'],
-        order: { createdAt: 'DESC' },
+        order: { createdAt: 'ASC' },
       });
 
       // Task creation
@@ -928,7 +973,7 @@ export class ProjectsService {
       const taskFileHistory = await this.taskFileHistoryRepository.find({
         where: { taskId: task.id },
         relations: ['user', 'task'],
-        order: { createdAt: 'DESC' },
+        order: { createdAt: 'ASC' },
       });
 
       for (const history of taskFileHistory) {
@@ -1008,8 +1053,8 @@ export class ProjectsService {
       }
       }
 
-      // Sort by date (newest first)
-      activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      // Sort by date (oldest first - newest at bottom)
+      activities.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
       console.log(`[ProjectsService] Returning ${activities.length} activities for project ${projectId}`);
       return activities;

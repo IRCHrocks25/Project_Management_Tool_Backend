@@ -20,10 +20,12 @@ export declare class ProjectsController {
         byStage: any[];
         overdue: number;
     }>;
+    archiveProject(id: string): Promise<import("./entities/project.entity").Project>;
+    completeProject(id: string): Promise<import("./entities/project.entity").Project>;
     getActivity(id: string): Promise<any[]>;
-    findOne(id: string): Promise<import("./entities/project.entity").Project>;
     updateStage(id: string, updateStageDto: UpdateProjectStageDto): Promise<import("./entities/project.entity").Project>;
     closeProject(id: string): Promise<import("./entities/project.entity").Project>;
+    findOne(id: string): Promise<import("./entities/project.entity").Project>;
     generateOnboardingTasks(id: string): Promise<{
         message: string;
         tasks: import("../tasks/entities/task.entity").Task[];

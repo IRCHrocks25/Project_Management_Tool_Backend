@@ -9,7 +9,7 @@ export declare class TasksService {
     constructor(tasksRepository: Repository<Task>, deliverablesRepository: Repository<Deliverable>, notificationsService: NotificationsService);
     findAll(projectId?: string, assignedToId?: string): Promise<Task[]>;
     findOne(id: string): Promise<Task>;
-    updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string): Promise<Task>;
+    updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string): Promise<Task>;
     assignTask(id: string, assignedToId: string): Promise<Task>;
     create(createTaskDto: any): Promise<Task[]>;
     submitOnboardingData(id: string, submissionData: string, submissionType: 'url' | 'text'): Promise<Task>;

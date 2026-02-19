@@ -11,6 +11,7 @@ export declare class TasksController {
         isCompleted?: boolean;
         fileUrl?: string;
         deliverableType?: string;
+        deliverableId?: string;
     }): Promise<import("./entities/task.entity").Task>;
     assignTask(id: string, body: {
         assignedToId: string;

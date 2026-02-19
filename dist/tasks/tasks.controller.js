@@ -29,7 +29,7 @@ let TasksController = class TasksController {
         return this.tasksService.create(createTaskDto);
     }
     async updateStatus(id, body) {
-        return this.tasksService.updateStatus(id, body.status, body.isCompleted, body.fileUrl, body.deliverableType);
+        return this.tasksService.updateStatus(id, body.status, body.isCompleted, body.fileUrl, body.deliverableType, body.deliverableId);
     }
     async assignTask(id, body) {
         return this.tasksService.assignTask(id, body.assignedToId);

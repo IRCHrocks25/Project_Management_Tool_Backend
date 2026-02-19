@@ -22,8 +22,8 @@ export class TasksController {
   }
 
   @Patch(':id/status')
-  async updateStatus(@Param('id') id: string, @Body() body: { status: TaskStatus; isCompleted?: boolean; fileUrl?: string; deliverableType?: string }) {
-    return this.tasksService.updateStatus(id, body.status, body.isCompleted, body.fileUrl, body.deliverableType);
+  async updateStatus(@Param('id') id: string, @Body() body: { status: TaskStatus; isCompleted?: boolean; fileUrl?: string; deliverableType?: string; deliverableId?: string }) {
+    return this.tasksService.updateStatus(id, body.status, body.isCompleted, body.fileUrl, body.deliverableType, body.deliverableId);
   }
 
   @Patch(':id/assign')

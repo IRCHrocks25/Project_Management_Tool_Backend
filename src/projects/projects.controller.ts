@@ -56,14 +56,19 @@ export class ProjectsController {
     return this.projectsService.getStats(req.user?.userId, req.user?.role);
   }
 
+  @Patch(':id/archive')
+  async archiveProject(@Param('id') id: string) {
+    return this.projectsService.archiveProject(id);
+  }
+
+  @Patch(':id/complete')
+  async completeProject(@Param('id') id: string) {
+    return this.projectsService.completeProject(id);
+  }
+
   @Get(':id/activity')
   async getActivity(@Param('id') id: string) {
     return this.projectsService.getActivity(id);
-  }
-
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.projectsService.findOne(id);
   }
 
   @Patch(':id/stage')
@@ -74,6 +79,11 @@ export class ProjectsController {
   @Patch(':id/close')
   async closeProject(@Param('id') id: string) {
     return this.projectsService.closeProject(id);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.projectsService.findOne(id);
   }
 
   @Post(':id/generate-onboarding-tasks')

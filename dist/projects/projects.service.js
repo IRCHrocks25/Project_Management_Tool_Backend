@@ -244,6 +244,8 @@ let ProjectsService = class ProjectsService {
             if (userRole === 'Project Manager') {
                 queryBuilder.where('project.pmId = :userId', { userId });
             }
+            queryBuilder.andWhere('project.isArchived = :isArchived', { isArchived: false });
+            queryBuilder.andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
             const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
             for (const project of projects) {
                 try {
@@ -580,6 +582,39 @@ let ProjectsService = class ProjectsService {
         project.closedAt = new Date();
         return this.projectsRepository.save(project);
     }
+    async archiveProject(id) {
+        const project = await this.findOne(id);
+        project.isArchived = true;
+        await this.projectsRepository.save(project);
+        const tasks = await this.tasksRepository.find({
+            where: { projectId: id },
+        });
+        for (const task of tasks) {
+            task.isArchived = true;
+        }
+        if (tasks.length > 0) {
+            await this.tasksRepository.save(tasks);
+        }
+        return project;
+    }
+    async completeProject(id) {
+        const project = await this.findOne(id);
+        project.isCompleted = true;
+        project.stage = project_entity_1.ProjectStage.CLOSED;
+        project.closedAt = new Date();
+        await this.projectsRepository.save(project);
+        const tasks = await this.tasksRepository.find({
+            where: { projectId: id },
+        });
+        for (const task of tasks) {
+            task.isCompleted = true;
+            task.status = task_entity_1.TaskStatus.COMPLETED;
+        }
+        if (tasks.length > 0) {
+            await this.tasksRepository.save(tasks);
+        }
+        return project;
+    }
     async getStats(userId, userRole) {
         const queryBuilder = this.projectsRepository.createQueryBuilder('project');
         if (userRole === 'Project Manager') {
@@ -717,7 +752,7 @@ let ProjectsService = class ProjectsService {
                 const deliverableHistory = await this.deliverableHistoryRepository.find({
                     where: { deliverableId: deliverable.id },
                     relations: ['user', 'deliverable'],
-                    order: { createdAt: 'DESC' },
+                    order: { createdAt: 'ASC' },
                 });
                 for (const history of deliverableHistory) {
                     activities.push({
@@ -759,7 +794,7 @@ let ProjectsService = class ProjectsService {
             const tasks = await this.tasksRepository.find({
                 where: { projectId },
                 relations: ['assignedTo', 'project'],
-                order: { createdAt: 'DESC' },
+                order: { createdAt: 'ASC' },
             });
             for (const task of tasks) {
                 const department = this.getDepartmentFromTaskType(task.type);
@@ -780,7 +815,7 @@ let ProjectsService = class ProjectsService {
                 const taskFileHistory = await this.taskFileHistoryRepository.find({
                     where: { taskId: task.id },
                     relations: ['user', 'task'],
-                    order: { createdAt: 'DESC' },
+                    order: { createdAt: 'ASC' },
                 });
                 for (const history of taskFileHistory) {
                     activities.push({
@@ -850,7 +885,7 @@ let ProjectsService = class ProjectsService {
                     });
                 }
             }
-            activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            activities.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
             console.log(`[ProjectsService] Returning ${activities.length} activities for project ${projectId}`);
             return activities;
         }

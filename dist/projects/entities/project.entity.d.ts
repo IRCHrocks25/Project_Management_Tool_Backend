@@ -49,6 +49,7 @@ export declare class Project {
     stage: ProjectStage;
     copyRevisionCount: number;
     designRevisionCount: number;
+    landingPageRevisionCount: number;
     lastEmailedAt: Date;
     closedAt: Date;
     isArchived: boolean;

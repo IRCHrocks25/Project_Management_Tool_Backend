@@ -163,6 +163,10 @@ let DeliverablesService = class DeliverablesService {
         ];
         if (designDeliverableTypes.includes(deliverable.type) && project.stage !== project_entity_1.ProjectStage.DESIGN_REVISION) {
             project.stage = project_entity_1.ProjectStage.DESIGN_REVISION;
+            project.designRevisionCount += 1;
+            if (deliverable.type === deliverable_entity_1.DeliverableType.LANDING_PAGE) {
+                project.landingPageRevisionCount += 1;
+            }
             await this.projectsRepository.save(project);
         }
         for (const task of relatedTasks) {
@@ -174,7 +178,7 @@ let DeliverablesService = class DeliverablesService {
                     await this.notificationsService.create({
                         type: notification_entity_1.NotificationType.REVISION_REQUESTED,
                         title: 'Revision requested',
-                        message: `"${deliverable.type}" file needs revision`,
+                        message: `"${deliverable.customType || deliverable.type}" file for ${project?.clientName || 'project'} needs revision`,
                         userId: task.assignedToId,
                         projectId: deliverable.projectId,
                         taskId: task.id,
@@ -210,13 +214,25 @@ let DeliverablesService = class DeliverablesService {
             return;
         }
         try {
-            const copyTasks = await this.tasksRepository.find({
+            let relatedCopyTasks = await this.tasksRepository.find({
                 where: {
                     projectId: deliverable.projectId,
                     type: task_entity_1.TaskType.COPY,
+                    deliverableId: deliverable.id,
                 },
             });
-            for (const task of copyTasks) {
+            if (relatedCopyTasks.length === 0) {
+                const deliverableName = deliverable.customType || deliverable.type;
+                const allCopyTasks = await this.tasksRepository.find({
+                    where: {
+                        projectId: deliverable.projectId,
+                        type: task_entity_1.TaskType.COPY,
+                    },
+                });
+                relatedCopyTasks = allCopyTasks.filter(task => task.title.includes(deliverableName) ||
+                    task.title.includes(deliverable.type));
+            }
+            for (const task of relatedCopyTasks) {
                 task.status = task_entity_1.TaskStatus.IN_PROGRESS;
                 task.isCompleted = false;
                 await this.tasksRepository.save(task);
@@ -229,13 +245,13 @@ let DeliverablesService = class DeliverablesService {
                 project.copyRevisionCount += 1;
                 await this.projectsRepository.save(project);
             }
-            for (const task of copyTasks) {
+            for (const task of relatedCopyTasks) {
                 if (task.assignedToId) {
                     try {
                         await this.notificationsService.create({
                             type: notification_entity_1.NotificationType.REVISION_REQUESTED,
                             title: 'Revision requested',
-                            message: `"${deliverable.type}" for ${project?.clientName || 'project'} needs revision`,
+                            message: `"${deliverable.customType || deliverable.type}" for ${project?.clientName || 'project'} needs revision`,
                             userId: task.assignedToId,
                             projectId: deliverable.projectId,
                             taskId: task.id,

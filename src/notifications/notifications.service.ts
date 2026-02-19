@@ -143,12 +143,21 @@ export class NotificationsService {
     taskTitle: string,
     projectName: string,
     hasFileUrl: boolean = false,
+    taskType?: string,
   ) {
+    // Determine notification title based on task type
+    let title = 'Task sent for review';
+    if (taskType === 'Copy') {
+      title = 'Copy sent for review';
+    } else if (taskType === 'Design') {
+      title = 'Design sent for review';
+    }
+    
     return this.create({
       type: NotificationType.REVISION_REQUESTED,
-      title: 'Copy sent for review',
+      title,
       message: `"${taskTitle}" for ${projectName} has been sent for review${hasFileUrl ? ' with Google Drive files attached' : ''}`,
-      userId,
+      userId, // Only PM receives this notification
       taskId,
       projectId,
     });

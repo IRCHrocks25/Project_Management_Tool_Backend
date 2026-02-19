@@ -156,12 +156,13 @@ export class TasksService {
         if (projectWithPM && projectWithPM.pmId) {
           console.log('Creating notification for PM:', projectWithPM.pmId, 'Task:', task.title, 'Project:', projectWithPM.clientName);
           await this.notificationsService.createTaskSentForReviewNotification(
-            projectWithPM.pmId,
+            projectWithPM.pmId, // Only PM receives this notification
             savedTask.id,
             task.projectId,
             task.title,
             projectWithPM.clientName,
             !!fileUrl,
+            task.type, // Pass task type for proper notification title
           );
           console.log('Notification created successfully');
         } else {

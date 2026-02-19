@@ -204,6 +204,13 @@ export class DeliverablesService {
     // If it's a design deliverable, update project stage to Design Revision
     if (designDeliverableTypes.includes(deliverable.type) && project.stage !== ProjectStage.DESIGN_REVISION) {
       project.stage = ProjectStage.DESIGN_REVISION;
+      project.designRevisionCount += 1;
+      
+      // Track landing page revisions separately
+      if (deliverable.type === DeliverableType.LANDING_PAGE) {
+        project.landingPageRevisionCount += 1;
+      }
+      
       await this.projectsRepository.save(project);
     }
 
@@ -213,14 +220,14 @@ export class DeliverablesService {
       task.isCompleted = false;
       await this.tasksRepository.save(task);
 
-      // Notify the assigned user
+      // Notify ONLY the assigned user for this specific task
       if (task.assignedToId) {
         try {
           await this.notificationsService.create({
             type: NotificationType.REVISION_REQUESTED,
             title: 'Revision requested',
-            message: `"${deliverable.type}" file needs revision`,
-            userId: task.assignedToId,
+            message: `"${deliverable.customType || deliverable.type}" file for ${project?.clientName || 'project'} needs revision`,
+            userId: task.assignedToId, // Only notify the assigned user
             projectId: deliverable.projectId,
             taskId: task.id,
           });
@@ -260,16 +267,35 @@ export class DeliverablesService {
     }
 
     try {
-      // Find all copy tasks for this project
-      const copyTasks = await this.tasksRepository.find({
+      // Find copy tasks SPECIFICALLY related to this deliverable
+      // First, try to find tasks by deliverableId (most accurate)
+      let relatedCopyTasks = await this.tasksRepository.find({
         where: {
           projectId: deliverable.projectId,
           type: TaskType.COPY,
+          deliverableId: deliverable.id, // Only tasks for THIS deliverable
         },
       });
 
-      // Update copy tasks to "In Progress" status (so copywriters can work on revisions)
-      for (const task of copyTasks) {
+      // If no tasks found by deliverableId, try matching by deliverable type in task title
+      // This handles cases where tasks were created before deliverableId was set
+      if (relatedCopyTasks.length === 0) {
+        const deliverableName = deliverable.customType || deliverable.type;
+        const allCopyTasks = await this.tasksRepository.find({
+          where: {
+            projectId: deliverable.projectId,
+            type: TaskType.COPY,
+          },
+        });
+        // Match tasks where title contains the deliverable name
+        relatedCopyTasks = allCopyTasks.filter(task => 
+          task.title.includes(deliverableName) || 
+          task.title.includes(deliverable.type)
+        );
+      }
+
+      // Update related copy tasks to "In Progress" status (so copywriters can work on revisions)
+      for (const task of relatedCopyTasks) {
         task.status = TaskStatus.IN_PROGRESS;
         task.isCompleted = false;
         await this.tasksRepository.save(task);
@@ -286,14 +312,14 @@ export class DeliverablesService {
         await this.projectsRepository.save(project);
       }
 
-      // Notify copywriters assigned to tasks
-      for (const task of copyTasks) {
+      // Notify ONLY copywriters assigned to tasks related to THIS deliverable
+      for (const task of relatedCopyTasks) {
         if (task.assignedToId) {
           try {
             await this.notificationsService.create({
               type: NotificationType.REVISION_REQUESTED,
               title: 'Revision requested',
-              message: `"${deliverable.type}" for ${project?.clientName || 'project'} needs revision`,
+              message: `"${deliverable.customType || deliverable.type}" for ${project?.clientName || 'project'} needs revision`,
               userId: task.assignedToId,
               projectId: deliverable.projectId,
               taskId: task.id,

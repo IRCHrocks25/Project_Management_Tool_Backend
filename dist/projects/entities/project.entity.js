@@ -120,6 +120,10 @@ __decorate([
     __metadata("design:type", Number)
 ], Project.prototype, "designRevisionCount", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], Project.prototype, "landingPageRevisionCount", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
     __metadata("design:type", Date)
 ], Project.prototype, "lastEmailedAt", void 0);

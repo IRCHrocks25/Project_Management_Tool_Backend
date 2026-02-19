@@ -22,5 +22,5 @@ export declare class NotificationsService {
     createProjectStageChangedNotification(userId: string, projectId: string, projectName: string, newStage: string): Promise<Notification>;
     createProjectAlertNotification(userId: string, projectId: string, projectName: string, message: string): Promise<Notification>;
     createTaskCompletedNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string): Promise<Notification>;
-    createTaskSentForReviewNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string, hasFileUrl?: boolean): Promise<Notification>;
+    createTaskSentForReviewNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string, hasFileUrl?: boolean, taskType?: string): Promise<Notification>;
 }

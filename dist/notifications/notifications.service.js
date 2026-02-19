@@ -98,10 +98,17 @@ let NotificationsService = class NotificationsService {
             projectId,
         });
     }
-    async createTaskSentForReviewNotification(userId, taskId, projectId, taskTitle, projectName, hasFileUrl = false) {
+    async createTaskSentForReviewNotification(userId, taskId, projectId, taskTitle, projectName, hasFileUrl = false, taskType) {
+        let title = 'Task sent for review';
+        if (taskType === 'Copy') {
+            title = 'Copy sent for review';
+        }
+        else if (taskType === 'Design') {
+            title = 'Design sent for review';
+        }
         return this.create({
             type: notification_entity_1.NotificationType.REVISION_REQUESTED,
-            title: 'Copy sent for review',
+            title,
             message: `"${taskTitle}" for ${projectName} has been sent for review${hasFileUrl ? ' with Google Drive files attached' : ''}`,
             userId,
             taskId,

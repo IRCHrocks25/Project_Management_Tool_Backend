@@ -127,7 +127,7 @@ let TasksService = class TasksService {
                 });
                 if (projectWithPM && projectWithPM.pmId) {
                     console.log('Creating notification for PM:', projectWithPM.pmId, 'Task:', task.title, 'Project:', projectWithPM.clientName);
-                    await this.notificationsService.createTaskSentForReviewNotification(projectWithPM.pmId, savedTask.id, task.projectId, task.title, projectWithPM.clientName, !!fileUrl);
+                    await this.notificationsService.createTaskSentForReviewNotification(projectWithPM.pmId, savedTask.id, task.projectId, task.title, projectWithPM.clientName, !!fileUrl, task.type);
                     console.log('Notification created successfully');
                 }
                 else {

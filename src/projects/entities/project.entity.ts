@@ -106,6 +106,9 @@ export class Project {
   @Column({ default: 0 })
   designRevisionCount: number;
 
+  @Column({ default: 0 })
+  landingPageRevisionCount: number;
+
   @Column({ type: 'timestamp', nullable: true })
   lastEmailedAt: Date;
 

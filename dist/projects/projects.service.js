@@ -53,14 +53,20 @@ const project_entity_1 = require("./entities/project.entity");
 const project_team_member_entity_1 = require("./entities/project-team-member.entity");
 const task_entity_1 = require("../tasks/entities/task.entity");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
+const deliverable_history_entity_1 = require("../deliverables/entities/deliverable-history.entity");
+const task_file_history_entity_1 = require("../tasks/entities/task-file-history.entity");
+const user_entity_1 = require("../users/entities/user.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 const auth_service_1 = require("../auth/auth.service");
 let ProjectsService = class ProjectsService {
-    constructor(projectsRepository, teamMembersRepository, tasksRepository, deliverablesRepository, notificationsService, authService) {
+    constructor(projectsRepository, teamMembersRepository, tasksRepository, deliverablesRepository, deliverableHistoryRepository, taskFileHistoryRepository, usersRepository, notificationsService, authService) {
         this.projectsRepository = projectsRepository;
         this.teamMembersRepository = teamMembersRepository;
         this.tasksRepository = tasksRepository;
         this.deliverablesRepository = deliverablesRepository;
+        this.deliverableHistoryRepository = deliverableHistoryRepository;
+        this.taskFileHistoryRepository = taskFileHistoryRepository;
+        this.usersRepository = usersRepository;
         this.notificationsService = notificationsService;
         this.authService = authService;
     }
@@ -638,6 +644,248 @@ let ProjectsService = class ProjectsService {
             assignedAt: m.assignedAt,
         }));
     }
+    async getActivity(projectId) {
+        try {
+            console.log(`[ProjectsService] Getting activity for project: ${projectId}`);
+            const project = await this.findOne(projectId);
+            if (!project) {
+                console.error(`[ProjectsService] Project not found: ${projectId}`);
+                return [];
+            }
+            const activities = [];
+            activities.push({
+                id: `project-created-${project.id}`,
+                type: 'project',
+                action: 'Project Created',
+                department: 'Project Management',
+                user: project.pm,
+                userId: project.pmId,
+                createdAt: project.createdAt,
+                metadata: {
+                    projectName: project.clientName,
+                    stage: project.stage,
+                },
+            });
+            if (project.lastEmailedAt) {
+                activities.push({
+                    id: `email-sent-${project.id}`,
+                    type: 'email',
+                    action: 'Email Sent',
+                    department: 'Project Management',
+                    user: project.pm,
+                    userId: project.pmId,
+                    createdAt: project.lastEmailedAt,
+                    metadata: {
+                        projectName: project.clientName,
+                    },
+                });
+            }
+            if (project.closedAt) {
+                activities.push({
+                    id: `project-closed-${project.id}`,
+                    type: 'project',
+                    action: 'Project Closed',
+                    department: 'Project Management',
+                    user: project.pm,
+                    userId: project.pmId,
+                    createdAt: project.closedAt,
+                    metadata: {
+                        projectName: project.clientName,
+                    },
+                });
+            }
+            const deliverables = await this.deliverablesRepository.find({
+                where: { projectId },
+                relations: ['project'],
+            });
+            for (const deliverable of deliverables) {
+                const department = this.getDepartmentFromDeliverableType(deliverable.type);
+                activities.push({
+                    id: `deliverable-created-${deliverable.id}`,
+                    type: 'deliverable',
+                    action: 'Deliverable Created',
+                    department,
+                    user: null,
+                    userId: null,
+                    createdAt: deliverable.createdAt,
+                    metadata: {
+                        deliverableType: deliverable.type,
+                        deliverableCustomType: deliverable.customType,
+                        status: deliverable.status,
+                    },
+                });
+                const deliverableHistory = await this.deliverableHistoryRepository.find({
+                    where: { deliverableId: deliverable.id },
+                    relations: ['user', 'deliverable'],
+                    order: { createdAt: 'DESC' },
+                });
+                for (const history of deliverableHistory) {
+                    activities.push({
+                        id: `deliverable-${history.id}`,
+                        type: 'deliverable',
+                        action: String(history.action),
+                        department,
+                        user: history.user,
+                        userId: history.userId,
+                        createdAt: history.createdAt,
+                        metadata: {
+                            deliverableType: deliverable.type,
+                            deliverableCustomType: deliverable.customType,
+                            fileUrl: history.fileUrl,
+                            previousStatus: history.previousStatus,
+                            newStatus: history.newStatus,
+                            notes: history.notes,
+                        },
+                    });
+                }
+                if (deliverable.fileUrl && deliverableHistory.length === 0 && deliverable.updatedAt) {
+                    activities.push({
+                        id: `deliverable-file-added-${deliverable.id}`,
+                        type: 'deliverable',
+                        action: 'File Added',
+                        department,
+                        user: null,
+                        userId: null,
+                        createdAt: deliverable.updatedAt,
+                        metadata: {
+                            deliverableType: deliverable.type,
+                            deliverableCustomType: deliverable.customType,
+                            fileUrl: deliverable.fileUrl,
+                            status: deliverable.status,
+                        },
+                    });
+                }
+            }
+            const tasks = await this.tasksRepository.find({
+                where: { projectId },
+                relations: ['assignedTo', 'project'],
+                order: { createdAt: 'DESC' },
+            });
+            for (const task of tasks) {
+                const department = this.getDepartmentFromTaskType(task.type);
+                activities.push({
+                    id: `task-created-${task.id}`,
+                    type: 'task',
+                    action: 'Task Created',
+                    department,
+                    user: task.assignedTo,
+                    userId: task.assignedToId,
+                    createdAt: task.createdAt,
+                    metadata: {
+                        taskTitle: task.title,
+                        taskType: task.type,
+                        status: task.status,
+                    },
+                });
+                const taskFileHistory = await this.taskFileHistoryRepository.find({
+                    where: { taskId: task.id },
+                    relations: ['user', 'task'],
+                    order: { createdAt: 'DESC' },
+                });
+                for (const history of taskFileHistory) {
+                    activities.push({
+                        id: `task-file-${history.id}`,
+                        type: 'task',
+                        action: String(history.action),
+                        department,
+                        user: history.user,
+                        userId: history.userId,
+                        createdAt: history.createdAt,
+                        metadata: {
+                            taskTitle: task.title,
+                            taskType: task.type,
+                            fileUrl: history.fileUrl,
+                            notes: history.notes,
+                        },
+                    });
+                }
+                if (task.fileUrl && taskFileHistory.length === 0 && task.updatedAt) {
+                    activities.push({
+                        id: `task-submitted-${task.id}`,
+                        type: 'task',
+                        action: 'Submitted',
+                        department,
+                        user: task.assignedTo,
+                        userId: task.assignedToId,
+                        createdAt: task.updatedAt,
+                        metadata: {
+                            taskTitle: task.title,
+                            taskType: task.type,
+                            fileUrl: task.fileUrl,
+                            status: task.status,
+                        },
+                    });
+                }
+                if (task.status === 'In Review' && task.fileUrl) {
+                    activities.push({
+                        id: `task-sent-for-review-${task.id}`,
+                        type: 'task',
+                        action: 'Sent for Review',
+                        department,
+                        user: task.assignedTo,
+                        userId: task.assignedToId,
+                        createdAt: task.updatedAt || task.createdAt,
+                        metadata: {
+                            taskTitle: task.title,
+                            taskType: task.type,
+                            fileUrl: task.fileUrl,
+                            status: task.status,
+                        },
+                    });
+                }
+                if (task.updatedAt && task.updatedAt.getTime() !== task.createdAt.getTime() && !task.fileUrl) {
+                    activities.push({
+                        id: `task-updated-${task.id}`,
+                        type: 'task',
+                        action: 'Task Updated',
+                        department,
+                        user: task.assignedTo,
+                        userId: task.assignedToId,
+                        createdAt: task.updatedAt,
+                        metadata: {
+                            taskTitle: task.title,
+                            taskType: task.type,
+                            status: task.status,
+                        },
+                    });
+                }
+            }
+            activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            console.log(`[ProjectsService] Returning ${activities.length} activities for project ${projectId}`);
+            return activities;
+        }
+        catch (error) {
+            console.error(`[ProjectsService] Error getting activity for project ${projectId}:`, error);
+            console.error(`[ProjectsService] Error stack:`, error.stack);
+            throw error;
+        }
+    }
+    getDepartmentFromDeliverableType(type) {
+        const typeStr = type.toString();
+        if (typeStr.includes('Logo') || typeStr.includes('Social') || typeStr.includes('Landing Page') || typeStr.includes('Brand Book')) {
+            return 'Design';
+        }
+        if (typeStr.includes('Copy') || typeStr.includes('Speaker Kit')) {
+            return 'Copy Writing';
+        }
+        return 'General';
+    }
+    getDepartmentFromTaskType(type) {
+        const typeStr = type.toString();
+        if (typeStr === 'Design' || typeStr === 'DESIGN') {
+            return 'Design';
+        }
+        if (typeStr === 'Copy' || typeStr === 'COPY') {
+            return 'Copy Writing';
+        }
+        if (typeStr === 'Dev' || typeStr === 'DEV') {
+            return 'Development';
+        }
+        if (typeStr === 'Onboarding' || typeStr === 'INTAKE') {
+            return 'Onboarding';
+        }
+        return 'General';
+    }
 };
 exports.ProjectsService = ProjectsService;
 exports.ProjectsService = ProjectsService = __decorate([
@@ -646,8 +894,14 @@ exports.ProjectsService = ProjectsService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(project_team_member_entity_1.ProjectTeamMember)),
     __param(2, (0, typeorm_1.InjectRepository)(task_entity_1.Task)),
     __param(3, (0, typeorm_1.InjectRepository)(deliverable_entity_1.Deliverable)),
-    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
+    __param(4, (0, typeorm_1.InjectRepository)(deliverable_history_entity_1.DeliverableHistory)),
+    __param(5, (0, typeorm_1.InjectRepository)(task_file_history_entity_1.TaskFileHistory)),
+    __param(6, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(7, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

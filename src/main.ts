@@ -14,11 +14,16 @@ async function bootstrap() {
     
     app.enableCors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl requests)
+        // Allow requests with no origin (like mobile apps, curl, or webhook requests)
         if (!origin) return callback(null, true);
         
         // Check exact matches first
         if (allowedOrigins.indexOf(origin) !== -1) {
+          return callback(null, true);
+        }
+        
+        // In development, allow localhost for local testing (n8n, Postman, etc.)
+        if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
           return callback(null, true);
         }
         
@@ -31,7 +36,7 @@ async function bootstrap() {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret', 'webhook-secret'],
     });
 
     // Global validation pipe

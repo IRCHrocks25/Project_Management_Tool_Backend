@@ -3,6 +3,9 @@ import { Project } from './entities/project.entity';
 import { ProjectTeamMember } from './entities/project-team-member.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { Deliverable } from '../deliverables/entities/deliverable.entity';
+import { DeliverableHistory } from '../deliverables/entities/deliverable-history.entity';
+import { TaskFileHistory } from '../tasks/entities/task-file-history.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
@@ -13,9 +16,12 @@ export declare class ProjectsService {
     private teamMembersRepository;
     private tasksRepository;
     private deliverablesRepository;
+    private deliverableHistoryRepository;
+    private taskFileHistoryRepository;
+    private usersRepository;
     private notificationsService;
     private authService;
-    constructor(projectsRepository: Repository<Project>, teamMembersRepository: Repository<ProjectTeamMember>, tasksRepository: Repository<Task>, deliverablesRepository: Repository<Deliverable>, notificationsService: NotificationsService, authService: AuthService);
+    constructor(projectsRepository: Repository<Project>, teamMembersRepository: Repository<ProjectTeamMember>, tasksRepository: Repository<Task>, deliverablesRepository: Repository<Deliverable>, deliverableHistoryRepository: Repository<DeliverableHistory>, taskFileHistoryRepository: Repository<TaskFileHistory>, usersRepository: Repository<User>, notificationsService: NotificationsService, authService: AuthService);
     create(createProjectDto: CreateProjectDto, userId: string): Promise<Project>;
     createFromWebhook(webhookDto: CreateProjectWebhookDto): Promise<Project>;
     getWebhookPM(): Promise<{
@@ -50,7 +56,10 @@ export declare class ProjectsService {
     getTeamMembers(projectId: string): Promise<{
         id: string;
         userId: string;
-        user: import("../users/entities/user.entity").User;
+        user: User;
         assignedAt: Date;
     }[]>;
+    getActivity(projectId: string): Promise<any[]>;
+    private getDepartmentFromDeliverableType;
+    private getDepartmentFromTaskType;
 }

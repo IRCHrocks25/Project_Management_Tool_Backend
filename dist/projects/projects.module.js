@@ -15,6 +15,9 @@ const project_entity_1 = require("./entities/project.entity");
 const project_team_member_entity_1 = require("./entities/project-team-member.entity");
 const task_entity_1 = require("../tasks/entities/task.entity");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
+const deliverable_history_entity_1 = require("../deliverables/entities/deliverable-history.entity");
+const task_file_history_entity_1 = require("../tasks/entities/task-file-history.entity");
+const user_entity_1 = require("../users/entities/user.entity");
 const notifications_module_1 = require("../notifications/notifications.module");
 const auth_module_1 = require("../auth/auth.module");
 const webhook_guard_1 = require("./guards/webhook.guard");
@@ -24,7 +27,7 @@ exports.ProjectsModule = ProjectsModule;
 exports.ProjectsModule = ProjectsModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([project_entity_1.Project, project_team_member_entity_1.ProjectTeamMember, task_entity_1.Task, deliverable_entity_1.Deliverable]),
+            typeorm_1.TypeOrmModule.forFeature([project_entity_1.Project, project_team_member_entity_1.ProjectTeamMember, task_entity_1.Task, deliverable_entity_1.Deliverable, deliverable_history_entity_1.DeliverableHistory, task_file_history_entity_1.TaskFileHistory, user_entity_1.User]),
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
             auth_module_1.AuthModule,
         ],

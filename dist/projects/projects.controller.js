@@ -45,6 +45,9 @@ let ProjectsController = class ProjectsController {
     async getStats(req) {
         return this.projectsService.getStats(req.user?.userId, req.user?.role);
     }
+    async getActivity(id) {
+        return this.projectsService.getActivity(id);
+    }
     async findOne(id) {
         return this.projectsService.findOne(id);
     }
@@ -113,6 +116,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Get)(':id/activity'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "getActivity", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

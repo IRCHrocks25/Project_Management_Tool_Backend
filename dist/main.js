@@ -17,6 +17,9 @@ async function bootstrap() {
                 if (allowedOrigins.indexOf(origin) !== -1) {
                     return callback(null, true);
                 }
+                if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+                    return callback(null, true);
+                }
                 if (process.env.NODE_ENV === 'production' && origin.includes('.up.railway.app')) {
                     return callback(null, true);
                 }
@@ -24,7 +27,7 @@ async function bootstrap() {
             },
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Webhook-Secret', 'webhook-secret'],
         });
         app.useGlobalPipes(new common_1.ValidationPipe({
             whitelist: true,

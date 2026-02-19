@@ -56,6 +56,11 @@ export class ProjectsController {
     return this.projectsService.getStats(req.user?.userId, req.user?.role);
   }
 
+  @Get(':id/activity')
+  async getActivity(@Param('id') id: string) {
+    return this.projectsService.getActivity(id);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.projectsService.findOne(id);

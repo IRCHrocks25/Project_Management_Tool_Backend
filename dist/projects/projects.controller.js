@@ -57,24 +57,29 @@ let ProjectsController = class ProjectsController {
         return this.projectsService.closeProject(id);
     }
     async archiveProject(id, req) {
-        if (!req.user) {
-            throw new common_1.ForbiddenException('Authentication required');
-        }
+        console.log('[Archive] Request received:', {
+            projectId: id,
+            hasUser: !!req.user,
+            userId: req.user?.userId,
+            userRole: req.user?.role,
+            userRoleType: typeof req.user?.role,
+            headers: req.headers?.authorization ? 'Bearer token present' : 'No Bearer token',
+        });
         const userRole = req.user?.role;
+        if (!userRole && req.headers?.authorization) {
+            console.log('[Archive] req.user is undefined but Authorization header exists - JWT may not be validated');
+        }
         const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
         const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER ||
             normalizedRole === 'Project Manager';
         const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO ||
             normalizedRole === 'FOUNDER/CEO';
         if (!isProjectManager && !isFounder) {
-            console.error('[Archive] Access denied:', {
-                userRole: userRole,
-                normalizedRole: normalizedRole,
-                type: typeof userRole,
-                userId: req.user?.userId,
-                email: req.user?.email,
-            });
-            throw new common_1.ForbiddenException(`Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`);
+            const errorMsg = userRole
+                ? `Only Project Managers and Admins can archive projects. Your role: "${userRole}"`
+                : 'Authentication required. Please log in and try again.';
+            console.error('[Archive] Access denied:', errorMsg);
+            throw new common_1.ForbiddenException(errorMsg);
         }
         return this.projectsService.archiveProject(id, req.user?.userId);
     }

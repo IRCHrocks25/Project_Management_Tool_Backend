@@ -19,6 +19,7 @@ const create_project_dto_1 = require("./dto/create-project.dto");
 const create_project_webhook_dto_1 = require("./dto/create-project-webhook.dto");
 const update_project_stage_dto_1 = require("./dto/update-project-stage.dto");
 const webhook_guard_1 = require("./guards/webhook.guard");
+const user_entity_1 = require("../users/entities/user.entity");
 let ProjectsController = class ProjectsController {
     constructor(projectsService) {
         this.projectsService = projectsService;
@@ -56,9 +57,24 @@ let ProjectsController = class ProjectsController {
         return this.projectsService.closeProject(id);
     }
     async archiveProject(id, req) {
+        if (!req.user) {
+            throw new common_1.ForbiddenException('Authentication required');
+        }
         const userRole = req.user?.role;
-        if (userRole !== 'Project Manager' && userRole !== 'FOUNDER/CEO') {
-            throw new common_1.ForbiddenException('Only Project Managers and Admins can archive projects');
+        const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
+        const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER ||
+            normalizedRole === 'Project Manager';
+        const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO ||
+            normalizedRole === 'FOUNDER/CEO';
+        if (!isProjectManager && !isFounder) {
+            console.error('[Archive] Access denied:', {
+                userRole: userRole,
+                normalizedRole: normalizedRole,
+                type: typeof userRole,
+                userId: req.user?.userId,
+                email: req.user?.email,
+            });
+            throw new common_1.ForbiddenException(`Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`);
         }
         return this.projectsService.archiveProject(id, req.user?.userId);
     }

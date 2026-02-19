@@ -2,6 +2,7 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
+import { UserRole } from '../users/entities/user.entity';
 export declare class ProjectsController {
     private readonly projectsService;
     constructor(projectsService: ProjectsService);
@@ -11,7 +12,7 @@ export declare class ProjectsController {
         id: string;
         name: string;
         email: string;
-        role: import("../users/entities/user.entity").UserRole;
+        role: UserRole;
         message: string;
     }>;
     findAll(req: any, includeArchived?: string): Promise<import("./entities/project.entity").Project[]>;

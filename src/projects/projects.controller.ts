@@ -18,6 +18,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
 import { WebhookGuard } from './guards/webhook.guard';
+import { UserRole } from '../users/entities/user.entity';
 
 @Controller('projects')
 export class ProjectsController {
@@ -84,10 +85,34 @@ export class ProjectsController {
   @Patch(':id/archive')
   async archiveProject(@Param('id') id: string, @Request() req: any) {
     // Restrict archiving to PM and Admin roles
-    const userRole = req.user?.role;
-    if (userRole !== 'Project Manager' && userRole !== 'FOUNDER/CEO') {
-      throw new ForbiddenException('Only Project Managers and Admins can archive projects');
+    if (!req.user) {
+      throw new ForbiddenException('Authentication required');
     }
+    
+    const userRole = req.user?.role;
+    
+    // Normalize role comparison - handle both enum and string values
+    const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
+    const isProjectManager = 
+      normalizedRole === UserRole.PROJECT_MANAGER || 
+      normalizedRole === 'Project Manager';
+    const isFounder = 
+      normalizedRole === UserRole.FOUNDER_CEO || 
+      normalizedRole === 'FOUNDER/CEO';
+    
+    if (!isProjectManager && !isFounder) {
+      console.error('[Archive] Access denied:', {
+        userRole: userRole,
+        normalizedRole: normalizedRole,
+        type: typeof userRole,
+        userId: req.user?.userId,
+        email: req.user?.email,
+      });
+      throw new ForbiddenException(
+        `Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`
+      );
+    }
+    
     return this.projectsService.archiveProject(id, req.user?.userId);
   }
 

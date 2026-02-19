@@ -257,11 +257,18 @@ export class ProjectsService {
         queryBuilder.where('project.pmId = :userId', { userId });
       }
 
-      // Exclude archived and completed projects from main list
-      queryBuilder.andWhere('project.isArchived = :isArchived', { isArchived: false });
-      queryBuilder.andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
+      // Note: We'll filter archived/completed projects in memory after fetching
+      // This avoids SQL errors if columns don't exist yet
 
-      const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
+      const allProjects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
+
+      // Filter out archived and completed projects in memory (safer than SQL if columns don't exist)
+      const projects = allProjects.filter((p: any) => {
+        // If columns don't exist, they'll be undefined, which we treat as false
+        const isArchived = p.isArchived === true;
+        const isCompleted = p.isCompleted === true;
+        return !isArchived && !isCompleted;
+      });
 
       // Load tasks separately to handle enum mismatch gracefully
       for (const project of projects) {

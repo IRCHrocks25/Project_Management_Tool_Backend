@@ -244,9 +244,12 @@ let ProjectsService = class ProjectsService {
             if (userRole === 'Project Manager') {
                 queryBuilder.where('project.pmId = :userId', { userId });
             }
-            queryBuilder.andWhere('project.isArchived = :isArchived', { isArchived: false });
-            queryBuilder.andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
-            const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
+            const allProjects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
+            const projects = allProjects.filter((p) => {
+                const isArchived = p.isArchived === true;
+                const isCompleted = p.isCompleted === true;
+                return !isArchived && !isCompleted;
+            });
             for (const project of projects) {
                 try {
                     project.tasks = await this.tasksRepository.find({

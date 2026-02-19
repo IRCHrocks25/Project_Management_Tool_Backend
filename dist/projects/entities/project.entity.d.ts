@@ -51,8 +51,6 @@ export declare class Project {
     designRevisionCount: number;
     lastEmailedAt: Date;
     closedAt: Date;
-    isArchived: boolean;
-    isCompleted: boolean;
     tasks: Task[];
     deliverables: Deliverable[];
     emails: Email[];

@@ -44,8 +44,6 @@ export declare class ProjectsService {
         tasks: Task[];
     }>;
     closeProject(id: string): Promise<Project>;
-    archiveProject(id: string): Promise<Project>;
-    completeProject(id: string): Promise<Project>;
     getStats(userId: string, userRole: string): Promise<{
         total: number;
         byStage: any[];

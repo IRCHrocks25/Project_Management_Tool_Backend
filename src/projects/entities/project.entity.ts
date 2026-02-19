@@ -112,12 +112,6 @@ export class Project {
   @Column({ type: 'timestamp', nullable: true })
   closedAt: Date;
 
-  @Column({ default: false })
-  isArchived: boolean;
-
-  @Column({ default: false })
-  isCompleted: boolean;
-
   @OneToMany(() => Task, (task) => task.project)
   tasks: Task[];
 

@@ -45,23 +45,17 @@ let ProjectsController = class ProjectsController {
     async getStats(req) {
         return this.projectsService.getStats(req.user?.userId, req.user?.role);
     }
-    async archiveProject(id) {
-        return this.projectsService.archiveProject(id);
-    }
-    async completeProject(id) {
-        return this.projectsService.completeProject(id);
-    }
     async getActivity(id) {
         return this.projectsService.getActivity(id);
+    }
+    async findOne(id) {
+        return this.projectsService.findOne(id);
     }
     async updateStage(id, updateStageDto) {
         return this.projectsService.updateStage(id, updateStageDto);
     }
     async closeProject(id) {
         return this.projectsService.closeProject(id);
-    }
-    async findOne(id) {
-        return this.projectsService.findOne(id);
     }
     async generateOnboardingTasks(id) {
         try {
@@ -123,26 +117,19 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "getStats", null);
 __decorate([
-    (0, common_1.Patch)(':id/archive'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], ProjectsController.prototype, "archiveProject", null);
-__decorate([
-    (0, common_1.Patch)(':id/complete'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], ProjectsController.prototype, "completeProject", null);
-__decorate([
     (0, common_1.Get)(':id/activity'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "getActivity", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id/stage'),
     __param(0, (0, common_1.Param)('id')),
@@ -158,13 +145,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "closeProject", null);
-__decorate([
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], ProjectsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Post)(':id/generate-onboarding-tasks'),
     __param(0, (0, common_1.Param)('id')),

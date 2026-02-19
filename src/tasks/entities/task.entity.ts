@@ -74,9 +74,6 @@ export class Task {
   @Column({ default: false })
   isCompleted: boolean;
 
-  @Column({ default: false })
-  isArchived: boolean;
-
   @Column('text', { nullable: true })
   fileUrl: string; // Google Drive link or file URL
 

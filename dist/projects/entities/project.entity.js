@@ -128,14 +128,6 @@ __decorate([
     __metadata("design:type", Date)
 ], Project.prototype, "closedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ default: false }),
-    __metadata("design:type", Boolean)
-], Project.prototype, "isArchived", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ default: false }),
-    __metadata("design:type", Boolean)
-], Project.prototype, "isCompleted", void 0);
-__decorate([
     (0, typeorm_1.OneToMany)(() => task_entity_1.Task, (task) => task.project),
     __metadata("design:type", Array)
 ], Project.prototype, "tasks", void 0);

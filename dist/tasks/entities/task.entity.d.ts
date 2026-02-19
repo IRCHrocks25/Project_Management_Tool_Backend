@@ -30,7 +30,6 @@ export declare class Task {
     type: TaskType;
     dueDate: Date;
     isCompleted: boolean;
-    isArchived: boolean;
     fileUrl: string;
     submissionData: string;
     submissionType: string;

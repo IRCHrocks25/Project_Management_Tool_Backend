@@ -257,18 +257,7 @@ export class ProjectsService {
         queryBuilder.where('project.pmId = :userId', { userId });
       }
 
-      // Note: We'll filter archived/completed projects in memory after fetching
-      // This avoids SQL errors if columns don't exist yet
-
-      const allProjects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
-
-      // Filter out archived and completed projects in memory (safer than SQL if columns don't exist)
-      const projects = allProjects.filter((p: any) => {
-        // If columns don't exist, they'll be undefined, which we treat as false
-        const isArchived = p.isArchived === true;
-        const isCompleted = p.isCompleted === true;
-        return !isArchived && !isCompleted;
-      });
+      const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
 
       // Load tasks separately to handle enum mismatch gracefully
       for (const project of projects) {
@@ -699,47 +688,6 @@ export class ProjectsService {
     project.stage = ProjectStage.CLOSED;
     project.closedAt = new Date();
     return this.projectsRepository.save(project);
-  }
-
-  async archiveProject(id: string) {
-    const project = await this.findOne(id);
-    project.isArchived = true;
-    await this.projectsRepository.save(project);
-
-    // Archive all tasks for this project
-    const tasks = await this.tasksRepository.find({
-      where: { projectId: id },
-    });
-    for (const task of tasks) {
-      task.isArchived = true;
-    }
-    if (tasks.length > 0) {
-      await this.tasksRepository.save(tasks);
-    }
-
-    return project;
-  }
-
-  async completeProject(id: string) {
-    const project = await this.findOne(id);
-    project.isCompleted = true;
-    project.stage = ProjectStage.CLOSED;
-    project.closedAt = new Date();
-    await this.projectsRepository.save(project);
-
-    // Complete all tasks for this project
-    const tasks = await this.tasksRepository.find({
-      where: { projectId: id },
-    });
-    for (const task of tasks) {
-      task.isCompleted = true;
-      task.status = TaskStatus.COMPLETED;
-    }
-    if (tasks.length > 0) {
-      await this.tasksRepository.save(tasks);
-    }
-
-    return project;
   }
 
   async getStats(userId: string, userRole: string) {

@@ -84,24 +84,10 @@ export class ProjectsController {
   }
 
   @Patch(':id/archive')
+  @UseGuards(JwtAuthGuard)
   async archiveProject(@Param('id') id: string, @Request() req: any) {
-    // Log for debugging - check what we're receiving
-    console.log('[Archive] Request received:', {
-      projectId: id,
-      hasUser: !!req.user,
-      userId: req.user?.userId,
-      userRole: req.user?.role,
-      userRoleType: typeof req.user?.role,
-      headers: req.headers?.authorization ? 'Bearer token present' : 'No Bearer token',
-    });
-    
     // Restrict archiving to PM and Admin roles
     const userRole = req.user?.role;
-    
-    // If no user, try to extract from JWT manually (fallback)
-    if (!userRole && req.headers?.authorization) {
-      console.log('[Archive] req.user is undefined but Authorization header exists - JWT may not be validated');
-    }
     
     // Normalize role comparison - handle both enum and string values
     const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
@@ -113,11 +99,9 @@ export class ProjectsController {
       normalizedRole === 'FOUNDER/CEO';
     
     if (!isProjectManager && !isFounder) {
-      const errorMsg = userRole 
-        ? `Only Project Managers and Admins can archive projects. Your role: "${userRole}"`
-        : 'Authentication required. Please log in and try again.';
-      console.error('[Archive] Access denied:', errorMsg);
-      throw new ForbiddenException(errorMsg);
+      throw new ForbiddenException(
+        `Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`
+      );
     }
     
     return this.projectsService.archiveProject(id, req.user?.userId);

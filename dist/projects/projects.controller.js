@@ -20,6 +20,7 @@ const create_project_webhook_dto_1 = require("./dto/create-project-webhook.dto")
 const update_project_stage_dto_1 = require("./dto/update-project-stage.dto");
 const webhook_guard_1 = require("./guards/webhook.guard");
 const user_entity_1 = require("../users/entities/user.entity");
+const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 let ProjectsController = class ProjectsController {
     constructor(projectsService) {
         this.projectsService = projectsService;
@@ -57,29 +58,14 @@ let ProjectsController = class ProjectsController {
         return this.projectsService.closeProject(id);
     }
     async archiveProject(id, req) {
-        console.log('[Archive] Request received:', {
-            projectId: id,
-            hasUser: !!req.user,
-            userId: req.user?.userId,
-            userRole: req.user?.role,
-            userRoleType: typeof req.user?.role,
-            headers: req.headers?.authorization ? 'Bearer token present' : 'No Bearer token',
-        });
         const userRole = req.user?.role;
-        if (!userRole && req.headers?.authorization) {
-            console.log('[Archive] req.user is undefined but Authorization header exists - JWT may not be validated');
-        }
         const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
         const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER ||
             normalizedRole === 'Project Manager';
         const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO ||
             normalizedRole === 'FOUNDER/CEO';
         if (!isProjectManager && !isFounder) {
-            const errorMsg = userRole
-                ? `Only Project Managers and Admins can archive projects. Your role: "${userRole}"`
-                : 'Authentication required. Please log in and try again.';
-            console.error('[Archive] Access denied:', errorMsg);
-            throw new common_1.ForbiddenException(errorMsg);
+            throw new common_1.ForbiddenException(`Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`);
         }
         return this.projectsService.archiveProject(id, req.user?.userId);
     }
@@ -170,6 +156,7 @@ __decorate([
 ], ProjectsController.prototype, "closeProject", null);
 __decorate([
     (0, common_1.Patch)(':id/archive'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),

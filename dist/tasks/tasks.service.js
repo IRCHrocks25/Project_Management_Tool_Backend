@@ -39,12 +39,17 @@ let TasksService = class TasksService {
                 .createQueryBuilder('task')
                 .leftJoinAndSelect('task.project', 'project')
                 .leftJoinAndSelect('task.assignedTo', 'assignedTo');
+            const conditions = ['task.isArchived = :isArchived'];
+            const params = { isArchived: false };
             if (projectId) {
-                queryBuilder.where('task.projectId = :projectId', { projectId });
+                conditions.push('task.projectId = :projectId');
+                params.projectId = projectId;
             }
             if (assignedToId) {
-                queryBuilder.andWhere('task.assignedToId = :assignedToId', { assignedToId });
+                conditions.push('task.assignedToId = :assignedToId');
+                params.assignedToId = assignedToId;
             }
+            queryBuilder.where(conditions.join(' AND '), params);
             const tasks = await queryBuilder.orderBy('task.createdAt', 'DESC').getMany();
             for (const task of tasks) {
                 if (task.type === 'Intake') {

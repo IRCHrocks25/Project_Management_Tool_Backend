@@ -112,6 +112,19 @@ export class Project {
   @Column({ type: 'timestamp', nullable: true })
   closedAt: Date;
 
+  @Column({ default: false })
+  isArchived: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  archivedAt: Date;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'archivedByUserId' })
+  archivedBy: User;
+
+  @Column({ nullable: true })
+  archivedByUserId: string;
+
   @OneToMany(() => Task, (task) => task.project)
   tasks: Task[];
 

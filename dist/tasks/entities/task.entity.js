@@ -106,6 +106,10 @@ __decorate([
     __metadata("design:type", String)
 ], Task.prototype, "deliverableId", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Task.prototype, "isArchived", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Task.prototype, "createdAt", void 0);

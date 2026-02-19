@@ -34,6 +34,7 @@ export declare class Task {
     submissionData: string;
     submissionType: string;
     deliverableId: string;
+    isArchived: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

@@ -14,16 +14,17 @@ export declare class ProjectsController {
         role: import("../users/entities/user.entity").UserRole;
         message: string;
     }>;
-    findAll(req: any): Promise<import("./entities/project.entity").Project[]>;
+    findAll(req: any, includeArchived?: string): Promise<import("./entities/project.entity").Project[]>;
     getStats(req: any): Promise<{
         total: number;
         byStage: any[];
         overdue: number;
     }>;
     getActivity(id: string): Promise<any[]>;
-    findOne(id: string): Promise<import("./entities/project.entity").Project>;
     updateStage(id: string, updateStageDto: UpdateProjectStageDto): Promise<import("./entities/project.entity").Project>;
     closeProject(id: string): Promise<import("./entities/project.entity").Project>;
+    archiveProject(id: string, req: any): Promise<import("./entities/project.entity").Project>;
+    findOne(id: string): Promise<import("./entities/project.entity").Project>;
     generateOnboardingTasks(id: string): Promise<{
         message: string;
         tasks: import("../tasks/entities/task.entity").Task[];

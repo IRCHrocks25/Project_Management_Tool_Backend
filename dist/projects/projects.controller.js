@@ -39,8 +39,9 @@ let ProjectsController = class ProjectsController {
     async getWebhookPM() {
         return this.projectsService.getWebhookPM();
     }
-    async findAll(req) {
-        return this.projectsService.findAll(req.user?.userId, req.user?.role);
+    async findAll(req, includeArchived) {
+        const includeArchivedBool = includeArchived === 'true';
+        return this.projectsService.findAll(req.user?.userId, req.user?.role, includeArchivedBool);
     }
     async getStats(req) {
         return this.projectsService.getStats(req.user?.userId, req.user?.role);
@@ -48,14 +49,21 @@ let ProjectsController = class ProjectsController {
     async getActivity(id) {
         return this.projectsService.getActivity(id);
     }
-    async findOne(id) {
-        return this.projectsService.findOne(id);
-    }
     async updateStage(id, updateStageDto) {
         return this.projectsService.updateStage(id, updateStageDto);
     }
     async closeProject(id) {
         return this.projectsService.closeProject(id);
+    }
+    async archiveProject(id, req) {
+        const userRole = req.user?.role;
+        if (userRole !== 'Project Manager' && userRole !== 'FOUNDER/CEO') {
+            throw new common_1.ForbiddenException('Only Project Managers and Admins can archive projects');
+        }
+        return this.projectsService.archiveProject(id, req.user?.userId);
+    }
+    async findOne(id) {
+        return this.projectsService.findOne(id);
     }
     async generateOnboardingTasks(id) {
         try {
@@ -105,8 +113,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('includeArchived')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "findAll", null);
 __decorate([
@@ -124,13 +133,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "getActivity", null);
 __decorate([
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], ProjectsController.prototype, "findOne", null);
-__decorate([
     (0, common_1.Patch)(':id/stage'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -145,6 +147,21 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "closeProject", null);
+__decorate([
+    (0, common_1.Patch)(':id/archive'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "archiveProject", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Post)(':id/generate-onboarding-tasks'),
     __param(0, (0, common_1.Param)('id')),

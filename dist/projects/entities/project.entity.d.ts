@@ -51,6 +51,10 @@ export declare class Project {
     designRevisionCount: number;
     lastEmailedAt: Date;
     closedAt: Date;
+    isArchived: boolean;
+    archivedAt: Date;
+    archivedBy: User;
+    archivedByUserId: string;
     tasks: Task[];
     deliverables: Deliverable[];
     emails: Email[];

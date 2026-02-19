@@ -10,6 +10,8 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -47,8 +49,16 @@ export class ProjectsController {
   }
 
   @Get()
-  async findAll(@Request() req: any) {
-    return this.projectsService.findAll(req.user?.userId, req.user?.role);
+  async findAll(
+    @Request() req: any,
+    @Query('includeArchived') includeArchived?: string,
+  ) {
+    const includeArchivedBool = includeArchived === 'true';
+    return this.projectsService.findAll(
+      req.user?.userId,
+      req.user?.role,
+      includeArchivedBool,
+    );
   }
 
   @Get('stats')
@@ -61,11 +71,6 @@ export class ProjectsController {
     return this.projectsService.getActivity(id);
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.projectsService.findOne(id);
-  }
-
   @Patch(':id/stage')
   async updateStage(@Param('id') id: string, @Body() updateStageDto: UpdateProjectStageDto) {
     return this.projectsService.updateStage(id, updateStageDto);
@@ -74,6 +79,21 @@ export class ProjectsController {
   @Patch(':id/close')
   async closeProject(@Param('id') id: string) {
     return this.projectsService.closeProject(id);
+  }
+
+  @Patch(':id/archive')
+  async archiveProject(@Param('id') id: string, @Request() req: any) {
+    // Restrict archiving to PM and Admin roles
+    const userRole = req.user?.role;
+    if (userRole !== 'Project Manager' && userRole !== 'FOUNDER/CEO') {
+      throw new ForbiddenException('Only Project Managers and Admins can archive projects');
+    }
+    return this.projectsService.archiveProject(id, req.user?.userId);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.projectsService.findOne(id);
   }
 
   @Post(':id/generate-onboarding-tasks')

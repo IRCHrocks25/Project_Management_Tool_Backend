@@ -242,7 +242,7 @@ export class ProjectsService {
     ];
   }
 
-  async findAll(userId: string, userRole: string) {
+  async findAll(userId: string, userRole: string, includeArchived: boolean = false) {
     try {
       const queryBuilder = this.projectsRepository
         .createQueryBuilder('project')
@@ -257,13 +257,22 @@ export class ProjectsService {
         queryBuilder.where('project.pmId = :userId', { userId });
       }
 
+      // Exclude archived projects by default (soft-hide pattern)
+      if (!includeArchived) {
+        if (userRole === 'Project Manager') {
+          queryBuilder.andWhere('project.isArchived = :isArchived', { isArchived: false });
+        } else {
+          queryBuilder.where('project.isArchived = :isArchived', { isArchived: false });
+        }
+      }
+
       const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
 
       // Load tasks separately to handle enum mismatch gracefully
       for (const project of projects) {
         try {
           project.tasks = await this.tasksRepository.find({
-            where: { projectId: project.id },
+            where: { projectId: project.id, isArchived: false },
             relations: ['assignedTo'],
           });
           // Fix any tasks with old "Intake" enum value
@@ -321,9 +330,10 @@ export class ProjectsService {
       }
 
       // Load tasks separately to handle enum mismatch
+      // Note: findOne still returns archived projects (for direct links), but filters out archived tasks
       try {
         project.tasks = await this.tasksRepository.find({
-          where: { projectId: id },
+          where: { projectId: id, isArchived: false },
           relations: ['assignedTo'],
         });
         console.log(`[ProjectsService] Loaded ${project.tasks.length} tasks for project ${id}`);
@@ -690,11 +700,53 @@ export class ProjectsService {
     return this.projectsRepository.save(project);
   }
 
+  async archiveProject(id: string, userId?: string) {
+    // Use transaction to ensure atomicity
+    return await this.projectsRepository.manager.transaction(async (transactionalEntityManager) => {
+      // Find project (this will still work even if archived, for direct links)
+      const project = await transactionalEntityManager.findOne(Project, {
+        where: { id },
+      });
+
+      if (!project) {
+        throw new NotFoundException(`Project not found with ID: ${id}`);
+      }
+
+      if (project.isArchived) {
+        // Already archived, return as-is
+        return project;
+      }
+
+      // Update project: set archived flag, timestamp, and user
+      project.isArchived = true;
+      project.archivedAt = new Date();
+      if (userId) {
+        project.archivedByUserId = userId;
+      }
+
+      // Save project first
+      await transactionalEntityManager.save(Project, project);
+
+      // Bulk update all tasks for this project (much faster than looping)
+      await transactionalEntityManager.update(
+        Task,
+        { projectId: id },
+        { isArchived: true },
+      );
+
+      return project;
+    });
+  }
+
   async getStats(userId: string, userRole: string) {
     const queryBuilder = this.projectsRepository.createQueryBuilder('project');
 
+    // Exclude archived projects from stats
     if (userRole === 'Project Manager') {
-      queryBuilder.where('project.pmId = :userId', { userId });
+      queryBuilder.where('project.pmId = :userId', { userId })
+        .andWhere('project.isArchived = :isArchived', { isArchived: false });
+    } else {
+      queryBuilder.where('project.isArchived = :isArchived', { isArchived: false });
     }
 
     const total = await queryBuilder.getCount();
@@ -704,8 +756,15 @@ export class ProjectsService {
       .groupBy('project.stage')
       .getRawMany();
 
-    const overdue = await queryBuilder
-      .where('project.lastEmailedAt < :fiveDaysAgo', {
+    const overdueQueryBuilder = this.projectsRepository.createQueryBuilder('project');
+    if (userRole === 'Project Manager') {
+      overdueQueryBuilder.where('project.pmId = :userId', { userId })
+        .andWhere('project.isArchived = :isArchived', { isArchived: false });
+    } else {
+      overdueQueryBuilder.where('project.isArchived = :isArchived', { isArchived: false });
+    }
+    const overdue = await overdueQueryBuilder
+      .andWhere('project.lastEmailedAt < :fiveDaysAgo', {
         fiveDaysAgo: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
       })
       .andWhere('project.stage IN (:...waitingStages)', {

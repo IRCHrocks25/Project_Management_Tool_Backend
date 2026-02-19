@@ -86,6 +86,9 @@ export class Task {
   @Column({ nullable: true })
   deliverableId: string; // Link task to a specific deliverable
 
+  @Column({ default: false })
+  isArchived: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

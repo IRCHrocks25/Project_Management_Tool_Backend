@@ -33,7 +33,7 @@ export declare class ProjectsService {
     }>;
     private generateDeliverables;
     private generateIntakeTasks;
-    findAll(userId: string, userRole: string): Promise<Project[]>;
+    findAll(userId: string, userRole: string, includeArchived?: boolean): Promise<Project[]>;
     findOne(id: string): Promise<Project>;
     private checkAndMoveToDevelopment;
     updateStage(id: string, updateStageDto: UpdateProjectStageDto): Promise<Project>;
@@ -44,6 +44,7 @@ export declare class ProjectsService {
         tasks: Task[];
     }>;
     closeProject(id: string): Promise<Project>;
+    archiveProject(id: string, userId?: string): Promise<Project>;
     getStats(userId: string, userRole: string): Promise<{
         total: number;
         byStage: any[];

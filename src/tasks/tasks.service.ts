@@ -37,13 +37,21 @@ export class TasksService {
         .leftJoinAndSelect('task.project', 'project')
         .leftJoinAndSelect('task.assignedTo', 'assignedTo');
 
+      // Exclude archived tasks by default (soft-hide pattern)
+      const conditions: string[] = ['task.isArchived = :isArchived'];
+      const params: any = { isArchived: false };
+
       if (projectId) {
-        queryBuilder.where('task.projectId = :projectId', { projectId });
+        conditions.push('task.projectId = :projectId');
+        params.projectId = projectId;
       }
 
       if (assignedToId) {
-        queryBuilder.andWhere('task.assignedToId = :assignedToId', { assignedToId });
+        conditions.push('task.assignedToId = :assignedToId');
+        params.assignedToId = assignedToId;
       }
+
+      queryBuilder.where(conditions.join(' AND '), params);
 
       const tasks = await queryBuilder.orderBy('task.createdAt', 'DESC').getMany();
       

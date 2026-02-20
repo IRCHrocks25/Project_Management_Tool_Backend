@@ -17,8 +17,8 @@ export class Email {
   @Column()
   subject: string;
 
-  @Column('text')
-  body: string;
+  @Column('text', { nullable: true })
+  body: string | null;
 
   @Column()
   recipientEmail: string;

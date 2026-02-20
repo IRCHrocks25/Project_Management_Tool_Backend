@@ -25,7 +25,8 @@
     "migrate:landing-page-revisions": "node scripts/add-landing-page-revision-count.js",
     "migrate:client-start-date": "node scripts/add-client-start-date.js",
     "migrate:completion": "node scripts/add-completion-columns.js",
-    "migrate:password-reset": "node scripts/add-password-reset-fields.js"
+    "migrate:password-reset": "node scripts/add-password-reset-fields.js",
+    "migrate:email-body-nullable": "node scripts/make-email-body-nullable.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

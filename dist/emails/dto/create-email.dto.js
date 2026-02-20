@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateEmailDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 class CreateEmailDto {
 }
 exports.CreateEmailDto = CreateEmailDto;
@@ -20,8 +21,9 @@ __decorate([
     __metadata("design:type", String)
 ], CreateEmailDto.prototype, "subject", void 0);
 __decorate([
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_transformer_1.Transform)(({ value }) => (value === '' || value === null || value === undefined ? null : value)),
     __metadata("design:type", String)
 ], CreateEmailDto.prototype, "body", void 0);
 __decorate([

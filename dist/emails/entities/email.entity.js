@@ -25,7 +25,7 @@ __decorate([
     __metadata("design:type", String)
 ], Email.prototype, "subject", void 0);
 __decorate([
-    (0, typeorm_1.Column)('text'),
+    (0, typeorm_1.Column)('text', { nullable: true }),
     __metadata("design:type", String)
 ], Email.prototype, "body", void 0);
 __decorate([

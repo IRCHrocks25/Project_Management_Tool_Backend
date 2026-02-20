@@ -1,13 +1,15 @@
-import { IsNotEmpty, IsString, IsEmail, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, IsEmail, IsUUID, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateEmailDto {
   @IsNotEmpty()
   @IsString()
   subject: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  body: string;
+  @Transform(({ value }) => (value === '' || value === null || value === undefined ? null : value))
+  body?: string | null;
 
   @IsNotEmpty()
   @IsEmail()

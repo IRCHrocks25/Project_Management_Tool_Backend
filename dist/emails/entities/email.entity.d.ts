@@ -3,7 +3,7 @@ import { User } from '../../users/entities/user.entity';
 export declare class Email {
     id: string;
     subject: string;
-    body: string;
+    body: string | null;
     recipientEmail: string;
     project: Project;
     projectId: string;

@@ -17,4 +17,6 @@ export declare class User {
     role: UserRole;
     createdAt: Date;
     updatedAt: Date;
+    resetPasswordToken: string;
+    resetPasswordExpires: Date;
 }

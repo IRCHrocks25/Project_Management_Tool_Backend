@@ -53,10 +53,14 @@ const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcryptjs"));
 const crypto = __importStar(require("crypto"));
 const user_entity_1 = require("../users/entities/user.entity");
+const email_service_1 = require("../email/email.service");
+const config_1 = require("@nestjs/config");
 let AuthService = class AuthService {
-    constructor(usersRepository, jwtService) {
+    constructor(usersRepository, jwtService, emailService, configService) {
         this.usersRepository = usersRepository;
         this.jwtService = jwtService;
+        this.emailService = emailService;
+        this.configService = configService;
     }
     async signup(signupDto) {
         const { email, password, name, role } = signupDto;
@@ -157,12 +161,71 @@ let AuthService = class AuthService {
         }
         return webhookPM;
     }
+    async forgotPassword(forgotPasswordDto) {
+        const { email } = forgotPasswordDto;
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await this.usersRepository.findOne({
+            where: { email: normalizedEmail },
+        });
+        if (!user) {
+            return {
+                message: 'If an account with that email exists, a password reset link has been sent.',
+            };
+        }
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiry = new Date();
+        resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1);
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = resetTokenExpiry;
+        await this.usersRepository.save(user);
+        const frontendUrl = this.configService.get('FRONTEND_URL', 'http://localhost:3001');
+        const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+        try {
+            await this.emailService.sendPasswordResetEmail(normalizedEmail, resetLink, user.name);
+            console.log(`[Password Reset] Email sent successfully to ${normalizedEmail}`);
+        }
+        catch (error) {
+            console.error(`[Password Reset] Failed to send email to ${normalizedEmail}:`, error);
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[Password Reset] Development mode - Reset link: ${resetLink}`);
+                return {
+                    message: 'If an account with that email exists, a password reset link has been sent.',
+                    resetLink,
+                };
+            }
+        }
+        return {
+            message: 'If an account with that email exists, a password reset link has been sent.',
+        };
+    }
+    async resetPassword(resetPasswordDto) {
+        const { token, password } = resetPasswordDto;
+        const user = await this.usersRepository.findOne({
+            where: { resetPasswordToken: token },
+        });
+        if (!user) {
+            throw new common_1.BadRequestException('Invalid or expired reset token');
+        }
+        if (!user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+            throw new common_1.BadRequestException('Reset token has expired. Please request a new one.');
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.password = hashedPassword;
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        await this.usersRepository.save(user);
+        return {
+            message: 'Password has been reset successfully. You can now log in with your new password.',
+        };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        email_service_1.EmailService,
+        config_1.ConfigService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

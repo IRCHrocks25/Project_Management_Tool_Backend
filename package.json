@@ -24,7 +24,8 @@
     "migrate:archive": "node scripts/add-archive-columns.js",
     "migrate:landing-page-revisions": "node scripts/add-landing-page-revision-count.js",
     "migrate:client-start-date": "node scripts/add-client-start-date.js",
-    "migrate:completion": "node scripts/add-completion-columns.js"
+    "migrate:completion": "node scripts/add-completion-columns.js",
+    "migrate:password-reset": "node scripts/add-password-reset-fields.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -34,9 +35,11 @@
     "@nestjs/passport": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/typeorm": "^10.0.0",
+    "@types/nodemailer": "^7.0.10",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "nodemailer": "^8.0.1",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",

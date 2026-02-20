@@ -1,0 +1,10 @@
+BEGIN;
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS "resetPasswordToken" VARCHAR(255);
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS "resetPasswordExpires" TIMESTAMP;
+
+COMMIT;
+

@@ -107,6 +107,43 @@ export class ProjectsController {
     return this.projectsService.archiveProject(id, req.user?.userId);
   }
 
+  @Patch(':id/complete')
+  @UseGuards(JwtAuthGuard)
+  async completeProject(@Param('id') id: string, @Request() req: any) {
+    try {
+      // Restrict completing to PM and Admin roles
+      const userRole = req.user?.role;
+      
+      // Normalize role comparison - handle both enum and string values
+      const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
+      const isProjectManager = 
+        normalizedRole === UserRole.PROJECT_MANAGER || 
+        normalizedRole === 'Project Manager';
+      const isFounder = 
+        normalizedRole === UserRole.FOUNDER_CEO || 
+        normalizedRole === 'FOUNDER/CEO';
+      
+      if (!isProjectManager && !isFounder) {
+        throw new ForbiddenException(
+          `Only Project Managers and Admins can mark projects as complete. Your role: "${userRole || 'undefined'}"`
+        );
+      }
+      
+      console.log(`[ProjectsController] Completing project ${id} for user ${req.user?.userId}`);
+      return await this.projectsService.completeProject(id, req.user?.userId);
+    } catch (error: any) {
+      console.error(`[ProjectsController] Error in completeProject:`, error);
+      console.error(`[ProjectsController] Error stack:`, error.stack);
+      throw error;
+    }
+  }
+
+  @Get('completed')
+  @UseGuards(JwtAuthGuard)
+  async getCompletedProjects(@Request() req: any) {
+    return this.projectsService.getCompletedProjects(req.user?.userId, req.user?.role);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.projectsService.findOne(id);

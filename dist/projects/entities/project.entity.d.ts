@@ -57,6 +57,10 @@ export declare class Project {
     archivedAt: Date;
     archivedBy: User;
     archivedByUserId: string;
+    isCompleted: boolean;
+    completedAt: Date;
+    completedBy: User;
+    completedByUserId: string;
     tasks: Task[];
     deliverables: Deliverable[];
     emails: Email[];

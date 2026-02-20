@@ -25,6 +25,8 @@ export declare class ProjectsController {
     updateStage(id: string, updateStageDto: UpdateProjectStageDto): Promise<import("./entities/project.entity").Project>;
     closeProject(id: string): Promise<import("./entities/project.entity").Project>;
     archiveProject(id: string, req: any): Promise<import("./entities/project.entity").Project>;
+    completeProject(id: string, req: any): Promise<import("./entities/project.entity").Project>;
+    getCompletedProjects(req: any): Promise<import("./entities/project.entity").Project[]>;
     findOne(id: string): Promise<import("./entities/project.entity").Project>;
     generateOnboardingTasks(id: string): Promise<{
         message: string;

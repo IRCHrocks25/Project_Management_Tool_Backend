@@ -69,6 +69,29 @@ let ProjectsController = class ProjectsController {
         }
         return this.projectsService.archiveProject(id, req.user?.userId);
     }
+    async completeProject(id, req) {
+        try {
+            const userRole = req.user?.role;
+            const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
+            const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER ||
+                normalizedRole === 'Project Manager';
+            const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO ||
+                normalizedRole === 'FOUNDER/CEO';
+            if (!isProjectManager && !isFounder) {
+                throw new common_1.ForbiddenException(`Only Project Managers and Admins can mark projects as complete. Your role: "${userRole || 'undefined'}"`);
+            }
+            console.log(`[ProjectsController] Completing project ${id} for user ${req.user?.userId}`);
+            return await this.projectsService.completeProject(id, req.user?.userId);
+        }
+        catch (error) {
+            console.error(`[ProjectsController] Error in completeProject:`, error);
+            console.error(`[ProjectsController] Error stack:`, error.stack);
+            throw error;
+        }
+    }
+    async getCompletedProjects(req) {
+        return this.projectsService.getCompletedProjects(req.user?.userId, req.user?.role);
+    }
     async findOne(id) {
         return this.projectsService.findOne(id);
     }
@@ -163,6 +186,23 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "archiveProject", null);
+__decorate([
+    (0, common_1.Patch)(':id/complete'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "completeProject", null);
+__decorate([
+    (0, common_1.Get)('completed'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "getCompletedProjects", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

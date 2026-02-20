@@ -131,6 +131,19 @@ export class Project {
   @Column({ nullable: true })
   archivedByUserId: string;
 
+  @Column({ default: false })
+  isCompleted: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  completedAt: Date;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'completedByUserId' })
+  completedBy: User;
+
+  @Column({ nullable: true })
+  completedByUserId: string;
+
   @OneToMany(() => Task, (task) => task.project)
   tasks: Task[];
 

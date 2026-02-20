@@ -23,7 +23,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "migrate:archive": "node scripts/add-archive-columns.js",
     "migrate:landing-page-revisions": "node scripts/add-landing-page-revision-count.js",
-    "migrate:client-start-date": "node scripts/add-client-start-date.js"
+    "migrate:client-start-date": "node scripts/add-client-start-date.js",
+    "migrate:completion": "node scripts/add-completion-columns.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

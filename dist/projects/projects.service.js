@@ -248,9 +248,11 @@ let ProjectsService = class ProjectsService {
             if (!includeArchived) {
                 if (userRole === 'Project Manager') {
                     queryBuilder.andWhere('project.isArchived = :isArchived', { isArchived: false });
+                    queryBuilder.andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
                 }
                 else {
                     queryBuilder.where('project.isArchived = :isArchived', { isArchived: false });
+                    queryBuilder.andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
                 }
             }
             const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
@@ -609,6 +611,67 @@ let ProjectsService = class ProjectsService {
             await transactionalEntityManager.update(task_entity_1.Task, { projectId: id }, { isArchived: true });
             return project;
         });
+    }
+    async completeProject(id, userId) {
+        try {
+            return await this.projectsRepository.manager.transaction(async (transactionalEntityManager) => {
+                const project = await transactionalEntityManager.findOne(project_entity_1.Project, {
+                    where: { id },
+                });
+                if (!project) {
+                    throw new common_1.NotFoundException(`Project not found with ID: ${id}`);
+                }
+                if (project.isCompleted) {
+                    return project;
+                }
+                project.isCompleted = true;
+                project.completedAt = new Date();
+                if (userId) {
+                    project.completedByUserId = userId;
+                }
+                await transactionalEntityManager.save(project_entity_1.Project, project);
+                console.log(`[ProjectsService] Project ${id} marked as complete by user ${userId}`);
+                return project;
+            });
+        }
+        catch (error) {
+            console.error(`[ProjectsService] Error completing project ${id}:`, error);
+            console.error(`[ProjectsService] Error details:`, error.message, error.stack);
+            throw error;
+        }
+    }
+    async getCompletedProjects(userId, userRole) {
+        try {
+            const queryBuilder = this.projectsRepository
+                .createQueryBuilder('project')
+                .leftJoinAndSelect('project.pm', 'pm')
+                .leftJoinAndSelect('project.deliverables', 'deliverables')
+                .leftJoinAndSelect('project.emails', 'emails')
+                .leftJoinAndSelect('project.teamMembers', 'teamMembers')
+                .leftJoinAndSelect('teamMembers.user', 'teamMemberUser')
+                .where('project.isCompleted = :isCompleted', { isCompleted: true });
+            if (userRole === 'Project Manager') {
+                queryBuilder.andWhere('project.pmId = :userId', { userId });
+            }
+            const projects = await queryBuilder.orderBy('project.completedAt', 'DESC').getMany();
+            for (const project of projects) {
+                try {
+                    project.tasks = await this.tasksRepository.find({
+                        where: { projectId: project.id, isArchived: false },
+                        relations: ['assignedTo'],
+                    });
+                }
+                catch (error) {
+                    console.error(`Error loading tasks for project ${project.id}:`, error);
+                    project.tasks = [];
+                }
+            }
+            return projects;
+        }
+        catch (error) {
+            console.error('Error in getCompletedProjects:', error);
+            throw error;
+        }
     }
     async getStats(userId, userRole) {
         const queryBuilder = this.projectsRepository.createQueryBuilder('project');

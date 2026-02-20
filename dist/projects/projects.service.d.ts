@@ -45,6 +45,8 @@ export declare class ProjectsService {
     }>;
     closeProject(id: string): Promise<Project>;
     archiveProject(id: string, userId?: string): Promise<Project>;
+    completeProject(id: string, userId?: string): Promise<Project>;
+    getCompletedProjects(userId: string, userRole: string): Promise<Project[]>;
     getStats(userId: string, userRole: string): Promise<{
         total: number;
         byStage: any[];

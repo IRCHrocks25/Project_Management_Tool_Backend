@@ -153,6 +153,23 @@ __decorate([
     __metadata("design:type", String)
 ], Project.prototype, "archivedByUserId", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Project.prototype, "isCompleted", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], Project.prototype, "completedAt", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'completedByUserId' }),
+    __metadata("design:type", user_entity_1.User)
+], Project.prototype, "completedBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Project.prototype, "completedByUserId", void 0);
+__decorate([
     (0, typeorm_1.OneToMany)(() => task_entity_1.Task, (task) => task.project),
     __metadata("design:type", Array)
 ], Project.prototype, "tasks", void 0);

@@ -28,7 +28,7 @@ let EmailsService = class EmailsService {
     async create(createEmailDto, userId) {
         const bodyValue = createEmailDto.body && createEmailDto.body.trim() !== ''
             ? createEmailDto.body
-            : null;
+            : '';
         const email = this.emailsRepository.create({
             subject: createEmailDto.subject,
             recipientEmail: createEmailDto.recipientEmail,

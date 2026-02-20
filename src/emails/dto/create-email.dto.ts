@@ -8,8 +8,8 @@ export class CreateEmailDto {
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => (value === '' || value === null || value === undefined ? null : value))
-  body?: string | null;
+  @Transform(({ value }) => (value === '' || value === null || value === undefined ? '' : value))
+  body?: string;
 
   @IsNotEmpty()
   @IsEmail()

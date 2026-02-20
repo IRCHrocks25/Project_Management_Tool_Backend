@@ -23,7 +23,7 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_transformer_1.Transform)(({ value }) => (value === '' || value === null || value === undefined ? null : value)),
+    (0, class_transformer_1.Transform)(({ value }) => (value === '' || value === null || value === undefined ? '' : value)),
     __metadata("design:type", String)
 ], CreateEmailDto.prototype, "body", void 0);
 __decorate([

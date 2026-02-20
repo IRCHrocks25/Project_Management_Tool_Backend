@@ -1,6 +1,6 @@
 export declare class CreateEmailDto {
     subject: string;
-    body?: string | null;
+    body?: string;
     recipientEmail: string;
     projectId: string;
 }

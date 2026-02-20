@@ -10,6 +10,7 @@ import { EmailsModule } from './emails/emails.module';
 import { TasksModule } from './tasks/tasks.module';
 import { DeliverablesModule } from './deliverables/deliverables.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ClientUpdatesModule } from './client-updates/client-updates.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     TasksModule,
     DeliverablesModule,
     NotificationsModule,
+    ClientUpdatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -19,6 +19,7 @@ const emails_module_1 = require("./emails/emails.module");
 const tasks_module_1 = require("./tasks/tasks.module");
 const deliverables_module_1 = require("./deliverables/deliverables.module");
 const notifications_module_1 = require("./notifications/notifications.module");
+const client_updates_module_1 = require("./client-updates/client-updates.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -38,6 +39,7 @@ exports.AppModule = AppModule = __decorate([
             tasks_module_1.TasksModule,
             deliverables_module_1.DeliverablesModule,
             notifications_module_1.NotificationsModule,
+            client_updates_module_1.ClientUpdatesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

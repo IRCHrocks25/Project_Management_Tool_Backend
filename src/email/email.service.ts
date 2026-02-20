@@ -146,8 +146,15 @@ export class EmailService {
     try {
       await this.transporter.sendMail(mailOptions);
       console.log(`[EmailService] Password reset email sent to ${email}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[EmailService] Failed to send password reset email to ${email}:`, error);
+      // Log detailed error for debugging
+      if (error.response) {
+        console.error(`[EmailService] SMTP Error Response:`, error.response);
+      }
+      if (error.code) {
+        console.error(`[EmailService] Error Code:`, error.code);
+      }
       throw error;
     }
   }

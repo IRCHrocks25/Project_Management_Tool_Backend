@@ -164,39 +164,59 @@ let AuthService = class AuthService {
     async forgotPassword(forgotPasswordDto) {
         const { email } = forgotPasswordDto;
         const normalizedEmail = email.toLowerCase().trim();
-        const user = await this.usersRepository.findOne({
-            where: { email: normalizedEmail },
-        });
-        if (!user) {
+        try {
+            const user = await this.usersRepository.findOne({
+                where: { email: normalizedEmail },
+            });
+            if (!user) {
+                return {
+                    message: 'If an account with that email exists, a password reset link has been sent.',
+                };
+            }
+            const resetToken = crypto.randomBytes(32).toString('hex');
+            const resetTokenExpiry = new Date();
+            resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1);
+            try {
+                user.resetPasswordToken = resetToken;
+                user.resetPasswordExpires = resetTokenExpiry;
+                await this.usersRepository.save(user);
+            }
+            catch (dbError) {
+                console.error(`[Password Reset] Database error saving reset token:`, dbError);
+                if (dbError.message?.includes('column') || dbError.code === '42703') {
+                    throw new common_1.BadRequestException('Password reset feature is not fully configured. Please run the database migration: npm run migrate:password-reset');
+                }
+                throw dbError;
+            }
+            const frontendUrl = this.configService.get('FRONTEND_URL', 'http://localhost:3001');
+            const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+            try {
+                await this.emailService.sendPasswordResetEmail(normalizedEmail, resetLink, user.name);
+                console.log(`[Password Reset] Email sent successfully to ${normalizedEmail}`);
+            }
+            catch (emailError) {
+                console.error(`[Password Reset] Failed to send email to ${normalizedEmail}:`, emailError);
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[Password Reset] Development mode - Reset link: ${resetLink}`);
+                    return {
+                        message: 'If an account with that email exists, a password reset link has been sent.',
+                        resetLink,
+                    };
+                }
+            }
             return {
                 message: 'If an account with that email exists, a password reset link has been sent.',
             };
         }
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetTokenExpiry = new Date();
-        resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1);
-        user.resetPasswordToken = resetToken;
-        user.resetPasswordExpires = resetTokenExpiry;
-        await this.usersRepository.save(user);
-        const frontendUrl = this.configService.get('FRONTEND_URL', 'http://localhost:3001');
-        const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
-        try {
-            await this.emailService.sendPasswordResetEmail(normalizedEmail, resetLink, user.name);
-            console.log(`[Password Reset] Email sent successfully to ${normalizedEmail}`);
-        }
         catch (error) {
-            console.error(`[Password Reset] Failed to send email to ${normalizedEmail}:`, error);
-            if (process.env.NODE_ENV === 'development') {
-                console.log(`[Password Reset] Development mode - Reset link: ${resetLink}`);
-                return {
-                    message: 'If an account with that email exists, a password reset link has been sent.',
-                    resetLink,
-                };
+            console.error(`[Password Reset] Unexpected error:`, error);
+            if (error instanceof common_1.BadRequestException) {
+                throw error;
             }
+            return {
+                message: 'If an account with that email exists, a password reset link has been sent.',
+            };
         }
-        return {
-            message: 'If an account with that email exists, a password reset link has been sent.',
-        };
     }
     async resetPassword(resetPasswordDto) {
         const { token, password } = resetPasswordDto;

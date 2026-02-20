@@ -48,6 +48,17 @@ export class ClientUpdatesController {
     return await this.clientUpdatesService.createForm(createDto);
   }
 
+  @Post('forms/submit')
+  @HttpCode(HttpStatus.CREATED)
+  async submitForm(@Body() submitDto: SubmitFormDto) {
+    return await this.clientUpdatesService.submitForm(submitDto);
+  }
+
+  @Get('forms/token/:publicToken')
+  async getFormByToken(@Param('publicToken') publicToken: string) {
+    return await this.clientUpdatesService.getFormByToken(publicToken);
+  }
+
   @Post('forms/:formId/publish')
   @UseGuards(JwtAuthGuard)
   async publishForm(@Param('formId') formId: string) {
@@ -60,17 +71,6 @@ export class ClientUpdatesController {
     return await this.clientUpdatesService.updateForm(formId, body.blocks);
   }
 
-  @Get('forms/token/:publicToken')
-  async getFormByToken(@Param('publicToken') publicToken: string) {
-    return await this.clientUpdatesService.getFormByToken(publicToken);
-  }
-
-  @Post('forms/submit')
-  @HttpCode(HttpStatus.CREATED)
-  async submitForm(@Body() submitDto: SubmitFormDto) {
-    return await this.clientUpdatesService.submitForm(submitDto);
-  }
-
   @Get('forms/:formId/submissions')
   @UseGuards(JwtAuthGuard)
   async getFormSubmissions(@Param('formId') formId: string) {
@@ -81,6 +81,16 @@ export class ClientUpdatesController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('image'))
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new Error('No file uploaded');
+    }
+    const url = await this.clientUpdatesService.uploadImage(file);
+    return { url };
+  }
+
+  @Post('upload-image-public')
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadImagePublic(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new Error('No file uploaded');
     }

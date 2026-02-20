@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString, IsOptional, IsUUID, IsArray } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsOptional, IsUUID, IsArray, IsDateString } from 'class-validator';
 import { ClientType, PackageType, Priority } from '../entities/project.entity';
 
 export class CreateProjectDto {
@@ -30,6 +30,10 @@ export class CreateProjectDto {
   @IsNotEmpty()
   @IsString()
   targetCloseMonth: string; // Format: "2024-03"
+
+  @IsOptional()
+  @IsDateString()
+  clientStartDate?: string;
 
   @IsOptional()
   @IsString()

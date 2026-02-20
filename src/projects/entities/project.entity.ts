@@ -90,6 +90,9 @@ export class Project {
   @Column()
   targetCloseMonth: string; // Format: "2024-03"
 
+  @Column({ type: 'timestamp', nullable: true })
+  clientStartDate: Date;
+
   @Column('text', { nullable: true })
   notes: string;
 

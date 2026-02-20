@@ -45,6 +45,7 @@ export declare class Project {
     pm: User;
     pmId: string;
     targetCloseMonth: string;
+    clientStartDate: Date;
     notes: string;
     stage: ProjectStage;
     copyRevisionCount: number;

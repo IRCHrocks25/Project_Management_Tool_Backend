@@ -73,6 +73,7 @@ let ProjectsService = class ProjectsService {
     async create(createProjectDto, userId) {
         const project = this.projectsRepository.create({
             ...createProjectDto,
+            clientStartDate: createProjectDto.clientStartDate ? new Date(createProjectDto.clientStartDate) : null,
             pmId: createProjectDto.pmId || userId,
             stage: project_entity_1.ProjectStage.INTAKE,
         });

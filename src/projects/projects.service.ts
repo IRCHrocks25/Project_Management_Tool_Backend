@@ -40,6 +40,7 @@ export class ProjectsService {
     // Create project
     const project = this.projectsRepository.create({
       ...createProjectDto,
+      clientStartDate: createProjectDto.clientStartDate ? new Date(createProjectDto.clientStartDate) : null,
       pmId: createProjectDto.pmId || userId,
       stage: ProjectStage.INTAKE,
     });

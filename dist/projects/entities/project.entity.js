@@ -100,6 +100,10 @@ __decorate([
     __metadata("design:type", String)
 ], Project.prototype, "targetCloseMonth", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], Project.prototype, "clientStartDate", void 0);
+__decorate([
     (0, typeorm_1.Column)('text', { nullable: true }),
     __metadata("design:type", String)
 ], Project.prototype, "notes", void 0);

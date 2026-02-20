@@ -22,7 +22,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "migrate:archive": "node scripts/add-archive-columns.js",
-    "migrate:landing-page-revisions": "node scripts/add-landing-page-revision-count.js"
+    "migrate:landing-page-revisions": "node scripts/add-landing-page-revision-count.js",
+    "migrate:client-start-date": "node scripts/add-client-start-date.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

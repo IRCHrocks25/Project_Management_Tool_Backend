@@ -7,5 +7,6 @@ export declare class CreateProjectDto {
     priority: Priority;
     pmId: string;
     targetCloseMonth: string;
+    clientStartDate?: string;
     notes?: string;
 }

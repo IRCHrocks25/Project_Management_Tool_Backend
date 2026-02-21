@@ -583,6 +583,22 @@ export class ProjectsService {
       project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
     }
 
+    // Check if Katalyst is in client types (primary or secondary) and update stage to CRM if needed
+    const allClientTypes = [
+      project.clientType,
+      ...(project.secondaryClientTypes || [])
+    ];
+    const isKatalyst = allClientTypes.some(type => 
+      type === ClientType.KATALYST || String(type).toLowerCase() === 'katalyst'
+    );
+    
+    // If Katalyst is present and project is not already in CRM or later stages, move to CRM
+    if (isKatalyst && project.stage !== ProjectStage.CRM && 
+        project.stage !== ProjectStage.READY_TO_CLOSE && 
+        project.stage !== ProjectStage.CLOSED) {
+      project.stage = ProjectStage.CRM;
+    }
+
     return await this.projectsRepository.save(project);
   }
 

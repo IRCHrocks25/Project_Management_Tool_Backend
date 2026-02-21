@@ -491,6 +491,16 @@ let ProjectsService = class ProjectsService {
         if (updateProjectDto.secondaryClientTypes !== undefined) {
             project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
         }
+        const allClientTypes = [
+            project.clientType,
+            ...(project.secondaryClientTypes || [])
+        ];
+        const isKatalyst = allClientTypes.some(type => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
+        if (isKatalyst && project.stage !== project_entity_1.ProjectStage.CRM &&
+            project.stage !== project_entity_1.ProjectStage.READY_TO_CLOSE &&
+            project.stage !== project_entity_1.ProjectStage.CLOSED) {
+            project.stage = project_entity_1.ProjectStage.CRM;
+        }
         return await this.projectsRepository.save(project);
     }
     generateCopyTasks(projectId) {

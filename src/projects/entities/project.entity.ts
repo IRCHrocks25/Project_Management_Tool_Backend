@@ -67,6 +67,9 @@ export class Project {
   })
   clientType: ClientType;
 
+  @Column('simple-array', { nullable: true })
+  secondaryClientTypes?: string[]; // Additional client types (stored as comma-separated values)
+
   @Column({
     type: 'enum',
     enum: PackageType,

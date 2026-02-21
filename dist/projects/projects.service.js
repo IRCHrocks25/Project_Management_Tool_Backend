@@ -71,11 +71,18 @@ let ProjectsService = class ProjectsService {
         this.authService = authService;
     }
     async create(createProjectDto, userId) {
+        const allClientTypes = [
+            createProjectDto.clientType,
+            ...(createProjectDto.secondaryClientTypes || [])
+        ];
+        const isKatalyst = allClientTypes.some(type => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
+        const initialStage = isKatalyst ? project_entity_1.ProjectStage.CRM : project_entity_1.ProjectStage.INTAKE;
         const project = this.projectsRepository.create({
             ...createProjectDto,
+            secondaryClientTypes: createProjectDto.secondaryClientTypes?.map(t => t.toString()) || null,
             clientStartDate: createProjectDto.clientStartDate ? new Date(createProjectDto.clientStartDate) : null,
             pmId: createProjectDto.pmId || userId,
-            stage: project_entity_1.ProjectStage.INTAKE,
+            stage: initialStage,
         });
         const savedProject = await this.projectsRepository.save(project);
         const deliverables = this.generateDeliverables(savedProject.id, createProjectDto.package, createProjectDto.clientType, createProjectDto.customDeliverables);
@@ -104,6 +111,7 @@ let ProjectsService = class ProjectsService {
             priority: webhookDto.priority,
             pmId: pmId,
             targetCloseMonth: webhookDto.targetCloseMonth,
+            secondaryClientTypes: webhookDto.secondaryClientTypes,
             notes: webhookDto.notes
                 ? `${webhookDto.notes}${webhookDto.sourceEmail ? `\n\nSource: ${webhookDto.sourceEmail}` : ''}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
                 : webhookDto.sourceEmail
@@ -468,6 +476,22 @@ let ProjectsService = class ProjectsService {
             console.error('Failed to create notification:', error);
         }
         return savedProject;
+    }
+    async update(id, updateProjectDto) {
+        const project = await this.findOne(id);
+        if (!project) {
+            throw new common_1.NotFoundException(`Project with ID ${id} not found`);
+        }
+        if (updateProjectDto.clientName !== undefined) {
+            project.clientName = updateProjectDto.clientName;
+        }
+        if (updateProjectDto.clientType !== undefined) {
+            project.clientType = updateProjectDto.clientType;
+        }
+        if (updateProjectDto.secondaryClientTypes !== undefined) {
+            project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
+        }
+        return await this.projectsRepository.save(project);
     }
     generateCopyTasks(projectId) {
         return [

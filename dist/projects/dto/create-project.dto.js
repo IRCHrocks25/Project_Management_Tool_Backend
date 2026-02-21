@@ -61,4 +61,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateProjectDto.prototype, "notes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsEnum)(project_entity_1.ClientType, { each: true }),
+    __metadata("design:type", Array)
+], CreateProjectDto.prototype, "secondaryClientTypes", void 0);
 //# sourceMappingURL=create-project.dto.js.map

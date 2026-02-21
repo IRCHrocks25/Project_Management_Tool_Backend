@@ -72,6 +72,10 @@ __decorate([
     __metadata("design:type", String)
 ], Project.prototype, "clientType", void 0);
 __decorate([
+    (0, typeorm_1.Column)('simple-array', { nullable: true }),
+    __metadata("design:type", Array)
+], Project.prototype, "secondaryClientTypes", void 0);
+__decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
         enum: PackageType,

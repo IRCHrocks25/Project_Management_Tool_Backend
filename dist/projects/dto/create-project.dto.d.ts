@@ -9,4 +9,5 @@ export declare class CreateProjectDto {
     targetCloseMonth: string;
     clientStartDate?: string;
     notes?: string;
+    secondaryClientTypes?: ClientType[];
 }

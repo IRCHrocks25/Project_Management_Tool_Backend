@@ -17,6 +17,7 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { WebhookGuard } from './guards/webhook.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -172,6 +173,12 @@ export class ProjectsController {
   @Delete(':id/team-members/:userId')
   async removeTeamMember(@Param('id') projectId: string, @Param('userId') userId: string) {
     return this.projectsService.removeTeamMember(projectId, userId);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  async update(@Param('id') id: string, @Body() updateProjectDto: UpdateProjectDto) {
+    return this.projectsService.update(id, updateProjectDto);
   }
 }
 

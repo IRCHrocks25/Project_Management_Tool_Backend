@@ -9,6 +9,7 @@ import { User } from '../users/entities/user.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
 export declare class ProjectsService {
@@ -37,6 +38,7 @@ export declare class ProjectsService {
     findOne(id: string): Promise<Project>;
     private checkAndMoveToDevelopment;
     updateStage(id: string, updateStageDto: UpdateProjectStageDto): Promise<Project>;
+    update(id: string, updateProjectDto: UpdateProjectDto): Promise<Project>;
     private generateCopyTasks;
     updateLastEmailed(id: string): Promise<Project>;
     generateOnboardingTasks(id: string): Promise<{

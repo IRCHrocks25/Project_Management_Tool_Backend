@@ -2,6 +2,7 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { UserRole } from '../users/entities/user.entity';
 export declare class ProjectsController {
     private readonly projectsService;
@@ -44,4 +45,5 @@ export declare class ProjectsController {
     removeTeamMember(projectId: string, userId: string): Promise<{
         success: boolean;
     }>;
+    update(id: string, updateProjectDto: UpdateProjectDto): Promise<import("./entities/project.entity").Project>;
 }

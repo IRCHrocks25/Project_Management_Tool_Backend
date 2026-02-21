@@ -11,6 +11,7 @@ import { User } from '../users/entities/user.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
 
@@ -37,12 +38,23 @@ export class ProjectsService {
   ) {}
 
   async create(createProjectDto: CreateProjectDto, userId: string) {
+    // Determine initial stage: CRM if client type is Katalyst, otherwise INTAKE
+    const allClientTypes = [
+      createProjectDto.clientType,
+      ...(createProjectDto.secondaryClientTypes || [])
+    ];
+    const isKatalyst = allClientTypes.some(type => 
+      type === ClientType.KATALYST || String(type).toLowerCase() === 'katalyst'
+    );
+    const initialStage = isKatalyst ? ProjectStage.CRM : ProjectStage.INTAKE;
+
     // Create project
     const project = this.projectsRepository.create({
       ...createProjectDto,
+      secondaryClientTypes: createProjectDto.secondaryClientTypes?.map(t => t.toString()) || null,
       clientStartDate: createProjectDto.clientStartDate ? new Date(createProjectDto.clientStartDate) : null,
       pmId: createProjectDto.pmId || userId,
-      stage: ProjectStage.INTAKE,
+      stage: initialStage,
     });
 
     const savedProject = await this.projectsRepository.save(project);
@@ -90,6 +102,7 @@ export class ProjectsService {
       priority: webhookDto.priority,
       pmId: pmId,
       targetCloseMonth: webhookDto.targetCloseMonth,
+      secondaryClientTypes: webhookDto.secondaryClientTypes,
       notes: webhookDto.notes 
         ? `${webhookDto.notes}${webhookDto.sourceEmail ? `\n\nSource: ${webhookDto.sourceEmail}` : ''}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
         : webhookDto.sourceEmail 
@@ -546,6 +559,31 @@ export class ProjectsService {
     }
 
     return savedProject;
+  }
+
+  async update(id: string, updateProjectDto: UpdateProjectDto) {
+    const project = await this.findOne(id);
+    
+    if (!project) {
+      throw new NotFoundException(`Project with ID ${id} not found`);
+    }
+
+    // Update client name if provided
+    if (updateProjectDto.clientName !== undefined) {
+      project.clientName = updateProjectDto.clientName;
+    }
+
+    // Update client type if provided
+    if (updateProjectDto.clientType !== undefined) {
+      project.clientType = updateProjectDto.clientType;
+    }
+
+    // Update secondary client types if provided
+    if (updateProjectDto.secondaryClientTypes !== undefined) {
+      project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
+    }
+
+    return await this.projectsRepository.save(project);
   }
 
   private generateCopyTasks(projectId: string): Task[] {

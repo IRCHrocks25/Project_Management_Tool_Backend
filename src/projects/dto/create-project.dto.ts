@@ -38,5 +38,10 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ClientType, { each: true })
+  secondaryClientTypes?: ClientType[];
 }
 

@@ -43,5 +43,10 @@ export class CreateProjectWebhookDto {
   @IsOptional()
   @IsString()
   emailSubject?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ClientType, { each: true })
+  secondaryClientTypes?: ClientType[];
 }
 

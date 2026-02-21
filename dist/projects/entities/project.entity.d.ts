@@ -40,6 +40,7 @@ export declare class Project {
     id: string;
     clientName: string;
     clientType: ClientType;
+    secondaryClientTypes?: string[];
     package: PackageType;
     priority: Priority;
     pm: User;

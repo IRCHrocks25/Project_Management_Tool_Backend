@@ -7,8 +7,13 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get()
-  async findAll(@Query('projectId') projectId?: string, @Query('assignedToId') assignedToId?: string) {
-    return this.tasksService.findAll(projectId, assignedToId);
+  async findAll(
+    @Query('projectId') projectId?: string, 
+    @Query('assignedToId') assignedToId?: string,
+    @Query('limit') limit?: string,
+    @Query('all') all?: string
+  ) {
+    return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true');
   }
 
   @Get(':id')

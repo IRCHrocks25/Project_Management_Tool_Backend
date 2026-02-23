@@ -22,12 +22,41 @@ export class NotificationsService {
     return this.notificationsRepository.save(notification);
   }
 
-  async findAll(userId: string) {
-    return this.notificationsRepository.find({
-      where: { userId },
-      relations: ['project', 'task'],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(userId: string, userRole?: string) {
+    const queryBuilder = this.notificationsRepository
+      .createQueryBuilder('notification')
+      .leftJoinAndSelect('notification.project', 'project')
+      .leftJoinAndSelect('notification.task', 'task')
+      .where('notification.userId = :userId', { userId });
+
+    // Filter by role/department - only show notifications relevant to user's department
+    if (userRole && userRole !== 'FOUNDER/CEO' && userRole !== 'Project Manager') {
+      // For role-specific users, only show notifications for their task type
+      const roleToTaskTypeMap: Record<string, string> = {
+        'Copy Writing': 'Copy',
+        'Designer': 'Design',
+        'Developer': 'Dev',
+        'AI Developer': 'AI',
+        'Social Media': 'Social Media',
+        'CRM': 'CRM',
+        'SEO/GEO': 'SEO/GEO',
+      };
+
+      const taskType = roleToTaskTypeMap[userRole];
+      if (taskType) {
+        // Only show task-related notifications if they match the user's department
+        // Show all non-task notifications (project updates, emails, etc.)
+        queryBuilder.andWhere(
+          '(task.type = :taskType OR task.type IS NULL OR notification.type NOT IN (:taskTypes))',
+          { 
+            taskType,
+            taskTypes: ['task', 'task_completed', 'revision']
+          }
+        );
+      }
+    }
+
+    return queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
   }
 
   async findUnreadCount(userId: string) {

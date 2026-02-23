@@ -7,7 +7,7 @@ export declare class TasksService {
     private deliverablesRepository;
     private notificationsService;
     constructor(tasksRepository: Repository<Task>, deliverablesRepository: Repository<Deliverable>, notificationsService: NotificationsService);
-    findAll(projectId?: string, assignedToId?: string): Promise<Task[]>;
+    findAll(projectId?: string, assignedToId?: string, limit?: number, loadAll?: boolean): Promise<Task[]>;
     findOne(id: string): Promise<Task>;
     updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string): Promise<Task>;
     assignTask(id: string, assignedToId: string): Promise<Task>;

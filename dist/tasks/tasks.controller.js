@@ -19,8 +19,8 @@ let TasksController = class TasksController {
     constructor(tasksService) {
         this.tasksService = tasksService;
     }
-    async findAll(projectId, assignedToId) {
-        return this.tasksService.findAll(projectId, assignedToId);
+    async findAll(projectId, assignedToId, limit, all) {
+        return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true');
     }
     async findOne(id) {
         return this.tasksService.findOne(id);
@@ -49,8 +49,10 @@ __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('projectId')),
     __param(1, (0, common_1.Query)('assignedToId')),
+    __param(2, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('all')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "findAll", null);
 __decorate([

@@ -20,7 +20,7 @@ let NotificationsController = class NotificationsController {
         this.notificationsService = notificationsService;
     }
     findAll(req) {
-        return this.notificationsService.findAll(req.user?.userId || req.user?.id);
+        return this.notificationsService.findAll(req.user?.userId || req.user?.id, req.user?.role);
     }
     async getUnreadCount(req) {
         const count = await this.notificationsService.findUnreadCount(req.user?.userId || req.user?.id);

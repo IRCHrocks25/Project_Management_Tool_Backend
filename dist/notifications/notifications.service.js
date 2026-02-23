@@ -25,12 +25,31 @@ let NotificationsService = class NotificationsService {
         const notification = this.notificationsRepository.create(data);
         return this.notificationsRepository.save(notification);
     }
-    async findAll(userId) {
-        return this.notificationsRepository.find({
-            where: { userId },
-            relations: ['project', 'task'],
-            order: { createdAt: 'DESC' },
-        });
+    async findAll(userId, userRole) {
+        const queryBuilder = this.notificationsRepository
+            .createQueryBuilder('notification')
+            .leftJoinAndSelect('notification.project', 'project')
+            .leftJoinAndSelect('notification.task', 'task')
+            .where('notification.userId = :userId', { userId });
+        if (userRole && userRole !== 'FOUNDER/CEO' && userRole !== 'Project Manager') {
+            const roleToTaskTypeMap = {
+                'Copy Writing': 'Copy',
+                'Designer': 'Design',
+                'Developer': 'Dev',
+                'AI Developer': 'AI',
+                'Social Media': 'Social Media',
+                'CRM': 'CRM',
+                'SEO/GEO': 'SEO/GEO',
+            };
+            const taskType = roleToTaskTypeMap[userRole];
+            if (taskType) {
+                queryBuilder.andWhere('(task.type = :taskType OR task.type IS NULL OR notification.type NOT IN (:taskTypes))', {
+                    taskType,
+                    taskTypes: ['task', 'task_completed', 'revision']
+                });
+            }
+        }
+        return queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
     }
     async findUnreadCount(userId) {
         return this.notificationsRepository.count({

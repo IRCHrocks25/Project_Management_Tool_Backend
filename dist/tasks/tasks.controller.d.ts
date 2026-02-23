@@ -3,7 +3,7 @@ import { TaskStatus } from './entities/task.entity';
 export declare class TasksController {
     private readonly tasksService;
     constructor(tasksService: TasksService);
-    findAll(projectId?: string, assignedToId?: string): Promise<import("./entities/task.entity").Task[]>;
+    findAll(projectId?: string, assignedToId?: string, limit?: string, all?: string): Promise<import("./entities/task.entity").Task[]>;
     findOne(id: string): Promise<import("./entities/task.entity").Task>;
     create(createTaskDto: any): Promise<import("./entities/task.entity").Task[]>;
     updateStatus(id: string, body: {

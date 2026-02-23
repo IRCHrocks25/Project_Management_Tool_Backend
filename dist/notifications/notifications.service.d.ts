@@ -11,7 +11,7 @@ export declare class NotificationsService {
         projectId?: string;
         taskId?: string;
     }): Promise<Notification>;
-    findAll(userId: string): Promise<Notification[]>;
+    findAll(userId: string, userRole?: string): Promise<Notification[]>;
     findUnreadCount(userId: string): Promise<number>;
     markAsRead(id: string, userId: string): Promise<Notification>;
     markAllAsRead(userId: string): Promise<{

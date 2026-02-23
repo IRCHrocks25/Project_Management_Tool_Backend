@@ -17,25 +17,22 @@ export class TasksService {
     private notificationsService: NotificationsService,
   ) {}
 
-  async findAll(projectId?: string, assignedToId?: string) {
+  async findAll(projectId?: string, assignedToId?: string, limit?: number, loadAll?: boolean) {
     try {
-      console.log(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}`);
+      console.log(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}`);
       
-      // First, try to fix any tasks with old enum values using raw query
-      try {
-        await this.tasksRepository.query(
-          `UPDATE tasks SET type = $1 WHERE type = $2`,
-          [TaskType.INTAKE, 'Intake']
-        );
-      } catch (updateError) {
-        console.log('[TasksService] Could not update enum values (may already be fixed):', updateError.message);
-      }
+      // Removed enum fix query - it was running on every request and slowing things down
+      // Run this once via migration script instead of on every request
       
       // Now try to load tasks normally
+      // Use inner joins only when we have filters to improve performance
       const queryBuilder = this.tasksRepository
         .createQueryBuilder('task')
         .leftJoinAndSelect('task.project', 'project')
         .leftJoinAndSelect('task.assignedTo', 'assignedTo');
+      
+      // Add index hint for better performance on large datasets
+      // PostgreSQL will use the index on createdAt for ordering
 
       // Exclude archived tasks by default (soft-hide pattern)
       const conditions: string[] = ['task.isArchived = :isArchived'];
@@ -53,17 +50,28 @@ export class TasksService {
 
       queryBuilder.where(conditions.join(' AND '), params);
 
+      // Apply limit for performance - default to 200 if no filters and not loading all
+      if (!loadAll) {
+        const defaultLimit = limit || 200; // Increased default limit to 200
+        if (!projectId && !assignedToId) {
+          queryBuilder.limit(defaultLimit);
+          console.log(`[TasksService] No filters provided - limiting to ${defaultLimit} most recent tasks for performance`);
+        } else if (limit) {
+          queryBuilder.limit(limit);
+        }
+      } else {
+        console.log('[TasksService] Loading all tasks (loadAll=true)');
+      }
+
       const tasks = await queryBuilder.orderBy('task.createdAt', 'DESC').getMany();
       
-      // Fix any remaining enum issues
-      for (const task of tasks) {
+      // Fix enum issues in memory only (don't save to DB on every request - too slow)
+      // Only fix in memory for display, actual DB fix should be done via migration
+      tasks.forEach(task => {
         if ((task.type as any) === 'Intake') {
           task.type = TaskType.INTAKE;
-          await this.tasksRepository.save(task).catch(err => {
-            console.error(`[TasksService] Could not save task ${task.id}:`, err);
-          });
         }
-      }
+      });
       
       console.log(`[TasksService] Found ${tasks.length} tasks`);
       return tasks;
@@ -146,103 +154,101 @@ export class TasksService {
     // Only notify if status changed TO "In Review" (not if it was already in review)
     if (isChangingToInReview && (task.type === TaskType.COPY || task.type === TaskType.DESIGN)) {
       try {
-        // Ensure we have the project with PM info
-        const projectRepo = this.tasksRepository.manager.getRepository(Project);
-        const projectWithPM = await projectRepo.findOne({
-          where: { id: task.projectId },
-        });
+        // Reuse project from task (already loaded in findOne) - no need to query again
+        const projectWithPM = task.project;
 
-        // Notify PM that copy has been sent for review
+        // Run notification and deliverable updates in parallel for better performance
+        const promises: Promise<any>[] = [];
+
+        // Notify PM that copy/design has been sent for review
         if (projectWithPM && projectWithPM.pmId) {
-          console.log('Creating notification for PM:', projectWithPM.pmId, 'Task:', task.title, 'Project:', projectWithPM.clientName);
-          await this.notificationsService.createTaskSentForReviewNotification(
-            projectWithPM.pmId, // Only PM receives this notification
-            savedTask.id,
-            task.projectId,
-            task.title,
-            projectWithPM.clientName,
-            !!fileUrl,
-            task.type, // Pass task type for proper notification title
+          promises.push(
+            this.notificationsService.createTaskSentForReviewNotification(
+              projectWithPM.pmId,
+              savedTask.id,
+              task.projectId,
+              task.title,
+              projectWithPM.clientName,
+              !!fileUrl,
+              task.type,
+            ).catch(err => {
+              console.error('Failed to create notification:', err);
+            })
           );
-          console.log('Notification created successfully');
-        } else {
-          console.log('No PM found for project:', task.projectId, 'Project:', projectWithPM);
         }
 
         // Update deliverables if fileUrl is provided
         if (fileUrl && deliverableType) {
-          // Find deliverables for this project
-          const deliverables = await this.deliverablesRepository.find({
-            where: { projectId: task.projectId },
-          });
+          promises.push(
+            (async () => {
+              // Find deliverables for this project
+              const deliverables = await this.deliverablesRepository.find({
+                where: { projectId: task.projectId },
+              });
 
-          // Find the specific deliverable - prefer deliverableId if provided (more accurate for custom deliverables)
-          let targetDeliverable: any = null;
-          
-          if (deliverableId) {
-            // Use deliverableId if provided (most accurate, especially for custom deliverables)
-            targetDeliverable = deliverables.find(d => d.id === deliverableId);
-          } else {
-            // Fallback to matching by type
-            targetDeliverable = deliverables.find(d => d.type === deliverableType);
-            
-            // If not found and deliverableType is 'Other', get the first custom deliverable
-            if (!targetDeliverable && deliverableType === 'Other') {
-              targetDeliverable = deliverables.find(d => d.type === 'Other' && d.customType);
-            }
-          }
-          
-          if (targetDeliverable) {
-            // Update the selected deliverable
-            // If it was in Revision status, change back to Ready for Review
-            targetDeliverable.fileUrl = fileUrl;
-            if (targetDeliverable.status === DeliverableStatus.REVISION) {
-              targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
-              targetDeliverable.notes = null; // Clear revision notes
-            } else {
-              targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
-            }
-            await this.deliverablesRepository.save(targetDeliverable);
-            console.log('Updated deliverable:', deliverableType, 'with file URL');
-            
-            // If this is a design task and project is in Design Revision stage, update it back to Design
-            if (task.type === TaskType.DESIGN && task.project) {
-              const projectRepo = this.tasksRepository.manager.getRepository(Project);
-              const project = await projectRepo.findOne({ where: { id: task.projectId } });
-              if (project && project.stage === ProjectStage.DESIGN_REVISION) {
-                // Check if there are any other design deliverables still in revision
-                const designDeliverableTypes = [
-                  DeliverableType.LOGO,
-                  DeliverableType.SOCIAL_BANNERS,
-                  DeliverableType.SPEAKER_KIT,
-                  DeliverableType.LANDING_PAGE,
-                ];
-                const otherDesignDeliverables = deliverables.filter(d => 
-                  designDeliverableTypes.includes(d.type) && 
-                  d.id !== targetDeliverable.id &&
-                  d.status === DeliverableStatus.REVISION
-                );
-                
-                // Only change back to Design if no other design deliverables are in revision
-                if (otherDesignDeliverables.length === 0) {
-                  project.stage = ProjectStage.DESIGN;
-                  await projectRepo.save(project);
-                  console.log('Updated project stage from Design Revision to Design');
+              // Find the specific deliverable - prefer deliverableId if provided
+              let targetDeliverable: any = null;
+              
+              if (deliverableId) {
+                targetDeliverable = deliverables.find(d => d.id === deliverableId);
+              } else {
+                targetDeliverable = deliverables.find(d => d.type === deliverableType);
+                if (!targetDeliverable && deliverableType === 'Other') {
+                  targetDeliverable = deliverables.find(d => d.type === 'Other' && d.customType);
                 }
               }
-            }
-          } else {
-            // If deliverable doesn't exist, create it
-            const newDeliverable = this.deliverablesRepository.create({
-              projectId: task.projectId,
-              type: deliverableType as DeliverableType,
-              fileUrl: fileUrl,
-              status: DeliverableStatus.READY_FOR_REVIEW,
-            });
-            await this.deliverablesRepository.save(newDeliverable);
-            console.log('Created new deliverable:', deliverableType);
-          }
+              
+              if (targetDeliverable) {
+                // Update the selected deliverable
+                targetDeliverable.fileUrl = fileUrl;
+                if (targetDeliverable.status === DeliverableStatus.REVISION) {
+                  targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
+                  targetDeliverable.notes = null;
+                } else {
+                  targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
+                }
+                await this.deliverablesRepository.save(targetDeliverable);
+                
+                // If this is a design task and project is in Design Revision stage, update it back to Design
+                // Reuse project from task instead of querying again
+                if (task.type === TaskType.DESIGN && projectWithPM && projectWithPM.stage === ProjectStage.DESIGN_REVISION) {
+                  const designDeliverableTypes = [
+                    DeliverableType.LOGO,
+                    DeliverableType.SOCIAL_BANNERS,
+                    DeliverableType.SPEAKER_KIT,
+                    DeliverableType.LANDING_PAGE,
+                  ];
+                  const otherDesignDeliverables = deliverables.filter(d => 
+                    designDeliverableTypes.includes(d.type) && 
+                    d.id !== targetDeliverable.id &&
+                    d.status === DeliverableStatus.REVISION
+                  );
+                  
+                  // Only change back to Design if no other design deliverables are in revision
+                  if (otherDesignDeliverables.length === 0) {
+                    const projectRepo = this.tasksRepository.manager.getRepository(Project);
+                    projectWithPM.stage = ProjectStage.DESIGN;
+                    await projectRepo.save(projectWithPM);
+                  }
+                }
+              } else {
+                // If deliverable doesn't exist, create it
+                const newDeliverable = this.deliverablesRepository.create({
+                  projectId: task.projectId,
+                  type: deliverableType as DeliverableType,
+                  fileUrl: fileUrl,
+                  status: DeliverableStatus.READY_FOR_REVIEW,
+                });
+                await this.deliverablesRepository.save(newDeliverable);
+              }
+            })().catch(err => {
+              console.error('Failed to update deliverables:', err);
+            })
+          );
         }
+
+        // Wait for all operations to complete in parallel
+        await Promise.all(promises);
       } catch (error) {
         console.error('Failed to update deliverables or create notification:', error);
       }

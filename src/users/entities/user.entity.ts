@@ -50,5 +50,11 @@ export class User {
 
   @Column({ nullable: true })
   resetPasswordExpires: Date;
+
+  @Column({ nullable: true })
+  otpCode: string;
+
+  @Column({ nullable: true })
+  otpExpires: Date;
 }
 

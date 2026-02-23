@@ -5,6 +5,8 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResetPasswordOtpDto } from './dto/reset-password-otp.dto';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 export declare class AuthService {
@@ -12,6 +14,7 @@ export declare class AuthService {
     private jwtService;
     private emailService;
     private configService;
+    private readonly WEBHOOK_URL;
     constructor(usersRepository: Repository<User>, jwtService: JwtService, emailService: EmailService, configService: ConfigService);
     signup(signupDto: SignupDto): Promise<{
         user: {
@@ -23,6 +26,8 @@ export declare class AuthService {
             updatedAt: Date;
             resetPasswordToken: string;
             resetPasswordExpires: Date;
+            otpCode: string;
+            otpExpires: Date;
         };
         token: string;
     }>;
@@ -36,6 +41,8 @@ export declare class AuthService {
             updatedAt: Date;
             resetPasswordToken: string;
             resetPasswordExpires: Date;
+            otpCode: string;
+            otpExpires: Date;
         };
         token: string;
     }>;
@@ -44,10 +51,14 @@ export declare class AuthService {
     getOrCreateWebhookPM(): Promise<User>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
         message: string;
-        resetLink?: undefined;
-    } | {
+    }>;
+    private sendOtpViaWebhook;
+    verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<{
         message: string;
-        resetLink: string;
+        verified: boolean;
+    }>;
+    resetPasswordWithOtp(resetPasswordOtpDto: ResetPasswordOtpDto): Promise<{
+        message: string;
     }>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
         message: string;

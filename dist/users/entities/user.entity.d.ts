@@ -19,4 +19,6 @@ export declare class User {
     updatedAt: Date;
     resetPasswordToken: string;
     resetPasswordExpires: Date;
+    otpCode: string;
+    otpExpires: Date;
 }

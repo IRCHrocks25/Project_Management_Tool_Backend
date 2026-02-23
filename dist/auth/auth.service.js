@@ -61,7 +61,7 @@ let AuthService = class AuthService {
         this.jwtService = jwtService;
         this.emailService = emailService;
         this.configService = configService;
-        this.WEBHOOK_URL = 'https://katalyst-crm.fly.dev/webhook/5bd4150f-d3c8-43e7-9238-18c4634b0679';
+        this.WEBHOOK_URL = 'https://katalyst-crm2.fly.dev/webhook/5bd4150f-d3c8-43e7-9238-18c4634b0679';
     }
     async signup(signupDto) {
         const { email, password, name, role } = signupDto;
@@ -226,9 +226,8 @@ let AuthService = class AuthService {
             const response = {
                 message: 'If an account with that email exists, an OTP has been sent to your email.',
             };
-            if (process.env.NODE_ENV === 'development' || !webhookStatus?.success) {
-                response.webhookStatus = webhookStatus;
-            }
+            response.webhookStatus = webhookStatus;
+            response.otpGenerated = !!otpCode;
             return response;
         }
         catch (error) {

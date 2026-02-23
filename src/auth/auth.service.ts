@@ -22,7 +22,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
-  private readonly WEBHOOK_URL = 'https://katalyst-crm.fly.dev/webhook/5bd4150f-d3c8-43e7-9238-18c4634b0679';
+  private readonly WEBHOOK_URL = 'https://katalyst-crm2.fly.dev/webhook/5bd4150f-d3c8-43e7-9238-18c4634b0679';
 
   constructor(
     @InjectRepository(User)
@@ -268,10 +268,9 @@ export class AuthService {
         message: 'If an account with that email exists, an OTP has been sent to your email.',
       };
 
-      // Include webhook status in response for debugging (only in development or if webhook failed)
-      if (process.env.NODE_ENV === 'development' || !webhookStatus?.success) {
-        response.webhookStatus = webhookStatus;
-      }
+      // ALWAYS include webhook status in response for debugging
+      response.webhookStatus = webhookStatus;
+      response.otpGenerated = !!otpCode; // For debugging
 
       return response;
     } catch (error: any) {

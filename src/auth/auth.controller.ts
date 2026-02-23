@@ -33,7 +33,18 @@ export class AuthController {
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(forgotPasswordDto);
+    console.log('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
+    console.log('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
+    console.log('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
+    
+    try {
+      const result = await this.authService.forgotPassword(forgotPasswordDto);
+      console.log('🚀 [CONTROLLER] forgotPassword completed successfully');
+      return result;
+    } catch (error) {
+      console.error('🚀 [CONTROLLER] Error in forgotPassword:', error);
+      throw error;
+    }
   }
 
   @Post('reset-password')

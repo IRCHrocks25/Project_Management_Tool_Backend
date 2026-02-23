@@ -49,9 +49,7 @@ export declare class AuthService {
     validateUser(userId: string): Promise<User>;
     getAllUsers(): Promise<User[]>;
     getOrCreateWebhookPM(): Promise<User>;
-    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
-        message: string;
-    }>;
+    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;
     private sendOtpViaWebhook;
     verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<{
         message: string;

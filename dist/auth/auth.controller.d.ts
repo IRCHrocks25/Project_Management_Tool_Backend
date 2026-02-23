@@ -39,9 +39,7 @@ export declare class AuthController {
         token: string;
     }>;
     getAllUsers(): Promise<import("../users/entities/user.entity").User[]>;
-    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
-        message: string;
-    }>;
+    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
         message: string;
     }>;

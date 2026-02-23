@@ -36,7 +36,18 @@ let AuthController = class AuthController {
         return this.authService.getAllUsers();
     }
     async forgotPassword(forgotPasswordDto) {
-        return this.authService.forgotPassword(forgotPasswordDto);
+        console.log('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
+        console.log('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
+        console.log('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
+        try {
+            const result = await this.authService.forgotPassword(forgotPasswordDto);
+            console.log('🚀 [CONTROLLER] forgotPassword completed successfully');
+            return result;
+        }
+        catch (error) {
+            console.error('🚀 [CONTROLLER] Error in forgotPassword:', error);
+            throw error;
+        }
     }
     async resetPassword(resetPasswordDto) {
         return this.authService.resetPassword(resetPasswordDto);

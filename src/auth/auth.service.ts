@@ -191,6 +191,13 @@ export class AuthService {
     const { email } = forgotPasswordDto;
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Force output to terminal
+    process.stdout.write('\n');
+    console.log('🔔 [FORGOT PASSWORD] ==========================================');
+    console.log('🔔 [FORGOT PASSWORD] Request received for email:', normalizedEmail);
+    console.log('🔔 [FORGOT PASSWORD] Starting password reset flow...');
+    console.log('🔔 [FORGOT PASSWORD] ==========================================\n');
+
     try {
       // Find user (case-insensitive)
       const user = await this.usersRepository.findOne({
@@ -210,6 +217,9 @@ export class AuthService {
       const otpExpiry = new Date();
       otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // OTP expires in 10 minutes
 
+      console.log('🔔 [FORGOT PASSWORD] Generated OTP:', otpCode);
+      console.log('🔔 [FORGOT PASSWORD] OTP expires at:', otpExpiry.toISOString());
+
       // Save OTP to user
       try {
         user.otpCode = otpCode;
@@ -225,21 +235,45 @@ export class AuthService {
       }
 
       // Send OTP via webhook
+      console.log('🔔 [FORGOT PASSWORD] Attempting to send OTP via webhook...');
+      let webhookStatus: { success: boolean; status?: number; message?: string; error?: string } | null = null;
+      
       try {
-        await this.sendOtpViaWebhook(normalizedEmail, otpCode, user.name);
-        console.log(`[OTP Password Reset] OTP sent successfully to ${normalizedEmail}`);
+        webhookStatus = await this.sendOtpViaWebhook(normalizedEmail, otpCode, user.name);
+        if (webhookStatus.success) {
+          console.log(`✅ [FORGOT PASSWORD] OTP sent successfully to ${normalizedEmail}`);
+          console.log(`✅ [FORGOT PASSWORD] Webhook response status: ${webhookStatus.status}`);
+        } else {
+          console.error(`❌ [FORGOT PASSWORD] Webhook returned error:`, webhookStatus);
+        }
       } catch (webhookError: any) {
-        console.error(`[OTP Password Reset] Failed to send OTP via webhook to ${normalizedEmail}:`, webhookError);
+        console.error(`❌ [FORGOT PASSWORD] Failed to send OTP via webhook to ${normalizedEmail}:`, webhookError);
+        console.error(`❌ [FORGOT PASSWORD] Webhook error details:`, {
+          name: webhookError.name,
+          message: webhookError.message,
+          stack: webhookError.stack,
+        });
+        webhookStatus = {
+          success: false,
+          error: webhookError.message || 'Unknown error',
+        };
         // In development, log the OTP for testing
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[OTP Password Reset] Development mode - OTP: ${otpCode}`);
+          console.log(`🔑 [FORGOT PASSWORD] Development mode - OTP for testing: ${otpCode}`);
         }
         // Don't fail the request - still return success message for security
       }
 
-      return {
+      const response: any = {
         message: 'If an account with that email exists, an OTP has been sent to your email.',
       };
+
+      // Include webhook status in response for debugging (only in development or if webhook failed)
+      if (process.env.NODE_ENV === 'development' || !webhookStatus?.success) {
+        response.webhookStatus = webhookStatus;
+      }
+
+      return response;
     } catch (error: any) {
       console.error(`[OTP Password Reset] Unexpected error:`, error);
       // Re-throw BadRequestException (for migration errors)
@@ -253,7 +287,7 @@ export class AuthService {
     }
   }
 
-  private async sendOtpViaWebhook(email: string, otp: string, userName?: string): Promise<void> {
+  private async sendOtpViaWebhook(email: string, otp: string, userName?: string): Promise<{ success: boolean; status?: number; message?: string; error?: string }> {
     try {
       const emailBody = `
         <!DOCTYPE html>
@@ -336,20 +370,21 @@ export class AuthService {
         html: emailBody,
       };
 
-      console.log(`[Webhook] ==========================================`);
-      console.log(`[Webhook] Preparing to send OTP email to: ${email}`);
-      console.log(`[Webhook] Webhook URL: ${this.WEBHOOK_URL}`);
-      console.log(`[Webhook] Method: POST`);
-      console.log(`[Webhook] Full Payload:`, JSON.stringify(payload, null, 2));
-      console.log(`[Webhook] Payload Summary:`, {
+      console.log('\n📤 [WEBHOOK] ==========================================');
+      console.log(`📤 [WEBHOOK] Preparing to send OTP email to: ${email}`);
+      console.log(`📤 [WEBHOOK] Webhook URL: ${this.WEBHOOK_URL}`);
+      console.log(`📤 [WEBHOOK] Method: POST`);
+      console.log(`📤 [WEBHOOK] Payload Summary:`, {
         to: payload.to,
         subject: payload.subject,
         bodyLength: payload.body.length,
         htmlLength: payload.html.length,
       });
+      console.log(`📤 [WEBHOOK] Full Payload JSON:`, JSON.stringify(payload, null, 2));
 
       const requestBody = JSON.stringify(payload);
-      console.log(`[Webhook] Request body length: ${requestBody.length} bytes`);
+      console.log(`📤 [WEBHOOK] Request body length: ${requestBody.length} bytes`);
+      console.log(`📤 [WEBHOOK] Sending POST request now...\n`);
 
       try {
         const response = await fetch(this.WEBHOOK_URL, {
@@ -361,35 +396,60 @@ export class AuthService {
           body: requestBody,
         });
 
-        console.log(`[Webhook] Response received!`);
-        console.log(`[Webhook] Response status: ${response.status} ${response.statusText}`);
-        console.log(`[Webhook] Response headers:`, Object.fromEntries(response.headers.entries()));
+        console.log(`📥 [WEBHOOK] Response received!`);
+        console.log(`📥 [WEBHOOK] Response status: ${response.status} ${response.statusText}`);
+        console.log(`📥 [WEBHOOK] Response headers:`, Object.fromEntries(response.headers.entries()));
         
         const responseText = await response.text();
-        console.log(`[Webhook] Response body:`, responseText);
+        console.log(`📥 [WEBHOOK] Response body:`, responseText);
         
         if (!response.ok) {
-          console.error(`[Webhook] ❌ Error: Webhook returned status ${response.status}`);
-          console.error(`[Webhook] Error response:`, responseText);
-          throw new Error(`Webhook request failed with status ${response.status}: ${responseText}`);
+          console.error(`❌ [WEBHOOK] Error: Webhook returned status ${response.status}`);
+          console.error(`❌ [WEBHOOK] Error response:`, responseText);
+          console.error(`❌ [WEBHOOK] ==========================================\n`);
+          return {
+            success: false,
+            status: response.status,
+            message: `Webhook returned status ${response.status}`,
+            error: responseText,
+          };
         }
 
-        console.log(`[Webhook] ✅ Successfully sent OTP email to ${email} via webhook`);
-        console.log(`[Webhook] ==========================================`);
+        console.log(`✅ [WEBHOOK] Successfully sent OTP email to ${email} via webhook`);
+        console.log(`✅ [WEBHOOK] Response status: ${response.status}`);
+        console.log(`✅ [WEBHOOK] Response body: ${responseText}`);
+        console.log(`📤 [WEBHOOK] ==========================================\n`);
+        
+        return {
+          success: true,
+          status: response.status,
+          message: 'Webhook request successful',
+        };
       } catch (fetchError: any) {
-        console.error(`[Webhook] ❌ Fetch error occurred:`, fetchError);
-        console.error(`[Webhook] Error name:`, fetchError.name);
-        console.error(`[Webhook] Error message:`, fetchError.message);
-        console.error(`[Webhook] Error stack:`, fetchError.stack);
-        throw fetchError;
+        console.error(`\n❌ [WEBHOOK] Fetch error occurred:`);
+        console.error(`❌ [WEBHOOK] Error name:`, fetchError.name);
+        console.error(`❌ [WEBHOOK] Error message:`, fetchError.message);
+        console.error(`❌ [WEBHOOK] Error stack:`, fetchError.stack);
+        console.error(`❌ [WEBHOOK] ==========================================\n`);
+        
+        return {
+          success: false,
+          message: 'Network error occurred',
+          error: fetchError.message || 'Unknown fetch error',
+        };
       }
     } catch (error: any) {
-      console.error(`[Webhook] ❌ Failed to send OTP email to ${email}`);
-      console.error(`[Webhook] Error type:`, error.constructor.name);
-      console.error(`[Webhook] Error message:`, error.message);
-      console.error(`[Webhook] Full error:`, error);
-      console.error(`[Webhook] ==========================================`);
-      throw error;
+      console.error(`\n❌ [WEBHOOK] Failed to send OTP email to ${email}`);
+      console.error(`❌ [WEBHOOK] Error type:`, error.constructor.name);
+      console.error(`❌ [WEBHOOK] Error message:`, error.message);
+      console.error(`❌ [WEBHOOK] Full error:`, error);
+      console.error(`❌ [WEBHOOK] ==========================================\n`);
+      
+      return {
+        success: false,
+        message: 'Unexpected error occurred',
+        error: error.message || 'Unknown error',
+      };
     }
   }
 

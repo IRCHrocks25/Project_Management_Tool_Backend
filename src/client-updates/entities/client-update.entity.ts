@@ -47,6 +47,12 @@ export class ClientUpdate {
   })
   status: UpdateStatus;
 
+  @Column({ type: 'text', nullable: true })
+  notes: string;
+
+  @Column({ type: 'simple-array', nullable: true })
+  links: string[];
+
   @OneToMany(() => ClientUpdateForm, (form) => form.update)
   forms: ClientUpdateForm[];
 

@@ -16,6 +16,7 @@ import { ClientUpdatesService } from './client-updates.service';
 import { CreateClientUpdateDto } from './dto/create-client-update.dto';
 import { CreateFormDto } from './dto/create-form.dto';
 import { SubmitFormDto } from './dto/submit-form.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('client-updates')
@@ -33,6 +34,23 @@ export class ClientUpdatesController {
   @UseGuards(JwtAuthGuard)
   async findAllByProject(@Param('projectId') projectId: string) {
     return await this.clientUpdatesService.findAllByProject(projectId);
+  }
+
+  @Post(':updateId/comments')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createComment(
+    @Param('updateId') updateId: string,
+    @Body() createDto: CreateCommentDto,
+    @Request() req: any,
+  ) {
+    return await this.clientUpdatesService.createComment(updateId, createDto, req.user.userId);
+  }
+
+  @Get(':updateId/comments')
+  @UseGuards(JwtAuthGuard)
+  async getComments(@Param('updateId') updateId: string) {
+    return await this.clientUpdatesService.getComments(updateId);
   }
 
   @Get(':id')

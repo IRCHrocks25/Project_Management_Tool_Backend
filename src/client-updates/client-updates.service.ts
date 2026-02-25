@@ -4,11 +4,13 @@ import { Repository } from 'typeorm';
 import { ClientUpdate, UpdateStatus } from './entities/client-update.entity';
 import { ClientUpdateForm, FormBlock } from './entities/client-update-form.entity';
 import { ClientUpdateFormSubmission } from './entities/client-update-form-submission.entity';
+import { ClientUpdateComment } from './entities/client-update-comment.entity';
 import { Project } from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
 import { CreateClientUpdateDto } from './dto/create-client-update.dto';
 import { CreateFormDto } from './dto/create-form.dto';
 import { SubmitFormDto } from './dto/submit-form.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
 import { CloudinaryService } from './cloudinary.service';
 import { randomBytes } from 'crypto';
 
@@ -21,6 +23,8 @@ export class ClientUpdatesService {
     private formsRepository: Repository<ClientUpdateForm>,
     @InjectRepository(ClientUpdateFormSubmission)
     private submissionsRepository: Repository<ClientUpdateFormSubmission>,
+    @InjectRepository(ClientUpdateComment)
+    private commentsRepository: Repository<ClientUpdateComment>,
     @InjectRepository(Project)
     private projectsRepository: Repository<Project>,
     @InjectRepository(User)
@@ -41,7 +45,9 @@ export class ClientUpdatesService {
       projectId: createDto.projectId,
       pmId,
       emailSentAt: new Date(),
-      status: UpdateStatus.DRAFT,
+      status: UpdateStatus.PUBLISHED, // When logging an email, it's already sent/published
+      notes: createDto.notes || null,
+      links: createDto.links && createDto.links.length > 0 ? createDto.links : null,
     });
 
     return await this.clientUpdatesRepository.save(update);
@@ -178,6 +184,54 @@ export class ClientUpdatesService {
 
   async uploadImage(file: Express.Multer.File): Promise<string> {
     return await this.cloudinaryService.uploadImage(file);
+  }
+
+  async createComment(updateId: string, createDto: CreateCommentDto, userId: string): Promise<ClientUpdateComment> {
+    const update = await this.clientUpdatesRepository.findOne({
+      where: { id: updateId },
+    });
+
+    if (!update) {
+      throw new NotFoundException('Client update not found');
+    }
+
+    const comment = this.commentsRepository.create({
+      updateId,
+      userId,
+      text: createDto.text,
+      mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0 
+        ? createDto.mentionedUserIds 
+        : null,
+    });
+
+    const savedComment = await this.commentsRepository.save(comment);
+
+    // TODO: Send notifications to mentioned users
+    if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
+      // Notification logic can be added here
+      console.log('Mentioned users:', createDto.mentionedUserIds);
+    }
+
+    return await this.commentsRepository.findOne({
+      where: { id: savedComment.id },
+      relations: ['user'],
+    });
+  }
+
+  async getComments(updateId: string): Promise<ClientUpdateComment[]> {
+    const update = await this.clientUpdatesRepository.findOne({
+      where: { id: updateId },
+    });
+
+    if (!update) {
+      throw new NotFoundException('Client update not found');
+    }
+
+    return await this.commentsRepository.find({
+      where: { updateId },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+    });
   }
 }
 

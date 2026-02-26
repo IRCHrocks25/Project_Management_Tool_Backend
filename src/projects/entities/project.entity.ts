@@ -21,6 +21,8 @@ export enum ClientType {
   STAR = 'STAR',
   KATALYST = 'Katalyst',
   PRIVATE = 'Private',
+  PREMIUM = 'Premium',
+  POWERED_UP = 'Powered-Up',
 }
 
 export enum PackageType {

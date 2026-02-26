@@ -7,7 +7,9 @@ export declare enum ClientType {
     ICON = "ICON",
     STAR = "STAR",
     KATALYST = "Katalyst",
-    PRIVATE = "Private"
+    PRIVATE = "Private",
+    PREMIUM = "Premium",
+    POWERED_UP = "Powered-Up"
 }
 export declare enum PackageType {
     STARTER = "Starter",

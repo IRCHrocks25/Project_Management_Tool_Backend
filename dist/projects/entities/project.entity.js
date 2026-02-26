@@ -22,6 +22,8 @@ var ClientType;
     ClientType["STAR"] = "STAR";
     ClientType["KATALYST"] = "Katalyst";
     ClientType["PRIVATE"] = "Private";
+    ClientType["PREMIUM"] = "Premium";
+    ClientType["POWERED_UP"] = "Powered-Up";
 })(ClientType || (exports.ClientType = ClientType = {}));
 var PackageType;
 (function (PackageType) {

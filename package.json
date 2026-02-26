@@ -31,7 +31,8 @@
     "migrate:client-updates": "node scripts/create-client-updates-tables.js",
     "migrate:secondary-client-types": "node scripts/add-secondary-client-types.js",
     "migrate:client-update-comments": "node scripts/create-client-update-comments-table.js",
-    "migrate:client-update-notes-links": "node scripts/add-client-update-notes-links.js"
+    "migrate:client-update-notes-links": "node scripts/add-client-update-notes-links.js",
+    "migrate:premium-powered-up": "node scripts/add-premium-powered-up-client-types.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

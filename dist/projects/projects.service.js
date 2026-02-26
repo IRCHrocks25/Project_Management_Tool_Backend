@@ -76,7 +76,9 @@ let ProjectsService = class ProjectsService {
             ...(createProjectDto.secondaryClientTypes || [])
         ];
         const isKatalyst = allClientTypes.some(type => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
-        const initialStage = isKatalyst ? project_entity_1.ProjectStage.CRM : project_entity_1.ProjectStage.INTAKE;
+        const isPremiumOrPoweredUp = createProjectDto.clientType === project_entity_1.ClientType.PREMIUM ||
+            createProjectDto.clientType === project_entity_1.ClientType.POWERED_UP;
+        const initialStage = (isKatalyst || isPremiumOrPoweredUp) ? project_entity_1.ProjectStage.CRM : project_entity_1.ProjectStage.INTAKE;
         const project = this.projectsRepository.create({
             ...createProjectDto,
             secondaryClientTypes: createProjectDto.secondaryClientTypes?.map(t => t.toString()) || null,

@@ -38,7 +38,7 @@ export class ProjectsService {
   ) {}
 
   async create(createProjectDto: CreateProjectDto, userId: string) {
-    // Determine initial stage: CRM if client type is Katalyst, otherwise INTAKE
+    // Determine initial stage: CRM if client type is Katalyst, Premium, or Powered-Up, otherwise INTAKE
     const allClientTypes = [
       createProjectDto.clientType,
       ...(createProjectDto.secondaryClientTypes || [])
@@ -46,7 +46,9 @@ export class ProjectsService {
     const isKatalyst = allClientTypes.some(type => 
       type === ClientType.KATALYST || String(type).toLowerCase() === 'katalyst'
     );
-    const initialStage = isKatalyst ? ProjectStage.CRM : ProjectStage.INTAKE;
+    const isPremiumOrPoweredUp = createProjectDto.clientType === ClientType.PREMIUM || 
+                                  createProjectDto.clientType === ClientType.POWERED_UP;
+    const initialStage = (isKatalyst || isPremiumOrPoweredUp) ? ProjectStage.CRM : ProjectStage.INTAKE;
 
     // Create project
     const project = this.projectsRepository.create({

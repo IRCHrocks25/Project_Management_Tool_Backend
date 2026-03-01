@@ -10,6 +10,7 @@ export declare class NotificationsService {
         userId: string;
         projectId?: string;
         taskId?: string;
+        assignedToId?: string;
     }): Promise<Notification>;
     findAll(userId: string, userRole?: string): Promise<Notification[]>;
     findUnreadCount(userId: string): Promise<number>;
@@ -17,10 +18,10 @@ export declare class NotificationsService {
     markAllAsRead(userId: string): Promise<{
         success: boolean;
     }>;
-    createTaskAssignedNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string): Promise<Notification>;
+    createTaskAssignedNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string, assignedToId?: string): Promise<Notification>;
     createEmailSentNotification(userId: string, projectId: string, projectName: string): Promise<Notification>;
     createProjectStageChangedNotification(userId: string, projectId: string, projectName: string, newStage: string): Promise<Notification>;
     createProjectAlertNotification(userId: string, projectId: string, projectName: string, message: string): Promise<Notification>;
-    createTaskCompletedNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string): Promise<Notification>;
+    createTaskCompletedNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string, assignedToId?: string): Promise<Notification>;
     createTaskSentForReviewNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string, hasFileUrl?: boolean, taskType?: string): Promise<Notification>;
 }

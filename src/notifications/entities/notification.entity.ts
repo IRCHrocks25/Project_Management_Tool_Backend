@@ -58,6 +58,9 @@ export class Notification {
   @Column({ nullable: true })
   taskId: string;
 
+  @Column({ nullable: true })
+  assignedToId: string; // For task notifications - the user assigned to the task
+
   @Column({ default: false })
   isRead: boolean;
 

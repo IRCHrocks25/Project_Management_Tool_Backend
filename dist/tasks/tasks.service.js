@@ -195,7 +195,7 @@ let TasksService = class TasksService {
         }
         if (!wasCompleted && isCompleted && task.project && task.project.pmId) {
             try {
-                await this.notificationsService.createTaskCompletedNotification(task.project.pmId, task.id, task.projectId, task.title, task.project.clientName);
+                await this.notificationsService.createTaskCompletedNotification(task.project.pmId, task.id, task.projectId, task.title, task.project.clientName, task.assignedToId);
             }
             catch (error) {
                 console.error('Failed to create notification:', error);
@@ -209,7 +209,7 @@ let TasksService = class TasksService {
         const savedTask = await this.tasksRepository.save(task);
         if (assignedToId && task.project) {
             try {
-                await this.notificationsService.createTaskAssignedNotification(assignedToId, task.id, task.projectId, task.title, task.project.clientName);
+                await this.notificationsService.createTaskAssignedNotification(assignedToId, task.id, task.projectId, task.title, task.project.clientName, assignedToId);
             }
             catch (error) {
                 console.error('Failed to create notification:', error);

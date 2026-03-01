@@ -21,6 +21,7 @@ export declare class Notification {
     projectId: string;
     task: Task;
     taskId: string;
+    assignedToId: string;
     isRead: boolean;
     createdAt: Date;
 }

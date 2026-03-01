@@ -258,11 +258,12 @@ export class TasksService {
     if (!wasCompleted && isCompleted && task.project && task.project.pmId) {
       try {
         await this.notificationsService.createTaskCompletedNotification(
-          task.project.pmId,
+          task.project.pmId, // userId (PM receives the notification)
           task.id,
           task.projectId,
           task.title,
           task.project.clientName,
+          task.assignedToId, // assignedToId (the user who completed the task)
         );
       } catch (error) {
         console.error('Failed to create notification:', error);
@@ -281,11 +282,12 @@ export class TasksService {
     if (assignedToId && task.project) {
       try {
         await this.notificationsService.createTaskAssignedNotification(
-          assignedToId,
+          assignedToId, // userId (the user receiving the notification)
           task.id,
           task.projectId,
           task.title,
           task.project.clientName,
+          assignedToId, // assignedToId (the user assigned to the task)
         );
       } catch (error) {
         console.error('Failed to create notification:', error);

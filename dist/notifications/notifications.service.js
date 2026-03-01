@@ -26,6 +26,24 @@ let NotificationsService = class NotificationsService {
         return this.notificationsRepository.save(notification);
     }
     async findAll(userId, userRole) {
+        console.log('[NotificationsService] findAll called with:', { userId, userRole });
+        const allNotifications = await this.notificationsRepository.find({
+            take: 5,
+            order: { createdAt: 'DESC' }
+        });
+        console.log('[NotificationsService] Sample notifications in DB:', {
+            totalSample: allNotifications.length,
+            userIds: allNotifications.map(n => ({ id: n.id, userId: n.userId, type: n.type }))
+        });
+        const userNotifications = await this.notificationsRepository.find({
+            where: { userId },
+            take: 5
+        });
+        console.log('[NotificationsService] Notifications for current user:', {
+            userId,
+            count: userNotifications.length,
+            sample: userNotifications[0]
+        });
         const queryBuilder = this.notificationsRepository
             .createQueryBuilder('notification')
             .leftJoinAndSelect('notification.project', 'project')
@@ -49,7 +67,13 @@ let NotificationsService = class NotificationsService {
                 });
             }
         }
-        return queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
+        const result = await queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
+        console.log('[NotificationsService] Query result:', {
+            userId,
+            count: result.length,
+            sample: result[0]
+        });
+        return result;
     }
     async findUnreadCount(userId) {
         return this.notificationsRepository.count({
@@ -70,7 +94,7 @@ let NotificationsService = class NotificationsService {
         await this.notificationsRepository.update({ userId, isRead: false }, { isRead: true });
         return { success: true };
     }
-    async createTaskAssignedNotification(userId, taskId, projectId, taskTitle, projectName) {
+    async createTaskAssignedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId) {
         return this.create({
             type: notification_entity_1.NotificationType.TASK_ASSIGNED,
             title: 'New task assigned',
@@ -78,6 +102,7 @@ let NotificationsService = class NotificationsService {
             userId,
             taskId,
             projectId,
+            assignedToId: assignedToId || userId,
         });
     }
     async createEmailSentNotification(userId, projectId, projectName) {
@@ -107,7 +132,7 @@ let NotificationsService = class NotificationsService {
             projectId,
         });
     }
-    async createTaskCompletedNotification(userId, taskId, projectId, taskTitle, projectName) {
+    async createTaskCompletedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId) {
         return this.create({
             type: notification_entity_1.NotificationType.TASK_COMPLETED,
             title: 'Task completed',
@@ -115,6 +140,7 @@ let NotificationsService = class NotificationsService {
             userId,
             taskId,
             projectId,
+            assignedToId: assignedToId || userId,
         });
     }
     async createTaskSentForReviewNotification(userId, taskId, projectId, taskTitle, projectName, hasFileUrl = false, taskType) {

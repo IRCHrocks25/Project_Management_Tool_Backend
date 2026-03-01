@@ -17,12 +17,36 @@ export class NotificationsService {
     userId: string;
     projectId?: string;
     taskId?: string;
+    assignedToId?: string; // For task notifications
   }) {
     const notification = this.notificationsRepository.create(data);
     return this.notificationsRepository.save(notification);
   }
 
   async findAll(userId: string, userRole?: string) {
+    console.log('[NotificationsService] findAll called with:', { userId, userRole });
+    
+    // Debug: Check all notifications to see their userId values
+    const allNotifications = await this.notificationsRepository.find({
+      take: 5,
+      order: { createdAt: 'DESC' }
+    });
+    console.log('[NotificationsService] Sample notifications in DB:', {
+      totalSample: allNotifications.length,
+      userIds: allNotifications.map(n => ({ id: n.id, userId: n.userId, type: n.type }))
+    });
+    
+    // Check what notifications exist for this specific user
+    const userNotifications = await this.notificationsRepository.find({
+      where: { userId },
+      take: 5
+    });
+    console.log('[NotificationsService] Notifications for current user:', {
+      userId,
+      count: userNotifications.length,
+      sample: userNotifications[0]
+    });
+    
     const queryBuilder = this.notificationsRepository
       .createQueryBuilder('notification')
       .leftJoinAndSelect('notification.project', 'project')
@@ -56,7 +80,13 @@ export class NotificationsService {
       }
     }
 
-    return queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
+    const result = await queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
+    console.log('[NotificationsService] Query result:', {
+      userId,
+      count: result.length,
+      sample: result[0]
+    });
+    return result;
   }
 
   async findUnreadCount(userId: string) {
@@ -93,6 +123,7 @@ export class NotificationsService {
     projectId: string,
     taskTitle: string,
     projectName: string,
+    assignedToId?: string, // The user assigned to the task (usually same as userId, but included for clarity)
   ) {
     return this.create({
       type: NotificationType.TASK_ASSIGNED,
@@ -101,6 +132,7 @@ export class NotificationsService {
       userId,
       taskId,
       projectId,
+      assignedToId: assignedToId || userId, // Use provided assignedToId or fallback to userId
     });
   }
 
@@ -154,6 +186,7 @@ export class NotificationsService {
     projectId: string,
     taskTitle: string,
     projectName: string,
+    assignedToId?: string, // The user who completed the task
   ) {
     return this.create({
       type: NotificationType.TASK_COMPLETED,
@@ -162,6 +195,7 @@ export class NotificationsService {
       userId,
       taskId,
       projectId,
+      assignedToId: assignedToId || userId,
     });
   }
 

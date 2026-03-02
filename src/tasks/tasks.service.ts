@@ -5,6 +5,8 @@ import { Task, TaskStatus, TaskType } from './entities/task.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Deliverable, DeliverableType, DeliverableStatus } from '../deliverables/entities/deliverable.entity';
 import { Project, ProjectStage } from '../projects/entities/project.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+import { NotificationType } from '../notifications/entities/notification.entity';
 
 @Injectable()
 export class TasksService {
@@ -13,6 +15,8 @@ export class TasksService {
     private tasksRepository: Repository<Task>,
     @InjectRepository(Deliverable)
     private deliverablesRepository: Repository<Deliverable>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
     @Inject(forwardRef(() => NotificationsService))
     private notificationsService: NotificationsService,
   ) {}
@@ -299,7 +303,60 @@ export class TasksService {
 
   async create(createTaskDto: any) {
     const task = this.tasksRepository.create(createTaskDto);
-    return this.tasksRepository.save(task);
+    const savedTask = await this.tasksRepository.save(task);
+
+    // If task has no assignee, notify all department members
+    if (!savedTask.assignedToId && savedTask.type && savedTask.projectId) {
+      try {
+        // Map task type to user roles
+        const taskTypeToRoles: Record<string, UserRole[]> = {
+          'Copy': [UserRole.COPY_WRITING],
+          'Design': [UserRole.DESIGNER],
+          'Dev': [UserRole.DEVELOPER],
+          'AI': [UserRole.AI_DEVELOPER],
+          'Social Media': [UserRole.SOCIAL_MEDIA],
+          'CRM': [UserRole.CRM],
+          'SEO/GEO': [UserRole.SEO_GEO],
+        };
+
+        const roles = taskTypeToRoles[savedTask.type];
+        if (roles && roles.length > 0) {
+          // Get all users with matching roles
+          const departmentUsers = await this.usersRepository.find({
+            where: roles.map(role => ({ role })),
+            select: ['id', 'name', 'email', 'role'],
+          });
+
+          // Get project info for notification
+          const project = await this.tasksRepository.manager
+            .getRepository(Project)
+            .findOne({ where: { id: savedTask.projectId }, select: ['id', 'clientName'] });
+
+          // Create notifications for all department members
+          const notificationPromises = departmentUsers.map(user =>
+            this.notificationsService.create({
+              type: NotificationType.TASK_ASSIGNED, // Use task type for unassigned tasks
+              title: 'New task available',
+              message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
+              userId: user.id, // userId (the user receiving the notification)
+              taskId: savedTask.id,
+              projectId: savedTask.projectId,
+              assignedToId: null, // assignedToId is null since task is unassigned
+            }).catch(err => {
+              console.error(`Failed to create notification for user ${user.id}:`, err);
+            })
+          );
+
+          await Promise.all(notificationPromises);
+          console.log(`[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`);
+        }
+      } catch (error) {
+        console.error('Failed to create department notifications:', error);
+        // Don't fail task creation if notification fails
+      }
+    }
+
+    return savedTask;
   }
 
   async submitOnboardingData(id: string, submissionData: string, submissionType: 'url' | 'text') {

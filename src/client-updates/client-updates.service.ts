@@ -182,8 +182,32 @@ export class ClientUpdatesService {
     });
   }
 
-  async uploadImage(file: Express.Multer.File): Promise<string> {
-    return await this.cloudinaryService.uploadImage(file);
+  async uploadImage(file: Express.Multer.File, projectId?: string): Promise<string> {
+    let folder = 'PM_tool/uploads';
+    
+    // If projectId is provided, fetch the project to get client name
+    if (projectId) {
+      try {
+        const project = await this.projectsRepository.findOne({
+          where: { id: projectId },
+          select: ['clientName'],
+        });
+        
+        if (project?.clientName) {
+          // Sanitize client name for folder path (remove special characters)
+          const sanitizedClientName = project.clientName
+            .replace(/[^a-zA-Z0-9-_]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_|_$/g, '');
+          folder = `PM_tool/${sanitizedClientName}`;
+        }
+      } catch (error) {
+        console.error('Failed to fetch project for folder organization:', error);
+        // Fall back to default folder
+      }
+    }
+    
+    return await this.cloudinaryService.uploadImage(file, folder);
   }
 
   async createComment(updateId: string, createDto: CreateCommentDto, userId: string): Promise<ClientUpdateComment> {

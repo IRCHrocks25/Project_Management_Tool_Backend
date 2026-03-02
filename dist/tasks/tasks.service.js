@@ -20,10 +20,13 @@ const task_entity_1 = require("./entities/task.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const project_entity_1 = require("../projects/entities/project.entity");
+const user_entity_1 = require("../users/entities/user.entity");
+const notification_entity_1 = require("../notifications/entities/notification.entity");
 let TasksService = class TasksService {
-    constructor(tasksRepository, deliverablesRepository, notificationsService) {
+    constructor(tasksRepository, deliverablesRepository, usersRepository, notificationsService) {
         this.tasksRepository = tasksRepository;
         this.deliverablesRepository = deliverablesRepository;
+        this.usersRepository = usersRepository;
         this.notificationsService = notificationsService;
     }
     async findAll(projectId, assignedToId, limit, loadAll) {
@@ -219,7 +222,47 @@ let TasksService = class TasksService {
     }
     async create(createTaskDto) {
         const task = this.tasksRepository.create(createTaskDto);
-        return this.tasksRepository.save(task);
+        const savedTask = await this.tasksRepository.save(task);
+        if (!savedTask.assignedToId && savedTask.type && savedTask.projectId) {
+            try {
+                const taskTypeToRoles = {
+                    'Copy': [user_entity_1.UserRole.COPY_WRITING],
+                    'Design': [user_entity_1.UserRole.DESIGNER],
+                    'Dev': [user_entity_1.UserRole.DEVELOPER],
+                    'AI': [user_entity_1.UserRole.AI_DEVELOPER],
+                    'Social Media': [user_entity_1.UserRole.SOCIAL_MEDIA],
+                    'CRM': [user_entity_1.UserRole.CRM],
+                    'SEO/GEO': [user_entity_1.UserRole.SEO_GEO],
+                };
+                const roles = taskTypeToRoles[savedTask.type];
+                if (roles && roles.length > 0) {
+                    const departmentUsers = await this.usersRepository.find({
+                        where: roles.map(role => ({ role })),
+                        select: ['id', 'name', 'email', 'role'],
+                    });
+                    const project = await this.tasksRepository.manager
+                        .getRepository(project_entity_1.Project)
+                        .findOne({ where: { id: savedTask.projectId }, select: ['id', 'clientName'] });
+                    const notificationPromises = departmentUsers.map(user => this.notificationsService.create({
+                        type: notification_entity_1.NotificationType.TASK_ASSIGNED,
+                        title: 'New task available',
+                        message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
+                        userId: user.id,
+                        taskId: savedTask.id,
+                        projectId: savedTask.projectId,
+                        assignedToId: null,
+                    }).catch(err => {
+                        console.error(`Failed to create notification for user ${user.id}:`, err);
+                    }));
+                    await Promise.all(notificationPromises);
+                    console.log(`[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`);
+                }
+            }
+            catch (error) {
+                console.error('Failed to create department notifications:', error);
+            }
+        }
+        return savedTask;
     }
     async submitOnboardingData(id, submissionData, submissionType) {
         const task = await this.findOne(id);
@@ -259,8 +302,10 @@ exports.TasksService = TasksService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(task_entity_1.Task)),
     __param(1, (0, typeorm_1.InjectRepository)(deliverable_entity_1.Deliverable)),
-    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
+    __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         notifications_service_1.NotificationsService])
 ], TasksService);

@@ -20,10 +20,20 @@ let NotificationsController = class NotificationsController {
         this.notificationsService = notificationsService;
     }
     findAll(req) {
-        return this.notificationsService.findAll(req.user?.userId || req.user?.id, req.user?.role);
+        const userId = req.user?.userId || req.user?.id;
+        if (!userId) {
+            console.error('[NotificationsController] findAll: userId is undefined', { user: req.user });
+            return [];
+        }
+        return this.notificationsService.findAll(userId, req.user?.role);
     }
     async getUnreadCount(req) {
-        const count = await this.notificationsService.findUnreadCount(req.user?.userId || req.user?.id);
+        const userId = req.user?.userId || req.user?.id;
+        if (!userId) {
+            console.error('[NotificationsController] getUnreadCount: userId is undefined', { user: req.user });
+            return { count: 0 };
+        }
+        const count = await this.notificationsService.findUnreadCount(userId);
         return { count };
     }
     markAsRead(id, req) {

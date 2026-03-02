@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   UploadedFile,
@@ -98,21 +99,27 @@ export class ClientUpdatesController {
   @Post('upload-image')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('image'))
-  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('projectId') projectId?: string,
+  ) {
     if (!file) {
       throw new Error('No file uploaded');
     }
-    const url = await this.clientUpdatesService.uploadImage(file);
+    const url = await this.clientUpdatesService.uploadImage(file, projectId);
     return { url };
   }
 
   @Post('upload-image-public')
   @UseInterceptors(FileInterceptor('image'))
-  async uploadImagePublic(@UploadedFile() file: Express.Multer.File) {
+  async uploadImagePublic(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('projectId') projectId?: string,
+  ) {
     if (!file) {
       throw new Error('No file uploaded');
     }
-    const url = await this.clientUpdatesService.uploadImage(file);
+    const url = await this.clientUpdatesService.uploadImage(file, projectId);
     return { url };
   }
 }

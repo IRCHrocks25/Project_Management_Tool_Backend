@@ -70,11 +70,20 @@ export class NotificationsService {
       if (taskType) {
         // Only show task-related notifications if they match the user's department
         // Show all non-task notifications (project updates, emails, etc.)
+        // TASK_AVAILABLE notifications are always shown (they're already filtered by userId and department at creation time)
+        // TASK_ASSIGNED notifications are shown if task.type matches the user's department
+        // Note: Cast enum to text for NOT IN comparison (PostgreSQL doesn't allow direct enum array comparison)
         queryBuilder.andWhere(
-          '(task.type = :taskType OR task.type IS NULL OR notification.type NOT IN (:taskTypes))',
+          `(
+            notification.type = :taskAvailableType OR 
+            CAST(notification.type AS text) NOT IN (:...taskTypes) OR 
+            task.type IS NULL OR 
+            task.type = :taskType
+          )`,
           { 
             taskType,
-            taskTypes: ['task', 'task_completed', 'revision']
+            taskTypes: ['task', 'task_completed', 'revision'],
+            taskAvailableType: 'task_available' // Always include TASK_AVAILABLE notifications
           }
         );
       }

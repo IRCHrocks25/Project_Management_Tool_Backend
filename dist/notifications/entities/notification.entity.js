@@ -17,6 +17,7 @@ const task_entity_1 = require("../../tasks/entities/task.entity");
 var NotificationType;
 (function (NotificationType) {
     NotificationType["TASK_ASSIGNED"] = "task";
+    NotificationType["TASK_AVAILABLE"] = "task_available";
     NotificationType["EMAIL_SENT"] = "email";
     NotificationType["PROJECT_STAGE_CHANGED"] = "project_stage";
     NotificationType["PROJECT_CREATED"] = "project_created";

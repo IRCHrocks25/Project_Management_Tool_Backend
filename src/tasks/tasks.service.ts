@@ -303,7 +303,17 @@ export class TasksService {
 
   async create(createTaskDto: any) {
     const task = this.tasksRepository.create(createTaskDto);
-    const savedTask = await this.tasksRepository.save(task);
+    const savedTaskResult = await this.tasksRepository.save(task);
+    
+    // TypeORM save() can return Task | Task[], but we're saving a single entity
+    // Ensure we have a single Task object
+    if (Array.isArray(savedTaskResult)) {
+      throw new Error('Unexpected: save() returned an array when saving a single task');
+    }
+    
+    // TypeScript needs explicit typing after the array check
+    // Use type assertion to ensure TypeScript recognizes it as a single Task
+    const savedTask = savedTaskResult as Task;
 
     // If task has no assignee, notify all department members
     if (!savedTask.assignedToId && savedTask.type && savedTask.projectId) {
@@ -333,9 +343,10 @@ export class TasksService {
             .findOne({ where: { id: savedTask.projectId }, select: ['id', 'clientName'] });
 
           // Create notifications for all department members
+          // Use TASK_AVAILABLE type to distinguish from TASK_ASSIGNED (which requires assignedToId)
           const notificationPromises = departmentUsers.map(user =>
             this.notificationsService.create({
-              type: NotificationType.TASK_ASSIGNED, // Use task type for unassigned tasks
+              type: NotificationType.TASK_AVAILABLE, // New type for unassigned tasks
               title: 'New task available',
               message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
               userId: user.id, // userId (the user receiving the notification)

@@ -3,6 +3,7 @@ import { Project } from '../../projects/entities/project.entity';
 import { Task } from '../../tasks/entities/task.entity';
 export declare enum NotificationType {
     TASK_ASSIGNED = "task",
+    TASK_AVAILABLE = "task_available",
     EMAIL_SENT = "email",
     PROJECT_STAGE_CHANGED = "project_stage",
     PROJECT_CREATED = "project_created",

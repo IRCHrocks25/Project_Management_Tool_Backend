@@ -13,7 +13,7 @@ export declare class TasksService {
     findOne(id: string): Promise<Task>;
     updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string): Promise<Task>;
     assignTask(id: string, assignedToId: string): Promise<Task>;
-    create(createTaskDto: any): Promise<Task[]>;
+    create(createTaskDto: any): Promise<Task>;
     submitOnboardingData(id: string, submissionData: string, submissionType: 'url' | 'text'): Promise<Task>;
     update(id: string, updateTaskDto: {
         title?: string;

@@ -12,6 +12,7 @@ import { Task } from '../../tasks/entities/task.entity';
 
 export enum NotificationType {
   TASK_ASSIGNED = 'task',
+  TASK_AVAILABLE = 'task_available', // New type for unassigned tasks available to department
   EMAIL_SENT = 'email',
   PROJECT_STAGE_CHANGED = 'project_stage',
   PROJECT_CREATED = 'project_created',

@@ -61,9 +61,15 @@ let NotificationsService = class NotificationsService {
             };
             const taskType = roleToTaskTypeMap[userRole];
             if (taskType) {
-                queryBuilder.andWhere('(task.type = :taskType OR task.type IS NULL OR notification.type NOT IN (:taskTypes))', {
+                queryBuilder.andWhere(`(
+            notification.type = :taskAvailableType OR 
+            CAST(notification.type AS text) NOT IN (:...taskTypes) OR 
+            task.type IS NULL OR 
+            task.type = :taskType
+          )`, {
                     taskType,
-                    taskTypes: ['task', 'task_completed', 'revision']
+                    taskTypes: ['task', 'task_completed', 'revision'],
+                    taskAvailableType: 'task_available'
                 });
             }
         }

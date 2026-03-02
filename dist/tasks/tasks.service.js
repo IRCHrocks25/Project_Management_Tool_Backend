@@ -222,7 +222,11 @@ let TasksService = class TasksService {
     }
     async create(createTaskDto) {
         const task = this.tasksRepository.create(createTaskDto);
-        const savedTask = await this.tasksRepository.save(task);
+        const savedTaskResult = await this.tasksRepository.save(task);
+        if (Array.isArray(savedTaskResult)) {
+            throw new Error('Unexpected: save() returned an array when saving a single task');
+        }
+        const savedTask = savedTaskResult;
         if (!savedTask.assignedToId && savedTask.type && savedTask.projectId) {
             try {
                 const taskTypeToRoles = {
@@ -244,7 +248,7 @@ let TasksService = class TasksService {
                         .getRepository(project_entity_1.Project)
                         .findOne({ where: { id: savedTask.projectId }, select: ['id', 'clientName'] });
                     const notificationPromises = departmentUsers.map(user => this.notificationsService.create({
-                        type: notification_entity_1.NotificationType.TASK_ASSIGNED,
+                        type: notification_entity_1.NotificationType.TASK_AVAILABLE,
                         title: 'New task available',
                         message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
                         userId: user.id,

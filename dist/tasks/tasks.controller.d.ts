@@ -14,7 +14,8 @@ export declare class TasksController {
         deliverableId?: string;
     }): Promise<import("./entities/task.entity").Task>;
     assignTask(id: string, body: {
-        assignedToId: string;
+        assignedToId?: string;
+        userIds?: string[];
     }): Promise<import("./entities/task.entity").Task>;
     submitOnboardingData(id: string, body: {
         submissionData: string;

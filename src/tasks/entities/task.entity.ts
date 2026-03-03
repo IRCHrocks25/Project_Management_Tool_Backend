@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
+import { TaskAssignee } from './task-assignee.entity';
 
 export enum TaskStatus {
   TODO = 'Todo',
@@ -53,7 +55,10 @@ export class Task {
   assignedTo: User;
 
   @Column({ nullable: true })
-  assignedToId: string;
+  assignedToId: string; // Kept for backward compatibility
+
+  @OneToMany(() => TaskAssignee, (taskAssignee) => taskAssignee.task)
+  assignees: TaskAssignee[];
 
   @Column({
     type: 'enum',

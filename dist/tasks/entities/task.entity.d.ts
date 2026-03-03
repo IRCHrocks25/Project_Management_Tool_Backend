@@ -1,5 +1,6 @@
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
+import { TaskAssignee } from './task-assignee.entity';
 export declare enum TaskStatus {
     TODO = "Todo",
     IN_PROGRESS = "In Progress",
@@ -26,6 +27,7 @@ export declare class Task {
     projectId: string;
     assignedTo: User;
     assignedToId: string;
+    assignees: TaskAssignee[];
     status: TaskStatus;
     type: TaskType;
     dueDate: Date;

@@ -17,14 +17,16 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const task_entity_1 = require("./entities/task.entity");
+const task_assignee_entity_1 = require("./entities/task-assignee.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const project_entity_1 = require("../projects/entities/project.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const notification_entity_1 = require("../notifications/entities/notification.entity");
 let TasksService = class TasksService {
-    constructor(tasksRepository, deliverablesRepository, usersRepository, notificationsService) {
+    constructor(tasksRepository, taskAssigneesRepository, deliverablesRepository, usersRepository, notificationsService) {
         this.tasksRepository = tasksRepository;
+        this.taskAssigneesRepository = taskAssigneesRepository;
         this.deliverablesRepository = deliverablesRepository;
         this.usersRepository = usersRepository;
         this.notificationsService = notificationsService;
@@ -35,7 +37,9 @@ let TasksService = class TasksService {
             const queryBuilder = this.tasksRepository
                 .createQueryBuilder('task')
                 .leftJoinAndSelect('task.project', 'project')
-                .leftJoinAndSelect('task.assignedTo', 'assignedTo');
+                .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+                .leftJoinAndSelect('task.assignees', 'assignees')
+                .leftJoinAndSelect('assignees.user', 'assigneeUser');
             const conditions = ['task.isArchived = :isArchived'];
             const params = { isArchived: false };
             if (projectId) {
@@ -83,7 +87,9 @@ let TasksService = class TasksService {
                     const queryBuilder = this.tasksRepository
                         .createQueryBuilder('task')
                         .leftJoinAndSelect('task.project', 'project')
-                        .leftJoinAndSelect('task.assignedTo', 'assignedTo');
+                        .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+                        .leftJoinAndSelect('task.assignees', 'assignees')
+                        .leftJoinAndSelect('assignees.user', 'assigneeUser');
                     if (projectId) {
                         queryBuilder.where('task.projectId = :projectId', { projectId });
                     }
@@ -103,7 +109,7 @@ let TasksService = class TasksService {
     async findOne(id) {
         const task = await this.tasksRepository.findOne({
             where: { id },
-            relations: ['project', 'project.pm', 'assignedTo'],
+            relations: ['project', 'project.pm', 'assignedTo', 'assignees', 'assignees.user'],
         });
         if (!task) {
             throw new common_1.NotFoundException('Task not found');
@@ -210,6 +216,16 @@ let TasksService = class TasksService {
         const task = await this.findOne(id);
         task.assignedToId = assignedToId;
         const savedTask = await this.tasksRepository.save(task);
+        const existingAssignee = await this.taskAssigneesRepository.findOne({
+            where: { taskId: id, userId: assignedToId },
+        });
+        if (!existingAssignee && assignedToId) {
+            const taskAssignee = this.taskAssigneesRepository.create({
+                taskId: id,
+                userId: assignedToId,
+            });
+            await this.taskAssigneesRepository.save(taskAssignee);
+        }
         if (assignedToId && task.project) {
             try {
                 await this.notificationsService.createTaskAssignedNotification(assignedToId, task.id, task.projectId, task.title, task.project.clientName, assignedToId);
@@ -219,6 +235,33 @@ let TasksService = class TasksService {
             }
         }
         return savedTask;
+    }
+    async assignTaskToMultiple(id, userIds) {
+        const task = await this.tasksRepository.findOne({
+            where: { id },
+            relations: ['project'],
+        });
+        if (!task) {
+            throw new common_1.NotFoundException(`Task with id ${id} not found`);
+        }
+        await this.taskAssigneesRepository.delete({ taskId: id });
+        if (userIds.length > 0) {
+            const assignees = userIds.map((userId) => this.taskAssigneesRepository.create({ taskId: id, userId }));
+            await this.taskAssigneesRepository.save(assignees);
+        }
+        const primaryAssignee = userIds[0] ?? null;
+        await this.tasksRepository.update(id, { assignedToId: primaryAssignee });
+        if (task.project && userIds.length > 0) {
+            for (const userId of userIds) {
+                try {
+                    await this.notificationsService.createTaskAssignedNotification(userId, task.id, task.projectId, task.title, task.project.clientName, userId);
+                }
+                catch (error) {
+                    console.error(`Failed to create notification for user ${userId}:`, error);
+                }
+            }
+        }
+        return await this.findOne(id);
     }
     async create(createTaskDto) {
         const task = this.tasksRepository.create(createTaskDto);
@@ -305,10 +348,12 @@ exports.TasksService = TasksService;
 exports.TasksService = TasksService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(task_entity_1.Task)),
-    __param(1, (0, typeorm_1.InjectRepository)(deliverable_entity_1.Deliverable)),
-    __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
+    __param(1, (0, typeorm_1.InjectRepository)(task_assignee_entity_1.TaskAssignee)),
+    __param(2, (0, typeorm_1.InjectRepository)(deliverable_entity_1.Deliverable)),
+    __param(3, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         notifications_service_1.NotificationsService])

@@ -32,7 +32,15 @@ let TasksController = class TasksController {
         return this.tasksService.updateStatus(id, body.status, body.isCompleted, body.fileUrl, body.deliverableType, body.deliverableId);
     }
     async assignTask(id, body) {
-        return this.tasksService.assignTask(id, body.assignedToId);
+        if (body.userIds && Array.isArray(body.userIds)) {
+            return this.tasksService.assignTaskToMultiple(id, body.userIds);
+        }
+        else if (body.assignedToId) {
+            return this.tasksService.assignTask(id, body.assignedToId);
+        }
+        else {
+            throw new Error('Either assignedToId or userIds must be provided');
+        }
     }
     async submitOnboardingData(id, body) {
         return this.tasksService.submitOnboardingData(id, body.submissionData, body.submissionType);

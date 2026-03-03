@@ -13,6 +13,7 @@ exports.Task = exports.TaskType = exports.TaskStatus = void 0;
 const typeorm_1 = require("typeorm");
 const project_entity_1 = require("../../projects/entities/project.entity");
 const user_entity_1 = require("../../users/entities/user.entity");
+const task_assignee_entity_1 = require("./task-assignee.entity");
 var TaskStatus;
 (function (TaskStatus) {
     TaskStatus["TODO"] = "Todo";
@@ -66,6 +67,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Task.prototype, "assignedToId", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => task_assignee_entity_1.TaskAssignee, (taskAssignee) => taskAssignee.task),
+    __metadata("design:type", Array)
+], Task.prototype, "assignees", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',

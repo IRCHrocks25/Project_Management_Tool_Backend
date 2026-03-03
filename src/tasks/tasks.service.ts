@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/commo
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus, TaskType } from './entities/task.entity';
+import { TaskAssignee } from './entities/task-assignee.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Deliverable, DeliverableType, DeliverableStatus } from '../deliverables/entities/deliverable.entity';
 import { Project, ProjectStage } from '../projects/entities/project.entity';
@@ -13,6 +14,8 @@ export class TasksService {
   constructor(
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
+    @InjectRepository(TaskAssignee)
+    private taskAssigneesRepository: Repository<TaskAssignee>,
     @InjectRepository(Deliverable)
     private deliverablesRepository: Repository<Deliverable>,
     @InjectRepository(User)
@@ -33,7 +36,9 @@ export class TasksService {
       const queryBuilder = this.tasksRepository
         .createQueryBuilder('task')
         .leftJoinAndSelect('task.project', 'project')
-        .leftJoinAndSelect('task.assignedTo', 'assignedTo');
+        .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+        .leftJoinAndSelect('task.assignees', 'assignees')
+        .leftJoinAndSelect('assignees.user', 'assigneeUser');
       
       // Add index hint for better performance on large datasets
       // PostgreSQL will use the index on createdAt for ordering
@@ -100,7 +105,9 @@ export class TasksService {
           const queryBuilder = this.tasksRepository
             .createQueryBuilder('task')
             .leftJoinAndSelect('task.project', 'project')
-            .leftJoinAndSelect('task.assignedTo', 'assignedTo');
+            .leftJoinAndSelect('task.assignedTo', 'assignedTo')
+            .leftJoinAndSelect('task.assignees', 'assignees')
+            .leftJoinAndSelect('assignees.user', 'assigneeUser');
 
           if (projectId) {
             queryBuilder.where('task.projectId = :projectId', { projectId });
@@ -125,7 +132,7 @@ export class TasksService {
   async findOne(id: string) {
     const task = await this.tasksRepository.findOne({
       where: { id },
-      relations: ['project', 'project.pm', 'assignedTo'],
+      relations: ['project', 'project.pm', 'assignedTo', 'assignees', 'assignees.user'],
     });
 
     if (!task) {
@@ -282,6 +289,19 @@ export class TasksService {
     task.assignedToId = assignedToId;
     const savedTask = await this.tasksRepository.save(task);
 
+    // Also add to assignees table if not already there
+    const existingAssignee = await this.taskAssigneesRepository.findOne({
+      where: { taskId: id, userId: assignedToId },
+    });
+
+    if (!existingAssignee && assignedToId) {
+      const taskAssignee = this.taskAssigneesRepository.create({
+        taskId: id,
+        userId: assignedToId,
+      });
+      await this.taskAssigneesRepository.save(taskAssignee);
+    }
+
     // Create notification for assigned user
     if (assignedToId && task.project) {
       try {
@@ -299,6 +319,57 @@ export class TasksService {
     }
 
     return savedTask;
+  }
+
+  async assignTaskToMultiple(id: string, userIds: string[]) {
+    // Load minimal task info (avoid loading assignee relations to prevent
+    // TypeORM trying to sync them when we only want to use the junction table)
+    const task = await this.tasksRepository.findOne({
+      where: { id },
+      relations: ['project'],
+    });
+
+    if (!task) {
+      throw new NotFoundException(`Task with id ${id} not found`);
+    }
+
+    // Remove existing assignees from junction table
+    await this.taskAssigneesRepository.delete({ taskId: id });
+
+    // Add new assignees
+    if (userIds.length > 0) {
+      const assignees = userIds.map((userId) =>
+        this.taskAssigneesRepository.create({ taskId: id, userId }),
+      );
+      await this.taskAssigneesRepository.save(assignees);
+    }
+
+    // Update legacy assignedToId to first assignee (for backward compatibility)
+    const primaryAssignee = userIds[0] ?? null;
+    await this.tasksRepository.update(id, { assignedToId: primaryAssignee });
+
+    // Create notifications for all assigned users
+    if (task.project && userIds.length > 0) {
+      for (const userId of userIds) {
+        try {
+          await this.notificationsService.createTaskAssignedNotification(
+            userId,
+            task.id,
+            task.projectId,
+            task.title,
+            task.project.clientName,
+            userId,
+          );
+        } catch (error) {
+          console.error(
+            `Failed to create notification for user ${userId}:`,
+            error,
+          );
+        }
+      }
+    }
+
+    return await this.findOne(id);
   }
 
   async create(createTaskDto: any) {

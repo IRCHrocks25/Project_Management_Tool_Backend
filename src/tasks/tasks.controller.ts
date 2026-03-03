@@ -32,8 +32,18 @@ export class TasksController {
   }
 
   @Patch(':id/assign')
-  async assignTask(@Param('id') id: string, @Body() body: { assignedToId: string }) {
-    return this.tasksService.assignTask(id, body.assignedToId);
+  async assignTask(
+    @Param('id') id: string, 
+    @Body() body: { assignedToId?: string; userIds?: string[] }
+  ) {
+    // Support both single assignee (backward compatibility) and multiple assignees
+    if (body.userIds && Array.isArray(body.userIds)) {
+      return this.tasksService.assignTaskToMultiple(id, body.userIds);
+    } else if (body.assignedToId) {
+      return this.tasksService.assignTask(id, body.assignedToId);
+    } else {
+      throw new Error('Either assignedToId or userIds must be provided');
+    }
   }
 
   @Patch(':id/submit')

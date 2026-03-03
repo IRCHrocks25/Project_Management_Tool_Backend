@@ -39,6 +39,9 @@ export class User {
   })
   role: UserRole;
 
+  @Column({ type: 'boolean', default: false })
+  isTeamLead: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

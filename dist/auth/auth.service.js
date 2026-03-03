@@ -138,10 +138,20 @@ let AuthService = class AuthService {
     }
     async getAllUsers() {
         const users = await this.usersRepository.find({
-            select: ['id', 'name', 'email', 'role', 'createdAt'],
+            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead'],
             order: { name: 'ASC' },
         });
         return users;
+    }
+    async setTeamLead(userId, isTeamLead) {
+        const user = await this.usersRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        user.isTeamLead = isTeamLead;
+        const saved = await this.usersRepository.save(user);
+        const { password, ...userWithoutPassword } = saved;
+        return userWithoutPassword;
     }
     async getOrCreateWebhookPM() {
         const webhookEmail = 'webhook@katalyst.pm';

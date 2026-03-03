@@ -22,6 +22,7 @@ export declare class AuthService {
             name: string;
             email: string;
             role: UserRole;
+            isTeamLead: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -37,6 +38,7 @@ export declare class AuthService {
             name: string;
             email: string;
             role: UserRole;
+            isTeamLead: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -48,6 +50,19 @@ export declare class AuthService {
     }>;
     validateUser(userId: string): Promise<User>;
     getAllUsers(): Promise<User[]>;
+    setTeamLead(userId: string, isTeamLead: boolean): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: UserRole;
+        isTeamLead: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+    }>;
     getOrCreateWebhookPM(): Promise<User>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;
     private sendOtpViaWebhook;

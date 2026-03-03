@@ -35,7 +35,8 @@
     "migrate:premium-powered-up": "node scripts/add-premium-powered-up-client-types.js",
     "migrate:notification-assigned-to-id": "node scripts/add-notification-assigned-to-id.js",
     "migrate:fix-notification-user-ids": "node scripts/fix-notification-user-ids.js",
-    "migrate:task-available-type": "node scripts/add-task-available-notification-type.js"
+    "migrate:task-available-type": "node scripts/add-task-available-notification-type.js",
+    "migrate:team-lead-flag": "node scripts/add-team-lead-flag.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

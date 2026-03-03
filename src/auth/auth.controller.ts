@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpCode, HttpStatus, UseGuards, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -28,6 +28,16 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getAllUsers() {
     return this.authService.getAllUsers();
+  }
+
+  @Post('users/:id/team-lead')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async setTeamLead(
+    @Param('id') id: string,
+    @Body() body: { isTeamLead: boolean },
+  ) {
+    return this.authService.setTeamLead(id, body.isTeamLead);
   }
 
   @Post('forgot-password')

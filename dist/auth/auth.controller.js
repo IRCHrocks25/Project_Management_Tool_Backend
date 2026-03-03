@@ -35,6 +35,9 @@ let AuthController = class AuthController {
     async getAllUsers() {
         return this.authService.getAllUsers();
     }
+    async setTeamLead(id, body) {
+        return this.authService.setTeamLead(id, body.isTeamLead);
+    }
     async forgotPassword(forgotPasswordDto) {
         console.log('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
         console.log('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
@@ -83,6 +86,16 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getAllUsers", null);
+__decorate([
+    (0, common_1.Post)('users/:id/team-lead'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "setTeamLead", null);
 __decorate([
     (0, common_1.Post)('forgot-password'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

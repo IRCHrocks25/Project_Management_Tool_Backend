@@ -150,10 +150,21 @@ export class AuthService {
 
   async getAllUsers() {
     const users = await this.usersRepository.find({
-      select: ['id', 'name', 'email', 'role', 'createdAt'],
+      select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead'],
       order: { name: 'ASC' },
     });
     return users;
+  }
+
+  async setTeamLead(userId: string, isTeamLead: boolean) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    user.isTeamLead = isTeamLead;
+    const saved = await this.usersRepository.save(user);
+    const { password, ...userWithoutPassword } = saved;
+    return userWithoutPassword;
   }
 
   /**

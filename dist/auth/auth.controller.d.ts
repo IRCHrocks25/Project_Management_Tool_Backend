@@ -14,6 +14,7 @@ export declare class AuthController {
             name: string;
             email: string;
             role: import("../users/entities/user.entity").UserRole;
+            isTeamLead: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -29,6 +30,7 @@ export declare class AuthController {
             name: string;
             email: string;
             role: import("../users/entities/user.entity").UserRole;
+            isTeamLead: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -39,6 +41,21 @@ export declare class AuthController {
         token: string;
     }>;
     getAllUsers(): Promise<import("../users/entities/user.entity").User[]>;
+    setTeamLead(id: string, body: {
+        isTeamLead: boolean;
+    }): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: import("../users/entities/user.entity").UserRole;
+        isTeamLead: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+    }>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
         message: string;

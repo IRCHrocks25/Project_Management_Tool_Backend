@@ -100,6 +100,9 @@ let NotificationsService = class NotificationsService {
         await this.notificationsRepository.update({ userId, isRead: false }, { isRead: true });
         return { success: true };
     }
+    async deleteByTaskId(taskId) {
+        await this.notificationsRepository.delete({ taskId });
+    }
     async createTaskAssignedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId) {
         return this.create({
             type: notification_entity_1.NotificationType.TASK_ASSIGNED,

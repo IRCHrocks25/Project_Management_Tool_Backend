@@ -478,6 +478,18 @@ export class TasksService {
 
   async remove(id: string) {
     const task = await this.findOne(id);
+
+    // Clean up related notifications first to satisfy FK constraints
+    try {
+      await this.notificationsService.deleteByTaskId(id);
+    } catch (error) {
+      console.error('[TasksService] Failed to delete notifications for task before removal', {
+        taskId: id,
+        error,
+      });
+      // Continue anyway; if FK still blocks, the next line will throw
+    }
+
     await this.tasksRepository.remove(task);
     return { message: 'Task deleted successfully' };
   }

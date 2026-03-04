@@ -18,6 +18,7 @@ export declare class NotificationsService {
     markAllAsRead(userId: string): Promise<{
         success: boolean;
     }>;
+    deleteByTaskId(taskId: string): Promise<void>;
     createTaskAssignedNotification(userId: string, taskId: string, projectId: string, taskTitle: string, projectName: string, assignedToId?: string): Promise<Notification>;
     createEmailSentNotification(userId: string, projectId: string, projectName: string): Promise<Notification>;
     createProjectStageChangedNotification(userId: string, projectId: string, projectName: string, newStage: string): Promise<Notification>;

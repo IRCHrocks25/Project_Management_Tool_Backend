@@ -340,6 +340,15 @@ let TasksService = class TasksService {
     }
     async remove(id) {
         const task = await this.findOne(id);
+        try {
+            await this.notificationsService.deleteByTaskId(id);
+        }
+        catch (error) {
+            console.error('[TasksService] Failed to delete notifications for task before removal', {
+                taskId: id,
+                error,
+            });
+        }
         await this.tasksRepository.remove(task);
         return { message: 'Task deleted successfully' };
     }

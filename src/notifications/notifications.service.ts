@@ -125,6 +125,10 @@ export class NotificationsService {
     return { success: true };
   }
 
+  async deleteByTaskId(taskId: string) {
+    await this.notificationsRepository.delete({ taskId });
+  }
+
   // Helper methods to create specific notification types
   async createTaskAssignedNotification(
     userId: string,

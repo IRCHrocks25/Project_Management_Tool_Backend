@@ -21,6 +21,26 @@ let NotificationsService = class NotificationsService {
     constructor(notificationsRepository) {
         this.notificationsRepository = notificationsRepository;
     }
+    getDepartmentLabelFromTaskType(taskType) {
+        if (!taskType)
+            return null;
+        const normalized = taskType.toString().toLowerCase();
+        if (normalized === 'copy')
+            return 'Copy Writing';
+        if (normalized === 'design')
+            return 'Design';
+        if (normalized === 'dev' || normalized === 'development')
+            return 'Development';
+        if (normalized === 'ai')
+            return 'AI';
+        if (normalized === 'social media')
+            return 'Social Media';
+        if (normalized === 'crm')
+            return 'CRM';
+        if (normalized === 'seo/geo' || normalized === 'seo_geo' || normalized === 'seo')
+            return 'SEO/GEO';
+        return null;
+    }
     async create(data) {
         const notification = this.notificationsRepository.create(data);
         return this.notificationsRepository.save(notification);
@@ -103,11 +123,12 @@ let NotificationsService = class NotificationsService {
     async deleteByTaskId(taskId) {
         await this.notificationsRepository.delete({ taskId });
     }
-    async createTaskAssignedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId) {
+    async createTaskAssignedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId, taskType) {
+        const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
         return this.create({
             type: notification_entity_1.NotificationType.TASK_ASSIGNED,
-            title: 'New task assigned',
-            message: `You have been assigned to "${taskTitle}" for ${projectName}`,
+            title: `New ${department} task assigned`,
+            message: `"${taskTitle}" for ${projectName} has been assigned in ${department}.`,
             userId,
             taskId,
             projectId,
@@ -127,7 +148,7 @@ let NotificationsService = class NotificationsService {
         return this.create({
             type: notification_entity_1.NotificationType.PROJECT_STAGE_CHANGED,
             title: 'Project stage updated',
-            message: `${projectName} moved to ${newStage} stage`,
+            message: `${projectName} moved to ${newStage} stage. Review related tasks and approvals for this project.`,
             userId,
             projectId,
         });
@@ -141,11 +162,12 @@ let NotificationsService = class NotificationsService {
             projectId,
         });
     }
-    async createTaskCompletedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId) {
+    async createTaskCompletedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId, taskType) {
+        const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
         return this.create({
             type: notification_entity_1.NotificationType.TASK_COMPLETED,
-            title: 'Task completed',
-            message: `"${taskTitle}" for ${projectName} has been completed`,
+            title: `${department} task completed`,
+            message: `"${taskTitle}" for ${projectName} in ${department} has been completed and is ready for your review or next steps.`,
             userId,
             taskId,
             projectId,
@@ -153,17 +175,18 @@ let NotificationsService = class NotificationsService {
         });
     }
     async createTaskSentForReviewNotification(userId, taskId, projectId, taskTitle, projectName, hasFileUrl = false, taskType) {
-        let title = 'Task sent for review';
+        let title = 'Task sent for approval';
         if (taskType === 'Copy') {
-            title = 'Copy sent for review';
+            title = 'Copy sent for approval';
         }
         else if (taskType === 'Design') {
-            title = 'Design sent for review';
+            title = 'Design sent for approval';
         }
+        const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
         return this.create({
             type: notification_entity_1.NotificationType.REVISION_REQUESTED,
             title,
-            message: `"${taskTitle}" for ${projectName} has been sent for review${hasFileUrl ? ' with Google Drive files attached' : ''}`,
+            message: `"${taskTitle}" for ${projectName} in ${department} has been submitted for your approval and is now under review${hasFileUrl ? ' with files attached' : ''}.`,
             userId,
             taskId,
             projectId,

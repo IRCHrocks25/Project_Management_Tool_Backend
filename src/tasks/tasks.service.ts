@@ -161,9 +161,10 @@ export class TasksService {
     }
     const savedTask = await this.tasksRepository.save(task);
 
-    // When copy or design task is sent for review, update deliverables and notify PM
-    // Only notify if status changed TO "In Review" (not if it was already in review)
-    if (isChangingToInReview && (task.type === TaskType.COPY || task.type === TaskType.DESIGN)) {
+    // When a task is sent for review, notify the PM and update deliverables if needed.
+    // Only notify if status changed TO "In Review" (not if it was already in review).
+    // Originally this was limited to Copy/Design; now it applies to all departments.
+    if (isChangingToInReview) {
       try {
         // Reuse project from task (already loaded in findOne) - no need to query again
         const projectWithPM = task.project;
@@ -275,6 +276,7 @@ export class TasksService {
           task.title,
           task.project.clientName,
           task.assignedToId, // assignedToId (the user who completed the task)
+          task.type,
         );
       } catch (error) {
         console.error('Failed to create notification:', error);
@@ -312,6 +314,7 @@ export class TasksService {
           task.title,
           task.project.clientName,
           assignedToId, // assignedToId (the user assigned to the task)
+          task.type,
         );
       } catch (error) {
         console.error('Failed to create notification:', error);
@@ -359,6 +362,7 @@ export class TasksService {
             task.title,
             task.project.clientName,
             userId,
+            task.type,
           );
         } catch (error) {
           console.error(

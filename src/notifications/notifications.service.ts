@@ -10,6 +10,25 @@ export class NotificationsService {
     private notificationsRepository: Repository<Notification>,
   ) {}
 
+  /**
+   * Helper to convert a task type into a human‑readable department label.
+   * This is used to make PM notifications more informative.
+   */
+  private getDepartmentLabelFromTaskType(taskType?: string): string | null {
+    if (!taskType) return null;
+    const normalized = taskType.toString().toLowerCase();
+
+    if (normalized === 'copy') return 'Copy Writing';
+    if (normalized === 'design') return 'Design';
+    if (normalized === 'dev' || normalized === 'development') return 'Development';
+    if (normalized === 'ai') return 'AI';
+    if (normalized === 'social media') return 'Social Media';
+    if (normalized === 'crm') return 'CRM';
+    if (normalized === 'seo/geo' || normalized === 'seo_geo' || normalized === 'seo') return 'SEO/GEO';
+
+    return null;
+  }
+
   async create(data: {
     type: NotificationType;
     title: string;
@@ -137,11 +156,14 @@ export class NotificationsService {
     taskTitle: string,
     projectName: string,
     assignedToId?: string, // The user assigned to the task (usually same as userId, but included for clarity)
+    taskType?: string,
   ) {
+    const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
+
     return this.create({
       type: NotificationType.TASK_ASSIGNED,
-      title: 'New task assigned',
-      message: `You have been assigned to "${taskTitle}" for ${projectName}`,
+      title: `New ${department} task assigned`,
+      message: `"${taskTitle}" for ${projectName} has been assigned in ${department}.`,
       userId,
       taskId,
       projectId,
@@ -172,7 +194,7 @@ export class NotificationsService {
     return this.create({
       type: NotificationType.PROJECT_STAGE_CHANGED,
       title: 'Project stage updated',
-      message: `${projectName} moved to ${newStage} stage`,
+      message: `${projectName} moved to ${newStage} stage. Review related tasks and approvals for this project.`,
       userId,
       projectId,
     });
@@ -200,11 +222,14 @@ export class NotificationsService {
     taskTitle: string,
     projectName: string,
     assignedToId?: string, // The user who completed the task
+    taskType?: string,
   ) {
+    const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
+
     return this.create({
       type: NotificationType.TASK_COMPLETED,
-      title: 'Task completed',
-      message: `"${taskTitle}" for ${projectName} has been completed`,
+      title: `${department} task completed`,
+      message: `"${taskTitle}" for ${projectName} in ${department} has been completed and is ready for your review or next steps.`,
       userId,
       taskId,
       projectId,
@@ -222,17 +247,19 @@ export class NotificationsService {
     taskType?: string,
   ) {
     // Determine notification title based on task type
-    let title = 'Task sent for review';
+    let title = 'Task sent for approval';
     if (taskType === 'Copy') {
-      title = 'Copy sent for review';
+      title = 'Copy sent for approval';
     } else if (taskType === 'Design') {
-      title = 'Design sent for review';
+      title = 'Design sent for approval';
     }
+    
+    const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
     
     return this.create({
       type: NotificationType.REVISION_REQUESTED,
       title,
-      message: `"${taskTitle}" for ${projectName} has been sent for review${hasFileUrl ? ' with Google Drive files attached' : ''}`,
+      message: `"${taskTitle}" for ${projectName} in ${department} has been submitted for your approval and is now under review${hasFileUrl ? ' with files attached' : ''}.`,
       userId, // Only PM receives this notification
       taskId,
       projectId,

@@ -132,7 +132,7 @@ let TasksService = class TasksService {
             task.deliverableId = deliverableId;
         }
         const savedTask = await this.tasksRepository.save(task);
-        if (isChangingToInReview && (task.type === task_entity_1.TaskType.COPY || task.type === task_entity_1.TaskType.DESIGN)) {
+        if (isChangingToInReview) {
             try {
                 const projectWithPM = task.project;
                 const promises = [];
@@ -204,7 +204,7 @@ let TasksService = class TasksService {
         }
         if (!wasCompleted && isCompleted && task.project && task.project.pmId) {
             try {
-                await this.notificationsService.createTaskCompletedNotification(task.project.pmId, task.id, task.projectId, task.title, task.project.clientName, task.assignedToId);
+                await this.notificationsService.createTaskCompletedNotification(task.project.pmId, task.id, task.projectId, task.title, task.project.clientName, task.assignedToId, task.type);
             }
             catch (error) {
                 console.error('Failed to create notification:', error);
@@ -228,7 +228,7 @@ let TasksService = class TasksService {
         }
         if (assignedToId && task.project) {
             try {
-                await this.notificationsService.createTaskAssignedNotification(assignedToId, task.id, task.projectId, task.title, task.project.clientName, assignedToId);
+                await this.notificationsService.createTaskAssignedNotification(assignedToId, task.id, task.projectId, task.title, task.project.clientName, assignedToId, task.type);
             }
             catch (error) {
                 console.error('Failed to create notification:', error);
@@ -254,7 +254,7 @@ let TasksService = class TasksService {
         if (task.project && userIds.length > 0) {
             for (const userId of userIds) {
                 try {
-                    await this.notificationsService.createTaskAssignedNotification(userId, task.id, task.projectId, task.title, task.project.clientName, userId);
+                    await this.notificationsService.createTaskAssignedNotification(userId, task.id, task.projectId, task.title, task.project.clientName, userId, task.type);
                 }
                 catch (error) {
                     console.error(`Failed to create notification for user ${userId}:`, error);

@@ -37,6 +37,11 @@ export class DeliverablesController {
     return this.deliverablesService.findOne(id);
   }
 
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.deliverablesService.remove(id);
+  }
+
   @Get(':id/history')
   async getHistory(@Param('id') id: string, @Query('fileUrl') fileUrl?: string) {
     return this.deliverablesService.getHistory(id, fileUrl);

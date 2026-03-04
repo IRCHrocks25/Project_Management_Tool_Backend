@@ -8,6 +8,9 @@ export declare class DeliverablesController {
     findAll(projectId?: string): Promise<import("./entities/deliverable.entity").Deliverable[]>;
     updateStatus(id: string, updateDto: UpdateDeliverableStatusDto, req: any): Promise<import("./entities/deliverable.entity").Deliverable>;
     findOne(id: string): Promise<import("./entities/deliverable.entity").Deliverable>;
+    remove(id: string): Promise<{
+        success: boolean;
+    }>;
     getHistory(id: string, fileUrl?: string): Promise<import("./entities/deliverable-history.entity").DeliverableHistory[]>;
     addTeamMember(deliverableId: string, body: {
         userId: string;

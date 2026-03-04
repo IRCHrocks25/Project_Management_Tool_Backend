@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Deliverable, DeliverableStatus, DeliverableType } from './entities/deliverable.entity';
@@ -75,6 +75,35 @@ export class DeliverablesService {
     }
 
     return deliverable;
+  }
+
+  async remove(id: string) {
+    const deliverable = await this.deliverablesRepository.findOne({ where: { id } });
+
+    if (!deliverable) {
+      throw new NotFoundException('Deliverable not found');
+    }
+
+    // Only allow deletion for custom deliverables (type OTHER or has customType)
+    const isCustom = deliverable.type === DeliverableType.OTHER || !!deliverable.customType;
+    if (!isCustom) {
+      throw new BadRequestException('Only custom deliverables can be deleted');
+    }
+
+    // Prevent deletion if there are tasks explicitly linked to this deliverable
+    const linkedTasksCount = await this.tasksRepository.count({
+      where: { deliverableId: id },
+    });
+    if (linkedTasksCount > 0) {
+      throw new BadRequestException('Cannot delete deliverable while tasks are linked to it');
+    }
+
+    // Clean up related team members and history first
+    await this.deliverableTeamMembersRepository.delete({ deliverableId: id });
+    await this.historyRepository.delete({ deliverableId: id });
+
+    await this.deliverablesRepository.delete(id);
+    return { success: true };
   }
 
   async updateStatus(id: string, status: DeliverableStatus, notes?: string, userId?: string, fileUrl?: string) {

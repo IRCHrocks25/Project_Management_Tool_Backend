@@ -70,6 +70,26 @@ let DeliverablesService = class DeliverablesService {
         }
         return deliverable;
     }
+    async remove(id) {
+        const deliverable = await this.deliverablesRepository.findOne({ where: { id } });
+        if (!deliverable) {
+            throw new common_1.NotFoundException('Deliverable not found');
+        }
+        const isCustom = deliverable.type === deliverable_entity_1.DeliverableType.OTHER || !!deliverable.customType;
+        if (!isCustom) {
+            throw new common_1.BadRequestException('Only custom deliverables can be deleted');
+        }
+        const linkedTasksCount = await this.tasksRepository.count({
+            where: { deliverableId: id },
+        });
+        if (linkedTasksCount > 0) {
+            throw new common_1.BadRequestException('Cannot delete deliverable while tasks are linked to it');
+        }
+        await this.deliverableTeamMembersRepository.delete({ deliverableId: id });
+        await this.historyRepository.delete({ deliverableId: id });
+        await this.deliverablesRepository.delete(id);
+        return { success: true };
+    }
     async updateStatus(id, status, notes, userId, fileUrl) {
         const deliverable = await this.findOne(id);
         const previousStatus = deliverable.status;

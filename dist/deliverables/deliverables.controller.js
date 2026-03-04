@@ -33,6 +33,9 @@ let DeliverablesController = class DeliverablesController {
     async findOne(id) {
         return this.deliverablesService.findOne(id);
     }
+    async remove(id) {
+        return this.deliverablesService.remove(id);
+    }
     async getHistory(id, fileUrl) {
         return this.deliverablesService.getHistory(id, fileUrl);
     }
@@ -77,6 +80,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], DeliverablesController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], DeliverablesController.prototype, "remove", null);
 __decorate([
     (0, common_1.Get)(':id/history'),
     __param(0, (0, common_1.Param)('id')),

@@ -18,6 +18,9 @@ export declare class DeliverablesService {
     create(projectId: string, type: DeliverableType, customType?: string): Promise<Deliverable>;
     findAll(projectId?: string): Promise<Deliverable[]>;
     findOne(id: string): Promise<Deliverable>;
+    remove(id: string): Promise<{
+        success: boolean;
+    }>;
     updateStatus(id: string, status: DeliverableStatus, notes?: string, userId?: string, fileUrl?: string): Promise<Deliverable>;
     private handleFileRevisionRequest;
     getHistory(deliverableId: string, fileUrl?: string): Promise<DeliverableHistory[]>;

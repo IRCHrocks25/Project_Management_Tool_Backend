@@ -1,5 +1,6 @@
 import { DeliverablesService } from './deliverables.service';
 import { UpdateDeliverableStatusDto } from './dto/update-deliverable-status.dto';
+import { UpdateDeliverableDto } from './dto/update-deliverable.dto';
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
 export declare class DeliverablesController {
     private readonly deliverablesService;
@@ -7,6 +8,7 @@ export declare class DeliverablesController {
     create(createDto: CreateDeliverableDto): Promise<import("./entities/deliverable.entity").Deliverable>;
     findAll(projectId?: string): Promise<import("./entities/deliverable.entity").Deliverable[]>;
     updateStatus(id: string, updateDto: UpdateDeliverableStatusDto, req: any): Promise<import("./entities/deliverable.entity").Deliverable>;
+    update(id: string, updateDto: UpdateDeliverableDto): Promise<import("./entities/deliverable.entity").Deliverable>;
     findOne(id: string): Promise<import("./entities/deliverable.entity").Deliverable>;
     remove(id: string): Promise<{
         success: boolean;

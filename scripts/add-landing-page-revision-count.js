@@ -37,7 +37,7 @@ async function addLandingPageRevisionCount() {
     `);
     console.log('✓ Set default landingPageRevisionCount values for existing projects');
 
-    console.log('\n✅ Landing page revision count migration completed successfully!');
+    console.log('\n✅ Home Page revision count migration completed successfully!');
   } catch (error) {
     console.error('❌ Error running migration:', error);
     process.exit(1);

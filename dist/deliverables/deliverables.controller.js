@@ -16,6 +16,7 @@ exports.DeliverablesController = void 0;
 const common_1 = require("@nestjs/common");
 const deliverables_service_1 = require("./deliverables.service");
 const update_deliverable_status_dto_1 = require("./dto/update-deliverable-status.dto");
+const update_deliverable_dto_1 = require("./dto/update-deliverable.dto");
 const create_deliverable_dto_1 = require("./dto/create-deliverable.dto");
 let DeliverablesController = class DeliverablesController {
     constructor(deliverablesService) {
@@ -29,6 +30,10 @@ let DeliverablesController = class DeliverablesController {
     }
     async updateStatus(id, updateDto, req) {
         return this.deliverablesService.updateStatus(id, updateDto.status, updateDto.notes, req.user?.userId || req.user?.id, updateDto.fileUrl);
+    }
+    async update(id, updateDto) {
+        console.log(`[DeliverablesController] PATCH /deliverables/${id} called with:`, updateDto);
+        return this.deliverablesService.update(id, updateDto);
     }
     async findOne(id) {
         return this.deliverablesService.findOne(id);
@@ -73,6 +78,14 @@ __decorate([
     __metadata("design:paramtypes", [String, update_deliverable_status_dto_1.UpdateDeliverableStatusDto, Object]),
     __metadata("design:returntype", Promise)
 ], DeliverablesController.prototype, "updateStatus", null);
+__decorate([
+    (0, common_1.Patch)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_deliverable_dto_1.UpdateDeliverableDto]),
+    __metadata("design:returntype", Promise)
+], DeliverablesController.prototype, "update", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

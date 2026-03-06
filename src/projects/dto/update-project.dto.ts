@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsEnum, IsArray } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsArray, IsUUID } from 'class-validator';
 import { ClientType } from '../entities/project.entity';
 
 export class UpdateProjectDto {
@@ -14,5 +14,9 @@ export class UpdateProjectDto {
   @IsArray()
   @IsEnum(ClientType, { each: true })
   secondaryClientTypes?: ClientType[];
+
+  @IsOptional()
+  @IsUUID()
+  pmId?: string;
 }
 

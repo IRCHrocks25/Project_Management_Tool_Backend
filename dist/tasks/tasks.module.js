@@ -14,6 +14,8 @@ const tasks_controller_1 = require("./tasks.controller");
 const task_entity_1 = require("./entities/task.entity");
 const task_assignee_entity_1 = require("./entities/task-assignee.entity");
 const task_file_history_entity_1 = require("./entities/task-file-history.entity");
+const task_question_entity_1 = require("./entities/task-question.entity");
+const task_comment_entity_1 = require("./entities/task-comment.entity");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const notifications_module_1 = require("../notifications/notifications.module");
@@ -23,7 +25,7 @@ exports.TasksModule = TasksModule;
 exports.TasksModule = TasksModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([task_entity_1.Task, task_assignee_entity_1.TaskAssignee, task_file_history_entity_1.TaskFileHistory, deliverable_entity_1.Deliverable, user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([task_entity_1.Task, task_assignee_entity_1.TaskAssignee, task_file_history_entity_1.TaskFileHistory, task_question_entity_1.TaskQuestion, task_comment_entity_1.TaskComment, deliverable_entity_1.Deliverable, user_entity_1.User]),
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
         ],
         controllers: [tasks_controller_1.TasksController],

@@ -3,11 +3,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus, TaskType } from './entities/task.entity';
 import { TaskAssignee } from './entities/task-assignee.entity';
+import { TaskQuestion } from './entities/task-question.entity';
+import { TaskComment } from './entities/task-comment.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Deliverable, DeliverableType, DeliverableStatus } from '../deliverables/entities/deliverable.entity';
 import { Project, ProjectStage } from '../projects/entities/project.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { CreateTaskQuestionDto } from './dto/create-task-question.dto';
+import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 
 @Injectable()
 export class TasksService {
@@ -16,6 +20,10 @@ export class TasksService {
     private tasksRepository: Repository<Task>,
     @InjectRepository(TaskAssignee)
     private taskAssigneesRepository: Repository<TaskAssignee>,
+    @InjectRepository(TaskQuestion)
+    private taskQuestionsRepository: Repository<TaskQuestion>,
+    @InjectRepository(TaskComment)
+    private taskCommentsRepository: Repository<TaskComment>,
     @InjectRepository(Deliverable)
     private deliverablesRepository: Repository<Deliverable>,
     @InjectRepository(User)
@@ -496,6 +504,131 @@ export class TasksService {
 
     await this.tasksRepository.remove(task);
     return { message: 'Task deleted successfully' };
+  }
+
+  // Task Conversation Methods
+  async createQuestion(taskId: string, createDto: CreateTaskQuestionDto, userId: string): Promise<TaskQuestion> {
+    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const question = this.taskQuestionsRepository.create({
+      taskId,
+      userId,
+      text: createDto.text,
+      mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0 
+        ? createDto.mentionedUserIds 
+        : null,
+    });
+
+    const savedQuestion = await this.taskQuestionsRepository.save(question);
+
+    // Send notifications to mentioned users
+    if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
+      console.log(`[TasksService] Creating mention notifications for question. Mentioned users: ${createDto.mentionedUserIds.length}`);
+      for (const mentionedUserId of createDto.mentionedUserIds) {
+        if (mentionedUserId !== userId) {
+          try {
+            console.log(`[TasksService] Creating mention notification for user: ${mentionedUserId}`);
+            await this.notificationsService.create({
+              userId: mentionedUserId,
+              type: NotificationType.MENTION,
+              title: 'You were mentioned',
+              message: `You were mentioned in a question on task: ${task.title}`,
+              taskId: taskId,
+              projectId: task.projectId,
+            });
+            console.log(`[TasksService] Successfully created mention notification for user: ${mentionedUserId}`);
+          } catch (error) {
+            console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
+          }
+        }
+      }
+    }
+
+    return await this.taskQuestionsRepository.findOne({
+      where: { id: savedQuestion.id },
+      relations: ['user', 'comments', 'comments.user'],
+      order: { comments: { createdAt: 'ASC' } },
+    });
+  }
+
+  async createComment(questionId: string, createDto: CreateTaskCommentDto, userId: string): Promise<TaskComment> {
+    const question = await this.taskQuestionsRepository.findOne({
+      where: { id: questionId },
+      relations: ['task', 'user'],
+    });
+    if (!question) {
+      throw new NotFoundException('Question not found');
+    }
+
+    const comment = this.taskCommentsRepository.create({
+      questionId,
+      userId,
+      text: createDto.text,
+      mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0 
+        ? createDto.mentionedUserIds 
+        : null,
+    });
+
+    const savedComment = await this.taskCommentsRepository.save(comment);
+
+    // Notify question author if someone answered their question
+    if (question.userId !== userId) {
+      await this.notificationsService.create({
+        userId: question.userId,
+        type: NotificationType.TASK_UPDATE,
+        title: 'Question answered',
+        message: `Someone answered your question on task: ${question.task.title}`,
+        taskId: question.taskId,
+        projectId: question.task.projectId,
+      });
+    }
+
+    // Send notifications to mentioned users
+    if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
+      console.log(`[TasksService] Creating mention notifications for comment. Mentioned users: ${createDto.mentionedUserIds.length}`);
+      for (const mentionedUserId of createDto.mentionedUserIds) {
+        if (mentionedUserId !== userId && mentionedUserId !== question.userId) {
+          try {
+            console.log(`[TasksService] Creating mention notification for user: ${mentionedUserId}`);
+            await this.notificationsService.create({
+              userId: mentionedUserId,
+              type: NotificationType.MENTION,
+              title: 'You were mentioned',
+              message: `You were mentioned in a comment on task: ${question.task.title}`,
+              taskId: question.taskId,
+              projectId: question.task.projectId,
+            });
+            console.log(`[TasksService] Successfully created mention notification for user: ${mentionedUserId}`);
+          } catch (error) {
+            console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
+          }
+        }
+      }
+    }
+
+    return await this.taskCommentsRepository.findOne({
+      where: { id: savedComment.id },
+      relations: ['user'],
+    });
+  }
+
+  async getConversations(taskId: string): Promise<TaskQuestion[]> {
+    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return await this.taskQuestionsRepository.find({
+      where: { taskId },
+      relations: ['user', 'comments', 'comments.user'],
+      order: { 
+        createdAt: 'DESC',
+        comments: { createdAt: 'ASC' },
+      },
+    });
   }
 }
 

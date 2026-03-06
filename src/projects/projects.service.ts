@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project, ProjectStage, ClientType, PackageType } from './entities/project.entity';
@@ -139,8 +139,8 @@ export class ProjectsService {
       const deliverableTypeMap: Record<string, DeliverableType> = {
         'Logo': DeliverableType.LOGO,
         'Brand Book': DeliverableType.BRAND_BOOK,
-        'Landing Page': DeliverableType.LANDING_PAGE,
-        'Copy of Landing Page': DeliverableType.COPY_OF_LANDING_PAGE,
+        'Home Page': DeliverableType.LANDING_PAGE,
+        'Copy of Home Page': DeliverableType.COPY_OF_LANDING_PAGE,
         'Speaker Kit': DeliverableType.SPEAKER_KIT,
         'Social Banners': DeliverableType.SOCIAL_BANNERS,
         'Other': DeliverableType.OTHER,
@@ -184,7 +184,7 @@ export class ProjectsService {
       } as Deliverable);
     }
 
-    // Premium packages include Landing Page
+    // Premium packages include Home Page
     if (packageType === PackageType.PREMIUM || packageType === PackageType.ICON_PACKAGE) {
       deliverables.push({
         projectId,
@@ -321,7 +321,7 @@ export class ProjectsService {
           project.tasks = [];
         }
 
-        // Check if Landing Page design files are approved and move to Dev if needed
+        // Check if Home Page design files are approved and move to Dev if needed
         await this.checkAndMoveToDevelopment(project);
       }
 
@@ -454,7 +454,7 @@ export class ProjectsService {
         project.tasks = [];
       }
 
-      // Check if Landing Page design files are approved and move to Dev if needed
+      // Check if Home Page design files are approved and move to Dev if needed
       await this.checkAndMoveToDevelopment(project);
 
       return project;
@@ -471,7 +471,7 @@ export class ProjectsService {
         return;
       }
 
-      // Find Landing Page deliverable
+      // Find Home Page deliverable
       const landingPageDeliverable = project.deliverables?.find(
         (d: any) => d.type === DeliverableType.LANDING_PAGE
       );
@@ -520,10 +520,10 @@ export class ProjectsService {
       if (allDesignFilesApproved) {
         project.stage = ProjectStage.DEV;
         await this.projectsRepository.save(project);
-        console.log(`[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Landing Page design files are approved`);
+        console.log(`[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Home Page design files are approved`);
       }
     } catch (error) {
-      console.error('[ProjectsService] Error checking Landing Page design approval:', error);
+      console.error('[ProjectsService] Error checking Home Page design approval:', error);
     }
   }
 
@@ -583,6 +583,19 @@ export class ProjectsService {
     // Update secondary client types if provided
     if (updateProjectDto.secondaryClientTypes !== undefined) {
       project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
+    }
+
+    // Update PM if provided
+    if (updateProjectDto.pmId !== undefined) {
+      // Verify the PM user exists and is a Project Manager
+      const pmUser = await this.usersRepository.findOne({ where: { id: updateProjectDto.pmId } });
+      if (!pmUser) {
+        throw new NotFoundException(`User with ID ${updateProjectDto.pmId} not found`);
+      }
+      if (pmUser.role !== 'Project Manager') {
+        throw new BadRequestException(`User ${pmUser.name} is not a Project Manager`);
+      }
+      project.pmId = updateProjectDto.pmId;
     }
 
     // Check if Katalyst is in client types (primary or secondary) and update stage to CRM if needed
@@ -1216,7 +1229,7 @@ export class ProjectsService {
 
   private getDepartmentFromDeliverableType(type: DeliverableType | string): string {
     const typeStr = type.toString();
-    if (typeStr.includes('Logo') || typeStr.includes('Social') || typeStr.includes('Landing Page') || typeStr.includes('Brand Book')) {
+    if (typeStr.includes('Logo') || typeStr.includes('Social') || typeStr.includes('Home Page') || typeStr.includes('Brand Book')) {
       return 'Design';
     }
     if (typeStr.includes('Copy') || typeStr.includes('Speaker Kit')) {

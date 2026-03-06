@@ -35,4 +35,7 @@ export declare class DeliverablesService {
         user: User;
         assignedAt: Date;
     }[]>;
+    update(id: string, updateDto: {
+        customType?: string;
+    }): Promise<Deliverable>;
 }

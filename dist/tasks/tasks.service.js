@@ -18,15 +18,19 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const task_entity_1 = require("./entities/task.entity");
 const task_assignee_entity_1 = require("./entities/task-assignee.entity");
+const task_question_entity_1 = require("./entities/task-question.entity");
+const task_comment_entity_1 = require("./entities/task-comment.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const project_entity_1 = require("../projects/entities/project.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const notification_entity_1 = require("../notifications/entities/notification.entity");
 let TasksService = class TasksService {
-    constructor(tasksRepository, taskAssigneesRepository, deliverablesRepository, usersRepository, notificationsService) {
+    constructor(tasksRepository, taskAssigneesRepository, taskQuestionsRepository, taskCommentsRepository, deliverablesRepository, usersRepository, notificationsService) {
         this.tasksRepository = tasksRepository;
         this.taskAssigneesRepository = taskAssigneesRepository;
+        this.taskQuestionsRepository = taskQuestionsRepository;
+        this.taskCommentsRepository = taskCommentsRepository;
         this.deliverablesRepository = deliverablesRepository;
         this.usersRepository = usersRepository;
         this.notificationsService = notificationsService;
@@ -352,16 +356,130 @@ let TasksService = class TasksService {
         await this.tasksRepository.remove(task);
         return { message: 'Task deleted successfully' };
     }
+    async createQuestion(taskId, createDto, userId) {
+        const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+        if (!task) {
+            throw new common_1.NotFoundException('Task not found');
+        }
+        const question = this.taskQuestionsRepository.create({
+            taskId,
+            userId,
+            text: createDto.text,
+            mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
+                ? createDto.mentionedUserIds
+                : null,
+        });
+        const savedQuestion = await this.taskQuestionsRepository.save(question);
+        if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
+            console.log(`[TasksService] Creating mention notifications for question. Mentioned users: ${createDto.mentionedUserIds.length}`);
+            for (const mentionedUserId of createDto.mentionedUserIds) {
+                if (mentionedUserId !== userId) {
+                    try {
+                        console.log(`[TasksService] Creating mention notification for user: ${mentionedUserId}`);
+                        await this.notificationsService.create({
+                            userId: mentionedUserId,
+                            type: notification_entity_1.NotificationType.MENTION,
+                            title: 'You were mentioned',
+                            message: `You were mentioned in a question on task: ${task.title}`,
+                            taskId: taskId,
+                            projectId: task.projectId,
+                        });
+                        console.log(`[TasksService] Successfully created mention notification for user: ${mentionedUserId}`);
+                    }
+                    catch (error) {
+                        console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
+                    }
+                }
+            }
+        }
+        return await this.taskQuestionsRepository.findOne({
+            where: { id: savedQuestion.id },
+            relations: ['user', 'comments', 'comments.user'],
+            order: { comments: { createdAt: 'ASC' } },
+        });
+    }
+    async createComment(questionId, createDto, userId) {
+        const question = await this.taskQuestionsRepository.findOne({
+            where: { id: questionId },
+            relations: ['task', 'user'],
+        });
+        if (!question) {
+            throw new common_1.NotFoundException('Question not found');
+        }
+        const comment = this.taskCommentsRepository.create({
+            questionId,
+            userId,
+            text: createDto.text,
+            mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
+                ? createDto.mentionedUserIds
+                : null,
+        });
+        const savedComment = await this.taskCommentsRepository.save(comment);
+        if (question.userId !== userId) {
+            await this.notificationsService.create({
+                userId: question.userId,
+                type: notification_entity_1.NotificationType.TASK_UPDATE,
+                title: 'Question answered',
+                message: `Someone answered your question on task: ${question.task.title}`,
+                taskId: question.taskId,
+                projectId: question.task.projectId,
+            });
+        }
+        if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
+            console.log(`[TasksService] Creating mention notifications for comment. Mentioned users: ${createDto.mentionedUserIds.length}`);
+            for (const mentionedUserId of createDto.mentionedUserIds) {
+                if (mentionedUserId !== userId && mentionedUserId !== question.userId) {
+                    try {
+                        console.log(`[TasksService] Creating mention notification for user: ${mentionedUserId}`);
+                        await this.notificationsService.create({
+                            userId: mentionedUserId,
+                            type: notification_entity_1.NotificationType.MENTION,
+                            title: 'You were mentioned',
+                            message: `You were mentioned in a comment on task: ${question.task.title}`,
+                            taskId: question.taskId,
+                            projectId: question.task.projectId,
+                        });
+                        console.log(`[TasksService] Successfully created mention notification for user: ${mentionedUserId}`);
+                    }
+                    catch (error) {
+                        console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
+                    }
+                }
+            }
+        }
+        return await this.taskCommentsRepository.findOne({
+            where: { id: savedComment.id },
+            relations: ['user'],
+        });
+    }
+    async getConversations(taskId) {
+        const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+        if (!task) {
+            throw new common_1.NotFoundException('Task not found');
+        }
+        return await this.taskQuestionsRepository.find({
+            where: { taskId },
+            relations: ['user', 'comments', 'comments.user'],
+            order: {
+                createdAt: 'DESC',
+                comments: { createdAt: 'ASC' },
+            },
+        });
+    }
 };
 exports.TasksService = TasksService;
 exports.TasksService = TasksService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(task_entity_1.Task)),
     __param(1, (0, typeorm_1.InjectRepository)(task_assignee_entity_1.TaskAssignee)),
-    __param(2, (0, typeorm_1.InjectRepository)(deliverable_entity_1.Deliverable)),
-    __param(3, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
+    __param(2, (0, typeorm_1.InjectRepository)(task_question_entity_1.TaskQuestion)),
+    __param(3, (0, typeorm_1.InjectRepository)(task_comment_entity_1.TaskComment)),
+    __param(4, (0, typeorm_1.InjectRepository)(deliverable_entity_1.Deliverable)),
+    __param(5, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(6, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

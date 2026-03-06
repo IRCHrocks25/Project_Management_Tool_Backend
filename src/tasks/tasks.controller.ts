@@ -1,6 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Query, Delete, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Query, Delete, Put, UseGuards, Request } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { TaskStatus } from './entities/task.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CreateTaskQuestionDto } from './dto/create-task-question.dto';
+import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 
 @Controller('tasks')
 export class TasksController {
@@ -14,6 +17,23 @@ export class TasksController {
     @Query('all') all?: string
   ) {
     return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true');
+  }
+
+  // Task Conversation Endpoints - MUST be before @Get(':id') to avoid route conflicts
+  @Get(':id/conversations')
+  @UseGuards(JwtAuthGuard)
+  async getConversations(@Param('id') id: string) {
+    return this.tasksService.getConversations(id);
+  }
+
+  @Post(':id/questions')
+  @UseGuards(JwtAuthGuard)
+  async createQuestion(
+    @Param('id') id: string,
+    @Body() createDto: CreateTaskQuestionDto,
+    @Request() req: any,
+  ) {
+    return this.tasksService.createQuestion(id, createDto, req.user.userId);
   }
 
   @Get(':id')
@@ -62,6 +82,16 @@ export class TasksController {
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return this.tasksService.remove(id);
+  }
+
+  @Post('questions/:questionId/comments')
+  @UseGuards(JwtAuthGuard)
+  async createComment(
+    @Param('questionId') questionId: string,
+    @Body() createDto: CreateTaskCommentDto,
+    @Request() req: any,
+  ) {
+    return this.tasksService.createComment(questionId, createDto, req.user.userId);
   }
 }
 

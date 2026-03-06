@@ -19,6 +19,8 @@ export enum NotificationType {
   TASK_COMPLETED = 'task_completed',
   PROJECT_ALERT = 'alert',
   REVISION_REQUESTED = 'revision',
+  MENTION = 'mention', // User was mentioned in a task conversation
+  TASK_UPDATE = 'task_update', // Task-related update (e.g., question answered)
 }
 
 @Entity('notifications')

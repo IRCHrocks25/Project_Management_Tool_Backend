@@ -138,7 +138,7 @@ export class DeliverablesService {
         await this.handleFileRevisionRequest(deliverable, fileUrl);
       }
 
-      // If Landing Page design is approved, automatically move project to Development
+      // If Home Page design is approved, automatically move project to Development
       if (status === DeliverableStatus.APPROVED && deliverable.type === DeliverableType.LANDING_PAGE) {
         const project = await this.projectsRepository.findOne({
           where: { id: deliverable.projectId },
@@ -161,7 +161,7 @@ export class DeliverablesService {
           if ((isDesignFile || designTasks.length > 0) && project.stage !== ProjectStage.DEV) {
             project.stage = ProjectStage.DEV;
             await this.projectsRepository.save(project);
-            console.log(`[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Landing Page design approval`);
+            console.log(`[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Home Page design approval`);
           }
         }
       }
@@ -235,7 +235,7 @@ export class DeliverablesService {
       project.stage = ProjectStage.DESIGN_REVISION;
       project.designRevisionCount += 1;
       
-      // Track landing page revisions separately
+      // Track Home Page revisions separately
       if (deliverable.type === DeliverableType.LANDING_PAGE) {
         project.landingPageRevisionCount += 1;
       }

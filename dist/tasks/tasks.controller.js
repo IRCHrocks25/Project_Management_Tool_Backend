@@ -15,12 +15,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksController = void 0;
 const common_1 = require("@nestjs/common");
 const tasks_service_1 = require("./tasks.service");
+const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const create_task_question_dto_1 = require("./dto/create-task-question.dto");
+const create_task_comment_dto_1 = require("./dto/create-task-comment.dto");
 let TasksController = class TasksController {
     constructor(tasksService) {
         this.tasksService = tasksService;
     }
     async findAll(projectId, assignedToId, limit, all) {
         return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true');
+    }
+    async getConversations(id) {
+        return this.tasksService.getConversations(id);
+    }
+    async createQuestion(id, createDto, req) {
+        return this.tasksService.createQuestion(id, createDto, req.user.userId);
     }
     async findOne(id) {
         return this.tasksService.findOne(id);
@@ -51,6 +60,9 @@ let TasksController = class TasksController {
     async remove(id) {
         return this.tasksService.remove(id);
     }
+    async createComment(questionId, createDto, req) {
+        return this.tasksService.createComment(questionId, createDto, req.user.userId);
+    }
 };
 exports.TasksController = TasksController;
 __decorate([
@@ -63,6 +75,24 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)(':id/conversations'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "getConversations", null);
+__decorate([
+    (0, common_1.Post)(':id/questions'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, create_task_question_dto_1.CreateTaskQuestionDto, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "createQuestion", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
@@ -116,6 +146,16 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)('questions/:questionId/comments'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('questionId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, create_task_comment_dto_1.CreateTaskCommentDto, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "createComment", null);
 exports.TasksController = TasksController = __decorate([
     (0, common_1.Controller)('tasks'),
     __metadata("design:paramtypes", [tasks_service_1.TasksService])

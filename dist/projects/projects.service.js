@@ -140,8 +140,8 @@ let ProjectsService = class ProjectsService {
             const deliverableTypeMap = {
                 'Logo': deliverable_entity_1.DeliverableType.LOGO,
                 'Brand Book': deliverable_entity_1.DeliverableType.BRAND_BOOK,
-                'Landing Page': deliverable_entity_1.DeliverableType.LANDING_PAGE,
-                'Copy of Landing Page': deliverable_entity_1.DeliverableType.COPY_OF_LANDING_PAGE,
+                'Home Page': deliverable_entity_1.DeliverableType.LANDING_PAGE,
+                'Copy of Home Page': deliverable_entity_1.DeliverableType.COPY_OF_LANDING_PAGE,
                 'Speaker Kit': deliverable_entity_1.DeliverableType.SPEAKER_KIT,
                 'Social Banners': deliverable_entity_1.DeliverableType.SOCIAL_BANNERS,
                 'Other': deliverable_entity_1.DeliverableType.OTHER,
@@ -449,11 +449,11 @@ let ProjectsService = class ProjectsService {
             if (allDesignFilesApproved) {
                 project.stage = project_entity_1.ProjectStage.DEV;
                 await this.projectsRepository.save(project);
-                console.log(`[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Landing Page design files are approved`);
+                console.log(`[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Home Page design files are approved`);
             }
         }
         catch (error) {
-            console.error('[ProjectsService] Error checking Landing Page design approval:', error);
+            console.error('[ProjectsService] Error checking Home Page design approval:', error);
         }
     }
     async updateStage(id, updateStageDto) {
@@ -492,6 +492,16 @@ let ProjectsService = class ProjectsService {
         }
         if (updateProjectDto.secondaryClientTypes !== undefined) {
             project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
+        }
+        if (updateProjectDto.pmId !== undefined) {
+            const pmUser = await this.usersRepository.findOne({ where: { id: updateProjectDto.pmId } });
+            if (!pmUser) {
+                throw new common_1.NotFoundException(`User with ID ${updateProjectDto.pmId} not found`);
+            }
+            if (pmUser.role !== 'Project Manager') {
+                throw new common_1.BadRequestException(`User ${pmUser.name} is not a Project Manager`);
+            }
+            project.pmId = updateProjectDto.pmId;
         }
         const allClientTypes = [
             project.clientType,
@@ -1003,7 +1013,7 @@ let ProjectsService = class ProjectsService {
     }
     getDepartmentFromDeliverableType(type) {
         const typeStr = type.toString();
-        if (typeStr.includes('Logo') || typeStr.includes('Social') || typeStr.includes('Landing Page') || typeStr.includes('Brand Book')) {
+        if (typeStr.includes('Logo') || typeStr.includes('Social') || typeStr.includes('Home Page') || typeStr.includes('Brand Book')) {
             return 'Design';
         }
         if (typeStr.includes('Copy') || typeStr.includes('Speaker Kit')) {

@@ -17,8 +17,8 @@ var DeliverableType;
 (function (DeliverableType) {
     DeliverableType["LOGO"] = "Logo";
     DeliverableType["BRAND_BOOK"] = "Brand Book";
-    DeliverableType["LANDING_PAGE"] = "Landing Page";
-    DeliverableType["COPY_OF_LANDING_PAGE"] = "Copy of Landing Page";
+    DeliverableType["LANDING_PAGE"] = "Home Page";
+    DeliverableType["COPY_OF_LANDING_PAGE"] = "Copy of Home Page";
     DeliverableType["SPEAKER_KIT"] = "Speaker Kit";
     DeliverableType["SOCIAL_BANNERS"] = "Social Banners";
     DeliverableType["OTHER"] = "Other";

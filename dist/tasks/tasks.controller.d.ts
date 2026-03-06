@@ -1,9 +1,13 @@
 import { TasksService } from './tasks.service';
 import { TaskStatus } from './entities/task.entity';
+import { CreateTaskQuestionDto } from './dto/create-task-question.dto';
+import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 export declare class TasksController {
     private readonly tasksService;
     constructor(tasksService: TasksService);
     findAll(projectId?: string, assignedToId?: string, limit?: string, all?: string): Promise<import("./entities/task.entity").Task[]>;
+    getConversations(id: string): Promise<import("./entities/task-question.entity").TaskQuestion[]>;
+    createQuestion(id: string, createDto: CreateTaskQuestionDto, req: any): Promise<import("./entities/task-question.entity").TaskQuestion>;
     findOne(id: string): Promise<import("./entities/task.entity").Task>;
     create(createTaskDto: any): Promise<import("./entities/task.entity").Task>;
     updateStatus(id: string, body: {
@@ -30,4 +34,5 @@ export declare class TasksController {
     remove(id: string): Promise<{
         message: string;
     }>;
+    createComment(questionId: string, createDto: CreateTaskCommentDto, req: any): Promise<import("./entities/task-comment.entity").TaskComment>;
 }

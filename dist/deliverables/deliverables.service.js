@@ -130,7 +130,7 @@ let DeliverablesService = class DeliverablesService {
                     if ((isDesignFile || designTasks.length > 0) && project.stage !== project_entity_1.ProjectStage.DEV) {
                         project.stage = project_entity_1.ProjectStage.DEV;
                         await this.projectsRepository.save(project);
-                        console.log(`[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Landing Page design approval`);
+                        console.log(`[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Home Page design approval`);
                     }
                 }
             }
@@ -325,6 +325,20 @@ let DeliverablesService = class DeliverablesService {
             user: m.user,
             assignedAt: m.assignedAt,
         }));
+    }
+    async update(id, updateDto) {
+        console.log(`[DeliverablesService] update called for id: ${id}, data:`, updateDto);
+        const deliverable = await this.findOne(id);
+        const isCustom = deliverable.type === deliverable_entity_1.DeliverableType.OTHER || !!deliverable.customType;
+        if (!isCustom) {
+            throw new common_1.BadRequestException('Only custom deliverables can be updated');
+        }
+        if (updateDto.customType !== undefined) {
+            deliverable.customType = updateDto.customType || null;
+        }
+        const updated = await this.deliverablesRepository.save(deliverable);
+        console.log(`[DeliverablesService] update completed for id: ${id}, new customType: ${updated.customType}`);
+        return updated;
     }
 };
 exports.DeliverablesService = DeliverablesService;

@@ -3,8 +3,8 @@ import { DeliverableTeamMember } from './deliverable-team-member.entity';
 export declare enum DeliverableType {
     LOGO = "Logo",
     BRAND_BOOK = "Brand Book",
-    LANDING_PAGE = "Landing Page",
-    COPY_OF_LANDING_PAGE = "Copy of Landing Page",
+    LANDING_PAGE = "Home Page",
+    COPY_OF_LANDING_PAGE = "Copy of Home Page",
     SPEAKER_KIT = "Speaker Kit",
     SOCIAL_BANNERS = "Social Banners",
     OTHER = "Other"

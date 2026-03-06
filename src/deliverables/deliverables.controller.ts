@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Param, Body, Query, Delete, Request, UseGuards } from '@nestjs/common';
 import { DeliverablesService } from './deliverables.service';
 import { UpdateDeliverableStatusDto } from './dto/update-deliverable-status.dto';
+import { UpdateDeliverableDto } from './dto/update-deliverable.dto';
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
 
 @Controller('deliverables')
@@ -30,6 +31,15 @@ export class DeliverablesController {
       req.user?.userId || req.user?.id,
       updateDto.fileUrl
     );
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateDeliverableDto,
+  ) {
+    console.log(`[DeliverablesController] PATCH /deliverables/${id} called with:`, updateDto);
+    return this.deliverablesService.update(id, updateDto);
   }
 
   @Get(':id')

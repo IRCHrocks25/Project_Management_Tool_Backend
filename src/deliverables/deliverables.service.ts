@@ -412,5 +412,24 @@ export class DeliverablesService {
       assignedAt: m.assignedAt,
     }));
   }
+
+  async update(id: string, updateDto: { customType?: string }) {
+    console.log(`[DeliverablesService] update called for id: ${id}, data:`, updateDto);
+    const deliverable = await this.findOne(id);
+
+    // Only allow updating custom deliverables (type OTHER or has customType)
+    const isCustom = deliverable.type === DeliverableType.OTHER || !!deliverable.customType;
+    if (!isCustom) {
+      throw new BadRequestException('Only custom deliverables can be updated');
+    }
+
+    if (updateDto.customType !== undefined) {
+      deliverable.customType = updateDto.customType || null;
+    }
+
+    const updated = await this.deliverablesRepository.save(deliverable);
+    console.log(`[DeliverablesService] update completed for id: ${id}, new customType: ${updated.customType}`);
+    return updated;
+  }
 }
 

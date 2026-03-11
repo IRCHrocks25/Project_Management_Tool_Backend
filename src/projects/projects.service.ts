@@ -585,7 +585,7 @@ export class ProjectsService {
       project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
     }
 
-    // Update PM if provided
+    // Update PM if provided — use explicit DB update to ensure pmId is persisted
     if (updateProjectDto.pmId !== undefined) {
       // Verify the PM user exists and is a Project Manager
       const pmUser = await this.usersRepository.findOne({ where: { id: updateProjectDto.pmId } });
@@ -595,7 +595,10 @@ export class ProjectsService {
       if (pmUser.role !== 'Project Manager') {
         throw new BadRequestException(`User ${pmUser.name} is not a Project Manager`);
       }
+      // Explicit UPDATE to guarantee pmId is written to the database
+      await this.projectsRepository.update(id, { pmId: updateProjectDto.pmId });
       project.pmId = updateProjectDto.pmId;
+      console.log(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
     }
 
     // Check if Katalyst is in client types (primary or secondary) and update stage to CRM if needed

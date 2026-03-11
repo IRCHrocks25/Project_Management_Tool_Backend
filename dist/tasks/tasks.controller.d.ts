@@ -6,6 +6,7 @@ export declare class TasksController {
     private readonly tasksService;
     constructor(tasksService: TasksService);
     findAll(projectId?: string, assignedToId?: string, limit?: string, all?: string): Promise<import("./entities/task.entity").Task[]>;
+    getAllConversations(): Promise<any[]>;
     getConversations(id: string): Promise<import("./entities/task-question.entity").TaskQuestion[]>;
     createQuestion(id: string, createDto: CreateTaskQuestionDto, req: any): Promise<import("./entities/task-question.entity").TaskQuestion>;
     findOne(id: string): Promise<import("./entities/task.entity").Task>;

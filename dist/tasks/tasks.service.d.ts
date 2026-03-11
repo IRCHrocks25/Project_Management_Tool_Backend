@@ -36,4 +36,5 @@ export declare class TasksService {
     createQuestion(taskId: string, createDto: CreateTaskQuestionDto, userId: string): Promise<TaskQuestion>;
     createComment(questionId: string, createDto: CreateTaskCommentDto, userId: string): Promise<TaskComment>;
     getConversations(taskId: string): Promise<TaskQuestion[]>;
+    getAllConversations(): Promise<any[]>;
 }

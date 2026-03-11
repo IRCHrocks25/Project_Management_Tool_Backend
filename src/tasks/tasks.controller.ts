@@ -20,6 +20,12 @@ export class TasksController {
   }
 
   // Task Conversation Endpoints - MUST be before @Get(':id') to avoid route conflicts
+  @Get('conversations/all')
+  @UseGuards(JwtAuthGuard)
+  async getAllConversations() {
+    return this.tasksService.getAllConversations();
+  }
+
   @Get(':id/conversations')
   @UseGuards(JwtAuthGuard)
   async getConversations(@Param('id') id: string) {

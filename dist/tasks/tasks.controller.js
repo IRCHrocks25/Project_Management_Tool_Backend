@@ -25,6 +25,9 @@ let TasksController = class TasksController {
     async findAll(projectId, assignedToId, limit, all) {
         return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true');
     }
+    async getAllConversations() {
+        return this.tasksService.getAllConversations();
+    }
     async getConversations(id) {
         return this.tasksService.getConversations(id);
     }
@@ -75,6 +78,13 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('conversations/all'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "getAllConversations", null);
 __decorate([
     (0, common_1.Get)(':id/conversations'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

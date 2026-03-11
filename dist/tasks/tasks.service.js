@@ -502,6 +502,31 @@ let TasksService = class TasksService {
             },
         });
     }
+    async getAllConversations() {
+        const questions = await this.taskQuestionsRepository.find({
+            relations: ['user', 'comments', 'comments.user', 'task', 'task.project'],
+            order: {
+                createdAt: 'DESC',
+                comments: { createdAt: 'ASC' },
+            },
+        });
+        return questions.map((q) => ({
+            id: q.id,
+            text: q.text,
+            createdAt: q.createdAt,
+            user: q.user ? { id: q.user.id, name: q.user.name, email: q.user.email } : null,
+            comments: (q.comments || []).map((c) => ({
+                id: c.id,
+                text: c.text,
+                createdAt: c.createdAt,
+                user: c.user ? { id: c.user.id, name: c.user.name } : null,
+            })),
+            taskId: q.taskId,
+            taskTitle: q.task?.title,
+            projectId: q.task?.projectId,
+            projectName: q.task?.project?.clientName,
+        }));
+    }
 };
 exports.TasksService = TasksService;
 exports.TasksService = TasksService = __decorate([

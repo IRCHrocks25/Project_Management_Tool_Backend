@@ -585,7 +585,7 @@ export class ProjectsService {
       project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
     }
 
-    // Update PM if provided — use explicit DB update to ensure pmId is persisted
+    // Update PM if provided
     if (updateProjectDto.pmId !== undefined) {
       // Verify the PM user exists and is a Project Manager
       const pmUser = await this.usersRepository.findOne({ where: { id: updateProjectDto.pmId } });
@@ -595,9 +595,8 @@ export class ProjectsService {
       if (pmUser.role !== 'Project Manager') {
         throw new BadRequestException(`User ${pmUser.name} is not a Project Manager`);
       }
-      // Explicit UPDATE to guarantee pmId is written to the database
-      await this.projectsRepository.update(id, { pmId: updateProjectDto.pmId });
       project.pmId = updateProjectDto.pmId;
+      project.pm = pmUser; // Sync relation so TypeORM save() doesn't overwrite with stale pm
       console.log(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
     }
 

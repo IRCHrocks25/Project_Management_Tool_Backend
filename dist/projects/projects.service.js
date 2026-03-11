@@ -501,8 +501,8 @@ let ProjectsService = class ProjectsService {
             if (pmUser.role !== 'Project Manager') {
                 throw new common_1.BadRequestException(`User ${pmUser.name} is not a Project Manager`);
             }
-            await this.projectsRepository.update(id, { pmId: updateProjectDto.pmId });
             project.pmId = updateProjectDto.pmId;
+            project.pm = pmUser;
             console.log(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
         }
         const allClientTypes = [

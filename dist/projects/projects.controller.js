@@ -27,7 +27,16 @@ let ProjectsController = class ProjectsController {
         this.projectsService = projectsService;
     }
     async create(createProjectDto, req) {
-        return this.projectsService.create(createProjectDto, req.user?.userId);
+        try {
+            const userId = req.user?.userId;
+            return await this.projectsService.create(createProjectDto, userId);
+        }
+        catch (error) {
+            console.error('[ProjectsController] Error in create:', error);
+            console.error('[ProjectsController] Error stack:', error?.stack);
+            console.error('[ProjectsController] Request body:', JSON.stringify(createProjectDto, null, 2));
+            throw error;
+        }
     }
     async createFromWebhook(webhookDto) {
         try {
@@ -121,6 +130,7 @@ let ProjectsController = class ProjectsController {
 exports.ProjectsController = ProjectsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),

@@ -508,7 +508,10 @@ export class TasksService {
 
   // Task Conversation Methods
   async createQuestion(taskId: string, createDto: CreateTaskQuestionDto, userId: string): Promise<TaskQuestion> {
-    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    const task = await this.tasksRepository.findOne({
+      where: { id: taskId },
+      relations: ['project'],
+    });
     if (!task) {
       throw new NotFoundException('Task not found');
     }
@@ -547,6 +550,23 @@ export class TasksService {
       }
     }
 
+    // Notify the PM assigned to the project (if not the author and not already notified as mentioned)
+    const pmId = (task.project as any)?.pmId;
+    if (pmId && pmId !== userId && !(createDto.mentionedUserIds || []).includes(pmId)) {
+      try {
+        await this.notificationsService.create({
+          userId: pmId,
+          type: NotificationType.TASK_UPDATE,
+          title: 'New conversation on your project',
+          message: `A new question was posted on task "${task.title}"`,
+          taskId: taskId,
+          projectId: task.projectId,
+        });
+      } catch (error) {
+        console.error(`[TasksService] Failed to create PM notification:`, error);
+      }
+    }
+
     return await this.taskQuestionsRepository.findOne({
       where: { id: savedQuestion.id },
       relations: ['user', 'comments', 'comments.user'],
@@ -557,7 +577,7 @@ export class TasksService {
   async createComment(questionId: string, createDto: CreateTaskCommentDto, userId: string): Promise<TaskComment> {
     const question = await this.taskQuestionsRepository.findOne({
       where: { id: questionId },
-      relations: ['task', 'user'],
+      relations: ['task', 'task.project', 'user'],
     });
     if (!question) {
       throw new NotFoundException('Question not found');
@@ -606,6 +626,24 @@ export class TasksService {
             console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
           }
         }
+      }
+    }
+
+    // Notify the PM assigned to the project (if not author, not question author, and not already mentioned)
+    const pmId = (question.task.project as any)?.pmId;
+    const mentionedIds = createDto.mentionedUserIds || [];
+    if (pmId && pmId !== userId && pmId !== question.userId && !mentionedIds.includes(pmId)) {
+      try {
+        await this.notificationsService.create({
+          userId: pmId,
+          type: NotificationType.TASK_UPDATE,
+          title: 'New conversation on your project',
+          message: `A new comment was posted on task "${question.task.title}"`,
+          taskId: question.taskId,
+          projectId: question.task.projectId,
+        });
+      } catch (error) {
+        console.error(`[TasksService] Failed to create PM notification:`, error);
       }
     }
 

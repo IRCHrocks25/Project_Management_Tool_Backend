@@ -5,7 +5,7 @@
 const { Client } = require('pg');
 require('dotenv').config();
 
-async function updateLandingPageToHome Page() {
+async function updateLandingPageToHomepage() {
   const client = new Client({
     connectionString: process.env.DATABASE_URL || {
       host: process.env.DB_HOST || 'localhost',
@@ -44,9 +44,9 @@ async function updateLandingPageToHome Page() {
     console.log('\nCurrent enum values:', currentEnumValues);
 
     // Check if "Home Page" already exists in enum
-    const hasHome Page = currentEnumValues.includes('Home Page');
+    const hasHomePage = currentEnumValues.includes('Home Page');
     const hasLandingPage = currentEnumValues.includes('Landing Page');
-    const hasCopyOfHome Page = currentEnumValues.includes('Copy of Home Page');
+    const hasCopyOfHomePage = currentEnumValues.includes('Copy of Home Page');
     const hasCopyOfLandingPage = currentEnumValues.includes('Copy of Landing Page');
 
     // Check how many records need updating
@@ -68,7 +68,7 @@ async function updateLandingPageToHome Page() {
     console.log(`Found ${oldCopyCount} deliverables with "Copy of Landing Page" type`);
 
     // Only proceed if we need to update the enum or data
-    if (hasLandingPage || oldCount > 0 || oldCopyCount > 0) {
+    if (!hasHomePage || hasLandingPage || oldCount > 0 || oldCopyCount > 0) {
       console.log('\nUpdating enum and data...');
 
       // Step 1: Convert column to text temporarily
@@ -136,7 +136,7 @@ async function updateLandingPageToHome Page() {
   }
 }
 
-updateLandingPageToHome Page()
+updateLandingPageToHomepage()
   .then(() => {
     console.log('Script completed');
     process.exit(0);

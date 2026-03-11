@@ -27,9 +27,18 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createProjectDto: CreateProjectDto, @Request() req: any) {
-    return this.projectsService.create(createProjectDto, req.user?.userId);
+    try {
+      const userId = req.user?.userId;
+      return await this.projectsService.create(createProjectDto, userId);
+    } catch (error: any) {
+      console.error('[ProjectsController] Error in create:', error);
+      console.error('[ProjectsController] Error stack:', error?.stack);
+      console.error('[ProjectsController] Request body:', JSON.stringify(createProjectDto, null, 2));
+      throw error;
+    }
   }
 
   @Post('webhook')

@@ -42,6 +42,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   isTeamLead: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isHeadPM: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

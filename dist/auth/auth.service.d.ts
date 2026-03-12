@@ -23,6 +23,7 @@ export declare class AuthService {
             email: string;
             role: UserRole;
             isTeamLead: boolean;
+            isHeadPM: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -39,6 +40,7 @@ export declare class AuthService {
             email: string;
             role: UserRole;
             isTeamLead: boolean;
+            isHeadPM: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -56,6 +58,21 @@ export declare class AuthService {
         email: string;
         role: UserRole;
         isTeamLead: boolean;
+        isHeadPM: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+    }>;
+    setHeadPM(userId: string, isHeadPM: boolean): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;

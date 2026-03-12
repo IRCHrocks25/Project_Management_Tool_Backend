@@ -1,5 +1,27 @@
 # Database Migrations
 
+## Add Head PM Flag
+
+Adds `isHeadPM` to the `users` table for designating a Project Manager as "Head PM" (birds-eye view of all notifications).
+
+### To apply:
+```bash
+cd Project_Management_Tool_Backend
+npm run migrate:head-pm-flag
+```
+
+Or with psql:
+```bash
+psql -d your_database_name -f migrations/add-head-pm-flag.sql
+```
+
+Or run manually:
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS "isHeadPM" BOOLEAN NOT NULL DEFAULT FALSE;
+```
+
+---
+
 ## Make Email Body Nullable
 
 This migration makes the `body` column in the `emails` table nullable, allowing email logging without requiring a body field.

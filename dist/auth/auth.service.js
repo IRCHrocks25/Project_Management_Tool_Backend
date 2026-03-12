@@ -138,7 +138,7 @@ let AuthService = class AuthService {
     }
     async getAllUsers() {
         const users = await this.usersRepository.find({
-            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead'],
+            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM'],
             order: { name: 'ASC' },
         });
         return users;
@@ -149,6 +149,19 @@ let AuthService = class AuthService {
             throw new common_1.NotFoundException('User not found');
         }
         user.isTeamLead = isTeamLead;
+        const saved = await this.usersRepository.save(user);
+        const { password, ...userWithoutPassword } = saved;
+        return userWithoutPassword;
+    }
+    async setHeadPM(userId, isHeadPM) {
+        const user = await this.usersRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (user.role !== user_entity_1.UserRole.PROJECT_MANAGER) {
+            throw new common_1.BadRequestException('Only Project Managers can be designated as Head PM');
+        }
+        user.isHeadPM = isHeadPM;
         const saved = await this.usersRepository.save(user);
         const { password, ...userWithoutPassword } = saved;
         return userWithoutPassword;

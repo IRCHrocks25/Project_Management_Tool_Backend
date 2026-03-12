@@ -1,8 +1,10 @@
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
+import { User } from '../users/entities/user.entity';
 export declare class NotificationsService {
     private notificationsRepository;
-    constructor(notificationsRepository: Repository<Notification>);
+    private usersRepository;
+    constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>);
     private getDepartmentLabelFromTaskType;
     create(data: {
         type: NotificationType;
@@ -13,6 +15,14 @@ export declare class NotificationsService {
         taskId?: string;
         assignedToId?: string;
     }): Promise<Notification>;
+    notifyHeadPMsAlso(data: {
+        type: NotificationType;
+        title: string;
+        message: string;
+        projectId?: string;
+        taskId?: string;
+        assignedToId?: string;
+    }, excludeUserId: string): Promise<void>;
     findAll(userId: string, userRole?: string): Promise<Notification[]>;
     findUnreadCount(userId: string): Promise<number>;
     markAsRead(id: string, userId: string): Promise<Notification>;

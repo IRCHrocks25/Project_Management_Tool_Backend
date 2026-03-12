@@ -17,9 +17,11 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const notification_entity_1 = require("./entities/notification.entity");
+const user_entity_1 = require("../users/entities/user.entity");
 let NotificationsService = class NotificationsService {
-    constructor(notificationsRepository) {
+    constructor(notificationsRepository, usersRepository) {
         this.notificationsRepository = notificationsRepository;
+        this.usersRepository = usersRepository;
     }
     getDepartmentLabelFromTaskType(taskType) {
         if (!taskType)
@@ -44,6 +46,25 @@ let NotificationsService = class NotificationsService {
     async create(data) {
         const notification = this.notificationsRepository.create(data);
         return this.notificationsRepository.save(notification);
+    }
+    async notifyHeadPMsAlso(data, excludeUserId) {
+        try {
+            const headPMs = await this.usersRepository.find({
+                where: { role: user_entity_1.UserRole.PROJECT_MANAGER, isHeadPM: true },
+                select: ['id'],
+            });
+            for (const pm of headPMs) {
+                if (pm.id === excludeUserId)
+                    continue;
+                await this.create({
+                    ...data,
+                    userId: pm.id,
+                }).catch((err) => console.error(`[NotificationsService] Failed to notify Head PM ${pm.id}:`, err));
+            }
+        }
+        catch (err) {
+            console.error('[NotificationsService] notifyHeadPMsAlso error:', err);
+        }
     }
     async findAll(userId, userRole) {
         console.log('[NotificationsService] findAll called with:', { userId, userRole });
@@ -125,54 +146,64 @@ let NotificationsService = class NotificationsService {
     }
     async createTaskAssignedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId, taskType) {
         const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
-        return this.create({
+        const data = {
             type: notification_entity_1.NotificationType.TASK_ASSIGNED,
             title: `New ${department} task assigned`,
             message: `"${taskTitle}" for ${projectName} has been assigned in ${department}.`,
-            userId,
-            taskId,
             projectId,
+            taskId,
             assignedToId: assignedToId || userId,
-        });
+        };
+        const result = await this.create({ ...data, userId });
+        this.notifyHeadPMsAlso(data, userId).catch(() => { });
+        return result;
     }
     async createEmailSentNotification(userId, projectId, projectName) {
-        return this.create({
+        const data = {
             type: notification_entity_1.NotificationType.EMAIL_SENT,
             title: 'Email sent',
             message: `Email sent to client for ${projectName}`,
-            userId,
             projectId,
-        });
+        };
+        const result = await this.create({ ...data, userId });
+        this.notifyHeadPMsAlso(data, userId).catch(() => { });
+        return result;
     }
     async createProjectStageChangedNotification(userId, projectId, projectName, newStage) {
-        return this.create({
+        const data = {
             type: notification_entity_1.NotificationType.PROJECT_STAGE_CHANGED,
             title: 'Project stage updated',
             message: `${projectName} moved to ${newStage} stage. Review related tasks and approvals for this project.`,
-            userId,
             projectId,
-        });
+        };
+        const result = await this.create({ ...data, userId });
+        this.notifyHeadPMsAlso(data, userId).catch(() => { });
+        return result;
     }
     async createProjectAlertNotification(userId, projectId, projectName, message) {
-        return this.create({
+        const data = {
             type: notification_entity_1.NotificationType.PROJECT_ALERT,
             title: 'Project needs attention',
             message: `${projectName}: ${message}`,
-            userId,
             projectId,
-        });
+        };
+        const result = await this.create({ ...data, userId });
+        this.notifyHeadPMsAlso(data, userId).catch(() => { });
+        return result;
     }
     async createTaskCompletedNotification(userId, taskId, projectId, taskTitle, projectName, assignedToId, taskType) {
         const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
-        return this.create({
+        const data = {
             type: notification_entity_1.NotificationType.TASK_COMPLETED,
             title: `${department} task completed`,
             message: `"${taskTitle}" for ${projectName} in ${department} has been completed and is ready for your review or next steps.`,
-            userId,
-            taskId,
             projectId,
+            taskId,
             assignedToId: assignedToId || userId,
-        });
+        };
+        const result = await this.create({ ...data, userId });
+        this.notifyHeadPMsAlso(data, userId).catch(() => { });
+        return result;
     }
     async createTaskSentForReviewNotification(userId, taskId, projectId, taskTitle, projectName, hasFileUrl = false, taskType) {
         let title = 'Task sent for approval';
@@ -183,20 +214,24 @@ let NotificationsService = class NotificationsService {
             title = 'Design sent for approval';
         }
         const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
-        return this.create({
+        const data = {
             type: notification_entity_1.NotificationType.REVISION_REQUESTED,
             title,
             message: `"${taskTitle}" for ${projectName} in ${department} has been submitted for your approval and is now under review${hasFileUrl ? ' with files attached' : ''}.`,
-            userId,
-            taskId,
             projectId,
-        });
+            taskId,
+        };
+        const result = await this.create({ ...data, userId });
+        this.notifyHeadPMsAlso(data, userId).catch(() => { });
+        return result;
     }
 };
 exports.NotificationsService = NotificationsService;
 exports.NotificationsService = NotificationsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(notification_entity_1.Notification)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], NotificationsService);
 //# sourceMappingURL=notifications.service.js.map

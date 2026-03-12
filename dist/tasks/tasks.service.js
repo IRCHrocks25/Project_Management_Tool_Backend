@@ -307,6 +307,15 @@ let TasksService = class TasksService {
                     }));
                     await Promise.all(notificationPromises);
                     console.log(`[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`);
+                    const headPMData = {
+                        type: notification_entity_1.NotificationType.TASK_AVAILABLE,
+                        title: 'New task available',
+                        message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
+                        projectId: savedTask.projectId,
+                        taskId: savedTask.id,
+                        assignedToId: null,
+                    };
+                    this.notificationsService.notifyHeadPMsAlso(headPMData, '').catch(() => { });
                 }
             }
             catch (error) {
@@ -398,14 +407,15 @@ let TasksService = class TasksService {
         const pmId = task.project?.pmId;
         if (pmId && pmId !== userId && !(createDto.mentionedUserIds || []).includes(pmId)) {
             try {
-                await this.notificationsService.create({
-                    userId: pmId,
+                const pmData = {
                     type: notification_entity_1.NotificationType.TASK_UPDATE,
                     title: 'New conversation on your project',
                     message: `A new question was posted on task "${task.title}"`,
-                    taskId: taskId,
+                    taskId,
                     projectId: task.projectId,
-                });
+                };
+                await this.notificationsService.create({ ...pmData, userId: pmId });
+                this.notificationsService.notifyHeadPMsAlso(pmData, pmId).catch(() => { });
             }
             catch (error) {
                 console.error(`[TasksService] Failed to create PM notification:`, error);
@@ -435,14 +445,15 @@ let TasksService = class TasksService {
         });
         const savedComment = await this.taskCommentsRepository.save(comment);
         if (question.userId !== userId) {
-            await this.notificationsService.create({
-                userId: question.userId,
+            const qAuthorData = {
                 type: notification_entity_1.NotificationType.TASK_UPDATE,
                 title: 'Question answered',
                 message: `Someone answered your question on task: ${question.task.title}`,
                 taskId: question.taskId,
                 projectId: question.task.projectId,
-            });
+            };
+            await this.notificationsService.create({ ...qAuthorData, userId: question.userId });
+            this.notificationsService.notifyHeadPMsAlso(qAuthorData, question.userId).catch(() => { });
         }
         if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
             console.log(`[TasksService] Creating mention notifications for comment. Mentioned users: ${createDto.mentionedUserIds.length}`);
@@ -470,14 +481,15 @@ let TasksService = class TasksService {
         const mentionedIds = createDto.mentionedUserIds || [];
         if (pmId && pmId !== userId && pmId !== question.userId && !mentionedIds.includes(pmId)) {
             try {
-                await this.notificationsService.create({
-                    userId: pmId,
+                const pmData = {
                     type: notification_entity_1.NotificationType.TASK_UPDATE,
                     title: 'New conversation on your project',
                     message: `A new comment was posted on task "${question.task.title}"`,
                     taskId: question.taskId,
                     projectId: question.task.projectId,
-                });
+                };
+                await this.notificationsService.create({ ...pmData, userId: pmId });
+                this.notificationsService.notifyHeadPMsAlso(pmData, pmId).catch(() => { });
             }
             catch (error) {
                 console.error(`[TasksService] Failed to create PM notification:`, error);

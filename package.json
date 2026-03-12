@@ -38,6 +38,7 @@
     "migrate:task-available-type": "node scripts/add-task-available-notification-type.js",
     "migrate:task-assignees": "node scripts/add-task-assignees-table.js",
     "migrate:team-lead-flag": "node scripts/add-team-lead-flag.js",
+    "migrate:head-pm-flag": "node scripts/add-head-pm-flag.js",
     "migrate:landing-page-to-Home Page": "node scripts/update-landing-page-to-Home Page.js",
     "migrate:task-conversations": "node scripts/create-task-conversations-tables.js",
     "migrate:conversation-notification-types": "node scripts/add-conversation-notification-types.js",

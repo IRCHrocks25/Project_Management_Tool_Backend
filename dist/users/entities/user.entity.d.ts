@@ -16,6 +16,7 @@ export declare class User {
     password: string;
     role: UserRole;
     isTeamLead: boolean;
+    isHeadPM: boolean;
     createdAt: Date;
     updatedAt: Date;
     resetPasswordToken: string;

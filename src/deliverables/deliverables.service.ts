@@ -252,14 +252,15 @@ export class DeliverablesService {
       // Notify ONLY the assigned user for this specific task
       if (task.assignedToId) {
         try {
-          await this.notificationsService.create({
+          const revData = {
             type: NotificationType.REVISION_REQUESTED,
             title: 'Revision requested',
             message: `"${deliverable.customType || deliverable.type}" file for ${project?.clientName || 'project'} needs revision`,
-            userId: task.assignedToId, // Only notify the assigned user
             projectId: deliverable.projectId,
             taskId: task.id,
-          });
+          };
+          await this.notificationsService.create({ ...revData, userId: task.assignedToId });
+          this.notificationsService.notifyHeadPMsAlso(revData, task.assignedToId).catch(() => {});
         } catch (error) {
           console.error('Failed to create revision notification:', error);
         }
@@ -345,14 +346,15 @@ export class DeliverablesService {
       for (const task of relatedCopyTasks) {
         if (task.assignedToId) {
           try {
-            await this.notificationsService.create({
+            const revData = {
               type: NotificationType.REVISION_REQUESTED,
               title: 'Revision requested',
               message: `"${deliverable.customType || deliverable.type}" for ${project?.clientName || 'project'} needs revision`,
-              userId: task.assignedToId,
               projectId: deliverable.projectId,
               taskId: task.id,
-            });
+            };
+            await this.notificationsService.create({ ...revData, userId: task.assignedToId });
+            this.notificationsService.notifyHeadPMsAlso(revData, task.assignedToId).catch(() => {});
           } catch (error) {
             console.error('Failed to create revision notification:', error);
           }

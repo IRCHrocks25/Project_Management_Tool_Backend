@@ -40,6 +40,16 @@ export class AuthController {
     return this.authService.setTeamLead(id, body.isTeamLead);
   }
 
+  @Post('users/:id/head-pm')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async setHeadPM(
+    @Param('id') id: string,
+    @Body() body: { isHeadPM: boolean },
+  ) {
+    return this.authService.setHeadPM(id, body.isHeadPM);
+  }
+
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {

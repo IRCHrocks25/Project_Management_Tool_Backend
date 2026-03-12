@@ -15,6 +15,7 @@ export declare class AuthController {
             email: string;
             role: import("../users/entities/user.entity").UserRole;
             isTeamLead: boolean;
+            isHeadPM: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -31,6 +32,7 @@ export declare class AuthController {
             email: string;
             role: import("../users/entities/user.entity").UserRole;
             isTeamLead: boolean;
+            isHeadPM: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -49,6 +51,23 @@ export declare class AuthController {
         email: string;
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
+        isHeadPM: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+    }>;
+    setHeadPM(id: string, body: {
+        isHeadPM: boolean;
+    }): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: import("../users/entities/user.entity").UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;

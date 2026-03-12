@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   /**
@@ -36,10 +39,44 @@ export class NotificationsService {
     userId: string;
     projectId?: string;
     taskId?: string;
-    assignedToId?: string; // For task notifications
+    assignedToId?: string;
   }) {
     const notification = this.notificationsRepository.create(data);
     return this.notificationsRepository.save(notification);
+  }
+
+  /**
+   * Also create this notification for all Head PMs (birds-eye view).
+   * Call after create() for PM-level or cross-department notifications.
+   */
+  async notifyHeadPMsAlso(
+    data: {
+      type: NotificationType;
+      title: string;
+      message: string;
+      projectId?: string;
+      taskId?: string;
+      assignedToId?: string;
+    },
+    excludeUserId: string,
+  ) {
+    try {
+      const headPMs = await this.usersRepository.find({
+        where: { role: UserRole.PROJECT_MANAGER, isHeadPM: true },
+        select: ['id'],
+      });
+      for (const pm of headPMs) {
+        if (pm.id === excludeUserId) continue;
+        await this.create({
+          ...data,
+          userId: pm.id,
+        }).catch((err) =>
+          console.error(`[NotificationsService] Failed to notify Head PM ${pm.id}:`, err),
+        );
+      }
+    } catch (err) {
+      console.error('[NotificationsService] notifyHeadPMsAlso error:', err);
+    }
   }
 
   async findAll(userId: string, userRole?: string) {
@@ -155,20 +192,21 @@ export class NotificationsService {
     projectId: string,
     taskTitle: string,
     projectName: string,
-    assignedToId?: string, // The user assigned to the task (usually same as userId, but included for clarity)
+    assignedToId?: string,
     taskType?: string,
   ) {
     const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
-
-    return this.create({
+    const data = {
       type: NotificationType.TASK_ASSIGNED,
       title: `New ${department} task assigned`,
       message: `"${taskTitle}" for ${projectName} has been assigned in ${department}.`,
-      userId,
-      taskId,
       projectId,
-      assignedToId: assignedToId || userId, // Use provided assignedToId or fallback to userId
-    });
+      taskId,
+      assignedToId: assignedToId || userId,
+    };
+    const result = await this.create({ ...data, userId });
+    this.notifyHeadPMsAlso(data, userId).catch(() => {});
+    return result;
   }
 
   async createEmailSentNotification(
@@ -176,13 +214,15 @@ export class NotificationsService {
     projectId: string,
     projectName: string,
   ) {
-    return this.create({
+    const data = {
       type: NotificationType.EMAIL_SENT,
       title: 'Email sent',
       message: `Email sent to client for ${projectName}`,
-      userId,
       projectId,
-    });
+    };
+    const result = await this.create({ ...data, userId });
+    this.notifyHeadPMsAlso(data, userId).catch(() => {});
+    return result;
   }
 
   async createProjectStageChangedNotification(
@@ -191,13 +231,15 @@ export class NotificationsService {
     projectName: string,
     newStage: string,
   ) {
-    return this.create({
+    const data = {
       type: NotificationType.PROJECT_STAGE_CHANGED,
       title: 'Project stage updated',
       message: `${projectName} moved to ${newStage} stage. Review related tasks and approvals for this project.`,
-      userId,
       projectId,
-    });
+    };
+    const result = await this.create({ ...data, userId });
+    this.notifyHeadPMsAlso(data, userId).catch(() => {});
+    return result;
   }
 
   async createProjectAlertNotification(
@@ -206,13 +248,15 @@ export class NotificationsService {
     projectName: string,
     message: string,
   ) {
-    return this.create({
+    const data = {
       type: NotificationType.PROJECT_ALERT,
       title: 'Project needs attention',
       message: `${projectName}: ${message}`,
-      userId,
       projectId,
-    });
+    };
+    const result = await this.create({ ...data, userId });
+    this.notifyHeadPMsAlso(data, userId).catch(() => {});
+    return result;
   }
 
   async createTaskCompletedNotification(
@@ -221,20 +265,21 @@ export class NotificationsService {
     projectId: string,
     taskTitle: string,
     projectName: string,
-    assignedToId?: string, // The user who completed the task
+    assignedToId?: string,
     taskType?: string,
   ) {
     const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
-
-    return this.create({
+    const data = {
       type: NotificationType.TASK_COMPLETED,
       title: `${department} task completed`,
       message: `"${taskTitle}" for ${projectName} in ${department} has been completed and is ready for your review or next steps.`,
-      userId,
-      taskId,
       projectId,
+      taskId,
       assignedToId: assignedToId || userId,
-    });
+    };
+    const result = await this.create({ ...data, userId });
+    this.notifyHeadPMsAlso(data, userId).catch(() => {});
+    return result;
   }
 
   async createTaskSentForReviewNotification(
@@ -246,24 +291,23 @@ export class NotificationsService {
     hasFileUrl: boolean = false,
     taskType?: string,
   ) {
-    // Determine notification title based on task type
     let title = 'Task sent for approval';
     if (taskType === 'Copy') {
       title = 'Copy sent for approval';
     } else if (taskType === 'Design') {
       title = 'Design sent for approval';
     }
-    
     const department = this.getDepartmentLabelFromTaskType(taskType) || 'Department';
-    
-    return this.create({
+    const data = {
       type: NotificationType.REVISION_REQUESTED,
       title,
       message: `"${taskTitle}" for ${projectName} in ${department} has been submitted for your approval and is now under review${hasFileUrl ? ' with files attached' : ''}.`,
-      userId, // Only PM receives this notification
-      taskId,
       projectId,
-    });
+      taskId,
+    };
+    const result = await this.create({ ...data, userId });
+    this.notifyHeadPMsAlso(data, userId).catch(() => {});
+    return result;
   }
 }
 

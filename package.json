@@ -40,7 +40,8 @@
     "migrate:team-lead-flag": "node scripts/add-team-lead-flag.js",
     "migrate:landing-page-to-Home Page": "node scripts/update-landing-page-to-Home Page.js",
     "migrate:task-conversations": "node scripts/create-task-conversations-tables.js",
-    "migrate:conversation-notification-types": "node scripts/add-conversation-notification-types.js"
+    "migrate:conversation-notification-types": "node scripts/add-conversation-notification-types.js",
+    "migrate:chat-tables": "node scripts/create-chat-tables.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -49,7 +50,9 @@
     "@nestjs/jwt": "^10.1.0",
     "@nestjs/passport": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/platform-socket.io": "^10.4.22",
     "@nestjs/typeorm": "^10.0.0",
+    "@nestjs/websockets": "^10.4.22",
     "@types/multer": "^2.0.0",
     "@types/nodemailer": "^7.0.10",
     "bcryptjs": "^3.0.3",
@@ -64,6 +67,7 @@
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
     "typeorm": "^0.3.17"
   },
   "devDependencies": {

@@ -20,6 +20,7 @@ const tasks_module_1 = require("./tasks/tasks.module");
 const deliverables_module_1 = require("./deliverables/deliverables.module");
 const notifications_module_1 = require("./notifications/notifications.module");
 const client_updates_module_1 = require("./client-updates/client-updates.module");
+const chat_module_1 = require("./chat/chat.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -40,6 +41,7 @@ exports.AppModule = AppModule = __decorate([
             deliverables_module_1.DeliverablesModule,
             notifications_module_1.NotificationsModule,
             client_updates_module_1.ClientUpdatesModule,
+            chat_module_1.ChatModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

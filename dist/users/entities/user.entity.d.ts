@@ -23,4 +23,7 @@ export declare class User {
     resetPasswordExpires: Date;
     otpCode: string;
     otpExpires: Date;
+    avatarUrl: string;
+    birthday: string;
+    bio: string;
 }

@@ -62,5 +62,14 @@ export class User {
 
   @Column({ nullable: true })
   otpExpires: Date;
+
+  @Column({ nullable: true })
+  avatarUrl: string;
+
+  @Column({ type: 'date', nullable: true })
+  birthday: string;
+
+  @Column({ type: 'text', nullable: true })
+  bio: string;
 }
 

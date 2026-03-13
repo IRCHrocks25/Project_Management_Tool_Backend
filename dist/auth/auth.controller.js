@@ -21,6 +21,8 @@ const forgot_password_dto_1 = require("./dto/forgot-password.dto");
 const reset_password_dto_1 = require("./dto/reset-password.dto");
 const verify_otp_dto_1 = require("./dto/verify-otp.dto");
 const reset_password_otp_dto_1 = require("./dto/reset-password-otp.dto");
+const update_profile_dto_1 = require("./dto/update-profile.dto");
+const change_password_dto_1 = require("./dto/change-password.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 let AuthController = class AuthController {
     constructor(authService) {
@@ -63,6 +65,12 @@ let AuthController = class AuthController {
     }
     async resetPasswordWithOtp(resetPasswordOtpDto) {
         return this.authService.resetPasswordWithOtp(resetPasswordOtpDto);
+    }
+    async updateProfile(req, dto) {
+        return this.authService.updateProfile(req.user.userId, dto);
+    }
+    async changePassword(req, dto) {
+        return this.authService.changePassword(req.user.userId, dto);
     }
 };
 exports.AuthController = AuthController;
@@ -141,6 +149,26 @@ __decorate([
     __metadata("design:paramtypes", [reset_password_otp_dto_1.ResetPasswordOtpDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resetPasswordWithOtp", null);
+__decorate([
+    (0, common_1.Patch)('profile'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, update_profile_dto_1.UpdateProfileDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "updateProfile", null);
+__decorate([
+    (0, common_1.Post)('change-password'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, change_password_dto_1.ChangePasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "changePassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

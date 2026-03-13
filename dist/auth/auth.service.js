@@ -138,10 +138,48 @@ let AuthService = class AuthService {
     }
     async getAllUsers() {
         const users = await this.usersRepository.find({
-            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM'],
+            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM', 'avatarUrl', 'birthday', 'bio'],
             order: { name: 'ASC' },
         });
         return users;
+    }
+    async updateProfile(userId, dto) {
+        const user = await this.usersRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (dto.email !== undefined) {
+            const normalizedEmail = dto.email.toLowerCase().trim();
+            const existing = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+            if (existing && existing.id !== userId) {
+                throw new common_1.ConflictException('Email is already in use');
+            }
+            user.email = normalizedEmail;
+        }
+        if (dto.name !== undefined)
+            user.name = dto.name;
+        if (dto.avatarUrl !== undefined)
+            user.avatarUrl = dto.avatarUrl;
+        if (dto.birthday !== undefined)
+            user.birthday = dto.birthday;
+        if (dto.bio !== undefined)
+            user.bio = dto.bio;
+        const saved = await this.usersRepository.save(user);
+        const { password, ...userWithoutPassword } = saved;
+        return userWithoutPassword;
+    }
+    async changePassword(userId, dto) {
+        const user = await this.usersRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
+        if (!isPasswordValid) {
+            throw new common_1.UnauthorizedException('Current password is incorrect');
+        }
+        user.password = await bcrypt.hash(dto.newPassword, 10);
+        await this.usersRepository.save(user);
+        return { message: 'Password updated successfully' };
     }
     async setTeamLead(userId, isTeamLead) {
         const user = await this.usersRepository.findOne({ where: { id: userId } });

@@ -7,6 +7,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordOtpDto } from './dto/reset-password-otp.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 export declare class AuthService {
@@ -30,6 +32,9 @@ export declare class AuthService {
             resetPasswordExpires: Date;
             otpCode: string;
             otpExpires: Date;
+            avatarUrl: string;
+            birthday: string;
+            bio: string;
         };
         token: string;
     }>;
@@ -47,11 +52,34 @@ export declare class AuthService {
             resetPasswordExpires: Date;
             otpCode: string;
             otpExpires: Date;
+            avatarUrl: string;
+            birthday: string;
+            bio: string;
         };
         token: string;
     }>;
     validateUser(userId: string): Promise<User>;
     getAllUsers(): Promise<User[]>;
+    updateProfile(userId: string, dto: UpdateProfileDto): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
+    }>;
+    changePassword(userId: string, dto: ChangePasswordDto): Promise<{
+        message: string;
+    }>;
     setTeamLead(userId: string, isTeamLead: boolean): Promise<{
         id: string;
         name: string;
@@ -65,6 +93,9 @@ export declare class AuthService {
         resetPasswordExpires: Date;
         otpCode: string;
         otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
     }>;
     setHeadPM(userId: string, isHeadPM: boolean): Promise<{
         id: string;
@@ -79,6 +110,9 @@ export declare class AuthService {
         resetPasswordExpires: Date;
         otpCode: string;
         otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
     }>;
     getOrCreateWebhookPM(): Promise<User>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;

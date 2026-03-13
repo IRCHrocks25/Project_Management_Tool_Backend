@@ -5,6 +5,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordOtpDto } from './dto/reset-password-otp.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
@@ -22,6 +24,9 @@ export declare class AuthController {
             resetPasswordExpires: Date;
             otpCode: string;
             otpExpires: Date;
+            avatarUrl: string;
+            birthday: string;
+            bio: string;
         };
         token: string;
     }>;
@@ -39,6 +44,9 @@ export declare class AuthController {
             resetPasswordExpires: Date;
             otpCode: string;
             otpExpires: Date;
+            avatarUrl: string;
+            birthday: string;
+            bio: string;
         };
         token: string;
     }>;
@@ -58,6 +66,9 @@ export declare class AuthController {
         resetPasswordExpires: Date;
         otpCode: string;
         otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
     }>;
     setHeadPM(id: string, body: {
         isHeadPM: boolean;
@@ -74,6 +85,9 @@ export declare class AuthController {
         resetPasswordExpires: Date;
         otpCode: string;
         otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
     }>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
@@ -84,6 +98,34 @@ export declare class AuthController {
         verified: boolean;
     }>;
     resetPasswordWithOtp(resetPasswordOtpDto: ResetPasswordOtpDto): Promise<{
+        message: string;
+    }>;
+    updateProfile(req: {
+        user: {
+            userId: string;
+        };
+    }, dto: UpdateProfileDto): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: import("../users/entities/user.entity").UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
+    }>;
+    changePassword(req: {
+        user: {
+            userId: string;
+        };
+    }, dto: ChangePasswordDto): Promise<{
         message: string;
     }>;
 }

@@ -42,7 +42,8 @@
     "migrate:landing-page-to-Home Page": "node scripts/update-landing-page-to-Home Page.js",
     "migrate:task-conversations": "node scripts/create-task-conversations-tables.js",
     "migrate:conversation-notification-types": "node scripts/add-conversation-notification-types.js",
-    "migrate:chat-tables": "node scripts/create-chat-tables.js"
+    "migrate:chat-tables": "node scripts/create-chat-tables.js",
+    "migrate:tickets": "node scripts/create-tickets-table.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

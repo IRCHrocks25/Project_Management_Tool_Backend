@@ -12,6 +12,7 @@ import { DeliverablesModule } from './deliverables/deliverables.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ClientUpdatesModule } from './client-updates/client-updates.module';
 import { ChatModule } from './chat/chat.module';
+import { TicketsModule } from './tickets/tickets.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ChatModule } from './chat/chat.module';
     NotificationsModule,
     ClientUpdatesModule,
     ChatModule,
+    TicketsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

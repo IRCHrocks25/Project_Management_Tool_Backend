@@ -9,9 +9,12 @@ async function bootstrap() {
     app.useWebSocketAdapter(new IoAdapter(app));
     
     // Enable CORS for frontend communication
+    const envOrigins = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
     const allowedOrigins = [
       'http://localhost:3001',
       'https://projectmanagementtoolfrontend-production-fbc2.up.railway.app',
+      'https://telos.katek-ai.com',
+      ...envOrigins,
     ];
     
     app.enableCors({

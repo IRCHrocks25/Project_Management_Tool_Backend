@@ -1,10 +1,13 @@
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
 export declare class NotificationsService {
     private notificationsRepository;
     private usersRepository;
-    constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>);
+    private configService;
+    private resend;
+    constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>, configService: ConfigService);
     private getDepartmentLabelFromTaskType;
     create(data: {
         type: NotificationType;
@@ -15,6 +18,7 @@ export declare class NotificationsService {
         taskId?: string;
         assignedToId?: string;
     }): Promise<Notification>;
+    private sendNotificationEmail;
     notifyHeadPMsAlso(data: {
         type: NotificationType;
         title: string;

@@ -1,17 +1,27 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Resend } from 'resend';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class NotificationsService {
+  private resend: Resend | null = null;
+
   constructor(
     @InjectRepository(Notification)
     private notificationsRepository: Repository<Notification>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (apiKey) {
+      this.resend = new Resend(apiKey);
+    }
+  }
 
   /**
    * Helper to convert a task type into a human‑readable department label.
@@ -42,7 +52,81 @@ export class NotificationsService {
     assignedToId?: string;
   }) {
     const notification = this.notificationsRepository.create(data);
-    return this.notificationsRepository.save(notification);
+    const saved = await this.notificationsRepository.save(notification);
+    // Send email notification (fire-and-forget - don't block)
+    this.sendNotificationEmail(data.userId, data.title, data.message, data.projectId, data.taskId).catch((err) =>
+      console.error('[NotificationsService] Failed to send notification email:', err),
+    );
+    return saved;
+  }
+
+  /**
+   * Send an email via Resend when a user receives a notification.
+   * Uses RESEND_API_KEY and EMAIL_FROM from env. Skips if Resend is not configured.
+   */
+  private async sendNotificationEmail(
+    userId: string,
+    title: string,
+    message: string,
+    projectId?: string,
+    taskId?: string,
+  ): Promise<void> {
+    if (!this.resend) return;
+
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: ['email', 'name'],
+    });
+    if (!user?.email) return;
+
+    const fromEmail = this.configService.get<string>('EMAIL_FROM', 'Developer@katalyst-crm.com');
+    const appName = this.configService.get<string>('APP_NAME', 'Katalyst PM');
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', '').replace(/\/$/, '');
+
+    let viewLink = '';
+    if (frontendUrl) {
+      viewLink = projectId
+        ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}` : ''}`
+        : frontendUrl;
+    }
+
+    const escapeHtml = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const safeTitle = escapeHtml(title);
+    const safeMessage = escapeHtml(message);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .container { background: #f9fafb; border-radius: 8px; padding: 30px; border: 1px solid #e5e7eb; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white !important; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>${safeTitle}</h2>
+          <p>${safeMessage}</p>
+          ${viewLink ? `<p><a href="${escapeHtml(viewLink)}" class="button">View in ${escapeHtml(appName)}</a></p>` : ''}
+          <div class="footer">
+            <p>This is an automated notification from ${escapeHtml(appName)}.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const { error } = await this.resend.emails.send({
+      from: `"${appName}" <${fromEmail}>`,
+      to: user.email,
+      subject: `${appName}: ${title}`,
+      html,
+    });
+    if (error) throw new Error(error.message);
   }
 
   /**

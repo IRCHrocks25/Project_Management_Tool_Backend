@@ -35,9 +35,9 @@ let TasksService = class TasksService {
         this.usersRepository = usersRepository;
         this.notificationsService = notificationsService;
     }
-    async findAll(projectId, assignedToId, limit, loadAll) {
+    async findAll(projectId, assignedToId, limit, loadAll, taskType) {
         try {
-            console.log(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}`);
+            console.log(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}, taskType: ${taskType}`);
             const queryBuilder = this.tasksRepository
                 .createQueryBuilder('task')
                 .leftJoinAndSelect('task.project', 'project')
@@ -53,6 +53,10 @@ let TasksService = class TasksService {
             if (assignedToId) {
                 conditions.push('task.assignedToId = :assignedToId');
                 params.assignedToId = assignedToId;
+            }
+            if (taskType) {
+                conditions.push('task.type::text = :taskType');
+                params.taskType = taskType;
             }
             queryBuilder.where(conditions.join(' AND '), params);
             if (!loadAll) {
@@ -365,6 +369,18 @@ let TasksService = class TasksService {
         await this.tasksRepository.remove(task);
         return { message: 'Task deleted successfully' };
     }
+    extractMentionIdsFromText(text) {
+        if (!text || typeof text !== 'string')
+            return [];
+        const regex = /\[\[USER_ID:([a-fA-F0-9-]{36})\]\]/g;
+        const ids = [];
+        let m;
+        while ((m = regex.exec(text)) !== null) {
+            if (m[1] && !ids.includes(m[1]))
+                ids.push(m[1]);
+        }
+        return ids;
+    }
     async createQuestion(taskId, createDto, userId) {
         const task = await this.tasksRepository.findOne({
             where: { id: taskId },
@@ -373,39 +389,39 @@ let TasksService = class TasksService {
         if (!task) {
             throw new common_1.NotFoundException('Task not found');
         }
+        const mentionIdsFromBody = createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
+            ? createDto.mentionedUserIds
+            : [];
+        const mentionIdsFromText = this.extractMentionIdsFromText(createDto.text);
+        const allMentionIds = [...new Set([...mentionIdsFromBody, ...mentionIdsFromText])];
         const question = this.taskQuestionsRepository.create({
             taskId,
             userId,
             text: createDto.text,
-            mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
-                ? createDto.mentionedUserIds
-                : null,
+            mentionedUserIds: allMentionIds.length > 0 ? allMentionIds : null,
         });
         const savedQuestion = await this.taskQuestionsRepository.save(question);
-        if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
-            console.log(`[TasksService] Creating mention notifications for question. Mentioned users: ${createDto.mentionedUserIds.length}`);
-            for (const mentionedUserId of createDto.mentionedUserIds) {
-                if (mentionedUserId !== userId) {
-                    try {
-                        console.log(`[TasksService] Creating mention notification for user: ${mentionedUserId}`);
-                        await this.notificationsService.create({
-                            userId: mentionedUserId,
-                            type: notification_entity_1.NotificationType.MENTION,
-                            title: 'You were mentioned',
-                            message: `You were mentioned in a question on task: ${task.title}`,
-                            taskId: taskId,
-                            projectId: task.projectId,
-                        });
-                        console.log(`[TasksService] Successfully created mention notification for user: ${mentionedUserId}`);
-                    }
-                    catch (error) {
-                        console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
-                    }
+        if (allMentionIds.length > 0) {
+            for (const mentionedUserId of allMentionIds) {
+                if (mentionedUserId === userId)
+                    continue;
+                try {
+                    await this.notificationsService.create({
+                        userId: mentionedUserId,
+                        type: notification_entity_1.NotificationType.MENTION,
+                        title: 'You were mentioned',
+                        message: `You were mentioned in a question on task: ${task.title}`,
+                        taskId: taskId,
+                        projectId: task.projectId,
+                    });
+                }
+                catch (error) {
+                    console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
                 }
             }
         }
         const pmId = task.project?.pmId;
-        if (pmId && pmId !== userId && !(createDto.mentionedUserIds || []).includes(pmId)) {
+        if (pmId && pmId !== userId && !allMentionIds.includes(pmId)) {
             try {
                 const pmData = {
                     type: notification_entity_1.NotificationType.TASK_UPDATE,
@@ -435,13 +451,16 @@ let TasksService = class TasksService {
         if (!question) {
             throw new common_1.NotFoundException('Question not found');
         }
+        const mentionIdsFromBody = createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
+            ? createDto.mentionedUserIds
+            : [];
+        const mentionIdsFromText = this.extractMentionIdsFromText(createDto.text);
+        const allMentionIds = [...new Set([...mentionIdsFromBody, ...mentionIdsFromText])];
         const comment = this.taskCommentsRepository.create({
             questionId,
             userId,
             text: createDto.text,
-            mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
-                ? createDto.mentionedUserIds
-                : null,
+            mentionedUserIds: allMentionIds.length > 0 ? allMentionIds : null,
         });
         const savedComment = await this.taskCommentsRepository.save(comment);
         if (question.userId !== userId) {
@@ -455,30 +474,25 @@ let TasksService = class TasksService {
             await this.notificationsService.create({ ...qAuthorData, userId: question.userId });
             this.notificationsService.notifyHeadPMsAlso(qAuthorData, question.userId).catch(() => { });
         }
-        if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
-            console.log(`[TasksService] Creating mention notifications for comment. Mentioned users: ${createDto.mentionedUserIds.length}`);
-            for (const mentionedUserId of createDto.mentionedUserIds) {
-                if (mentionedUserId !== userId && mentionedUserId !== question.userId) {
-                    try {
-                        console.log(`[TasksService] Creating mention notification for user: ${mentionedUserId}`);
-                        await this.notificationsService.create({
-                            userId: mentionedUserId,
-                            type: notification_entity_1.NotificationType.MENTION,
-                            title: 'You were mentioned',
-                            message: `You were mentioned in a comment on task: ${question.task.title}`,
-                            taskId: question.taskId,
-                            projectId: question.task.projectId,
-                        });
-                        console.log(`[TasksService] Successfully created mention notification for user: ${mentionedUserId}`);
-                    }
-                    catch (error) {
-                        console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
-                    }
-                }
+        for (const mentionedUserId of allMentionIds) {
+            if (mentionedUserId === userId)
+                continue;
+            try {
+                await this.notificationsService.create({
+                    userId: mentionedUserId,
+                    type: notification_entity_1.NotificationType.MENTION,
+                    title: 'You were mentioned',
+                    message: `You were mentioned in a comment on task: ${question.task.title}`,
+                    taskId: question.taskId,
+                    projectId: question.task.projectId,
+                });
+            }
+            catch (error) {
+                console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
             }
         }
         const pmId = question.task.project?.pmId;
-        const mentionedIds = createDto.mentionedUserIds || [];
+        const mentionedIds = allMentionIds;
         if (pmId && pmId !== userId && pmId !== question.userId && !mentionedIds.includes(pmId)) {
             try {
                 const pmData = {
@@ -493,6 +507,36 @@ let TasksService = class TasksService {
             }
             catch (error) {
                 console.error(`[TasksService] Failed to create PM notification:`, error);
+            }
+        }
+        const allCommentsOnQuestion = await this.taskCommentsRepository.find({
+            where: { questionId },
+        });
+        const participantIds = new Set();
+        participantIds.add(question.userId);
+        for (const c of allCommentsOnQuestion) {
+            if (c.userId)
+                participantIds.add(c.userId);
+        }
+        participantIds.delete(userId);
+        const alreadyNotified = new Set([userId, question.userId, ...allMentionIds]);
+        if (pmId)
+            alreadyNotified.add(pmId);
+        const responseData = {
+            type: notification_entity_1.NotificationType.TASK_UPDATE,
+            title: 'New response in conversation',
+            message: `Someone replied in a conversation on task: ${question.task.title}`,
+            taskId: question.taskId,
+            projectId: question.task.projectId,
+        };
+        for (const participantId of participantIds) {
+            if (alreadyNotified.has(participantId))
+                continue;
+            try {
+                await this.notificationsService.create({ ...responseData, userId: participantId });
+            }
+            catch (error) {
+                console.error(`[TasksService] Failed to create conversation response notification for ${participantId}:`, error);
             }
         }
         return await this.taskCommentsRepository.findOne({
@@ -513,6 +557,15 @@ let TasksService = class TasksService {
                 comments: { createdAt: 'ASC' },
             },
         });
+    }
+    async deleteQuestion(questionId) {
+        const question = await this.taskQuestionsRepository.findOne({ where: { id: questionId } });
+        if (!question) {
+            throw new common_1.NotFoundException('Question not found');
+        }
+        const comments = await this.taskCommentsRepository.find({ where: { questionId } });
+        await this.taskCommentsRepository.remove(comments);
+        await this.taskQuestionsRepository.remove(question);
     }
     async getAllConversations() {
         const questions = await this.taskQuestionsRepository.find({

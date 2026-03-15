@@ -22,11 +22,14 @@ let TasksController = class TasksController {
     constructor(tasksService) {
         this.tasksService = tasksService;
     }
-    async findAll(projectId, assignedToId, limit, all) {
-        return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true');
+    async findAll(projectId, assignedToId, limit, all, taskType) {
+        return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true', taskType);
     }
     async getAllConversations() {
         return this.tasksService.getAllConversations();
+    }
+    async deleteQuestion(questionId) {
+        return this.tasksService.deleteQuestion(questionId);
     }
     async getConversations(id) {
         return this.tasksService.getConversations(id);
@@ -74,8 +77,9 @@ __decorate([
     __param(1, (0, common_1.Query)('assignedToId')),
     __param(2, (0, common_1.Query)('limit')),
     __param(3, (0, common_1.Query)('all')),
+    __param(4, (0, common_1.Query)('taskType')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "findAll", null);
 __decorate([
@@ -85,6 +89,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "getAllConversations", null);
+__decorate([
+    (0, common_1.Delete)('questions/:questionId'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('questionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "deleteQuestion", null);
 __decorate([
     (0, common_1.Get)(':id/conversations'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

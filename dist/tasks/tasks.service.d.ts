@@ -17,7 +17,7 @@ export declare class TasksService {
     private usersRepository;
     private notificationsService;
     constructor(tasksRepository: Repository<Task>, taskAssigneesRepository: Repository<TaskAssignee>, taskQuestionsRepository: Repository<TaskQuestion>, taskCommentsRepository: Repository<TaskComment>, deliverablesRepository: Repository<Deliverable>, usersRepository: Repository<User>, notificationsService: NotificationsService);
-    findAll(projectId?: string, assignedToId?: string, limit?: number, loadAll?: boolean): Promise<Task[]>;
+    findAll(projectId?: string, assignedToId?: string, limit?: number, loadAll?: boolean, taskType?: string): Promise<Task[]>;
     findOne(id: string): Promise<Task>;
     updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string): Promise<Task>;
     assignTask(id: string, assignedToId: string): Promise<Task>;
@@ -33,8 +33,10 @@ export declare class TasksService {
     remove(id: string): Promise<{
         message: string;
     }>;
+    private extractMentionIdsFromText;
     createQuestion(taskId: string, createDto: CreateTaskQuestionDto, userId: string): Promise<TaskQuestion>;
     createComment(questionId: string, createDto: CreateTaskCommentDto, userId: string): Promise<TaskComment>;
     getConversations(taskId: string): Promise<TaskQuestion[]>;
+    deleteQuestion(questionId: string): Promise<void>;
     getAllConversations(): Promise<any[]>;
 }

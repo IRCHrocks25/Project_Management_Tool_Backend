@@ -11,19 +11,26 @@ export class TasksController {
 
   @Get()
   async findAll(
-    @Query('projectId') projectId?: string, 
+    @Query('projectId') projectId?: string,
     @Query('assignedToId') assignedToId?: string,
     @Query('limit') limit?: string,
-    @Query('all') all?: string
+    @Query('all') all?: string,
+    @Query('taskType') taskType?: string
   ) {
-    return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true');
+    return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true', taskType);
   }
 
-  // Task Conversation Endpoints - MUST be before @Get(':id') to avoid route conflicts
+  // Task Conversation Endpoints - MUST be before @Get(':id') and @Delete(':id') to avoid route conflicts
   @Get('conversations/all')
   @UseGuards(JwtAuthGuard)
   async getAllConversations() {
     return this.tasksService.getAllConversations();
+  }
+
+  @Delete('questions/:questionId')
+  @UseGuards(JwtAuthGuard)
+  async deleteQuestion(@Param('questionId') questionId: string) {
+    return this.tasksService.deleteQuestion(questionId);
   }
 
   @Get(':id/conversations')

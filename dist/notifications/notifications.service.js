@@ -17,19 +17,15 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
-const resend_1 = require("resend");
 const notification_entity_1 = require("./entities/notification.entity");
 const user_entity_1 = require("../users/entities/user.entity");
+const notifications_gateway_1 = require("./notifications.gateway");
 let NotificationsService = class NotificationsService {
-    constructor(notificationsRepository, usersRepository, configService) {
+    constructor(notificationsRepository, usersRepository, configService, notificationsGateway) {
         this.notificationsRepository = notificationsRepository;
         this.usersRepository = usersRepository;
         this.configService = configService;
-        this.resend = null;
-        const apiKey = this.configService.get('RESEND_API_KEY');
-        if (apiKey) {
-            this.resend = new resend_1.Resend(apiKey);
-        }
+        this.notificationsGateway = notificationsGateway;
     }
     getDepartmentLabelFromTaskType(taskType) {
         if (!taskType)
@@ -54,11 +50,31 @@ let NotificationsService = class NotificationsService {
     async create(data) {
         const notification = this.notificationsRepository.create(data);
         const saved = await this.notificationsRepository.save(notification);
-        this.sendNotificationEmail(data.userId, data.title, data.message, data.projectId, data.taskId).catch((err) => console.error('[NotificationsService] Failed to send notification email:', err));
+        this.sendNotificationEmail(data.userId, data.title, data.message, data.projectId, data.taskId, data.type).catch((err) => console.error('[NotificationsService] Failed to send notification email:', err));
+        try {
+            const payload = {
+                id: saved.id,
+                type: saved.type,
+                title: saved.title,
+                message: saved.message,
+                projectId: saved.projectId ?? undefined,
+                taskId: saved.taskId ?? undefined,
+                userId: saved.userId,
+                assignedToId: saved.assignedToId ?? undefined,
+                isRead: saved.isRead,
+                createdAt: saved.createdAt instanceof Date ? saved.createdAt.toISOString() : saved.createdAt,
+            };
+            this.notificationsGateway.emitNewNotification(data.userId, payload);
+        }
+        catch (err) {
+            console.error('[NotificationsService] Failed to emit new_notification:', err);
+        }
         return saved;
     }
-    async sendNotificationEmail(userId, title, message, projectId, taskId) {
-        if (!this.resend)
+    async sendNotificationEmail(userId, title, message, projectId, taskId, notificationType) {
+        const webhookUrl = this.configService.get('NOTIFICATION_WEBHOOK_URL') ||
+            'https://katalyst-crm2.fly.dev/webhook/60052967-5dd2-44f1-b81d-771c99f6e133';
+        if (!webhookUrl)
             return;
         const user = await this.usersRepository.findOne({
             where: { id: userId },
@@ -66,7 +82,6 @@ let NotificationsService = class NotificationsService {
         });
         if (!user?.email)
             return;
-        const fromEmail = this.configService.get('EMAIL_FROM', 'Developer@katalyst-crm.com');
         const appName = this.configService.get('APP_NAME', 'Katalyst PM');
         const frontendUrl = this.configService.get('FRONTEND_URL', '').replace(/\/$/, '');
         let viewLink = '';
@@ -75,41 +90,93 @@ let NotificationsService = class NotificationsService {
                 ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}` : ''}`
                 : frontendUrl;
         }
-        const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const safeTitle = escapeHtml(title);
-        const safeMessage = escapeHtml(message);
-        const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-          .container { background: #f9fafb; border-radius: 8px; padding: 30px; border: 1px solid #e5e7eb; }
-          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white !important; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
-          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>${safeTitle}</h2>
-          <p>${safeMessage}</p>
-          ${viewLink ? `<p><a href="${escapeHtml(viewLink)}" class="button">View in ${escapeHtml(appName)}</a></p>` : ''}
-          <div class="footer">
-            <p>This is an automated notification from ${escapeHtml(appName)}.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-        const { error } = await this.resend.emails.send({
-            from: `"${appName}" <${fromEmail}>`,
+        await this.sendNotificationViaWebhook({
+            webhookUrl,
             to: user.email,
-            subject: `${appName}: ${title}`,
-            html,
+            userName: user.name ?? undefined,
+            notificationType: notificationType ?? null,
+            title,
+            message,
+            viewLink: viewLink || undefined,
+            projectId,
+            taskId,
+            appName,
         });
-        if (error)
-            throw new Error(error.message);
+    }
+    async sendNotificationViaWebhook(payload) {
+        const { webhookUrl, ...body } = payload;
+        const requestBody = JSON.stringify({
+            to: body.to,
+            userName: body.userName ?? null,
+            notification_type: body.notificationType ?? 'task_update',
+            title: body.title,
+            message: body.message,
+            view_link: body.viewLink ?? null,
+            project_id: body.projectId ?? null,
+            task_id: body.taskId ?? null,
+            app_name: body.appName,
+            created_at: new Date().toISOString(),
+        });
+        try {
+            const webhookToken = this.configService.get('WEBHOOK_TOKEN', 'katalystPM2026');
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'Webhook-Token': webhookToken,
+                },
+                body: requestBody,
+            });
+            if (!response.ok) {
+                console.error('[NotificationsService] Notification webhook failed:', response.status, await response.text());
+            }
+        }
+        catch (err) {
+            console.error('[NotificationsService] Notification webhook error:', err);
+        }
+    }
+    async sendTestWebhook(email, userName) {
+        const webhookUrl = this.configService.get('NOTIFICATION_WEBHOOK_URL') ||
+            'https://katalyst-crm2.fly.dev/webhook/60052967-5dd2-44f1-b81d-771c99f6e133';
+        if (!webhookUrl) {
+            return { success: false, message: 'NOTIFICATION_WEBHOOK_URL is not configured' };
+        }
+        const appName = this.configService.get('APP_NAME', 'Katalyst PM');
+        const requestBody = JSON.stringify({
+            to: email,
+            userName: userName ?? null,
+            notification_type: 'task_update',
+            title: 'Test notification',
+            message: 'This is a test from the dashboard. If you received this email, the webhook is working.',
+            view_link: null,
+            project_id: null,
+            task_id: null,
+            app_name: appName,
+            created_at: new Date().toISOString(),
+        });
+        try {
+            const webhookToken = this.configService.get('WEBHOOK_TOKEN', 'katalystPM2026');
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'Webhook-Token': webhookToken,
+                },
+                body: requestBody,
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('[NotificationsService] Test webhook failed:', response.status, text);
+                return { success: false, message: `Webhook returned ${response.status}: ${text}` };
+            }
+            return { success: true, message: 'Test notification sent to webhook' };
+        }
+        catch (err) {
+            console.error('[NotificationsService] Test webhook error:', err);
+            return { success: false, message: err?.message || 'Request failed' };
+        }
     }
     async notifyHeadPMsAlso(data, excludeUserId) {
         try {
@@ -297,6 +364,7 @@ exports.NotificationsService = NotificationsService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        notifications_gateway_1.NotificationsGateway])
 ], NotificationsService);
 //# sourceMappingURL=notifications.service.js.map

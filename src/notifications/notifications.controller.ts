@@ -3,6 +3,8 @@ import {
   Get,
   Patch,
   Param,
+  Post,
+  Body,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -43,6 +45,14 @@ export class NotificationsController {
   @Patch('read-all')
   markAllAsRead(@Request() req) {
     return this.notificationsService.markAllAsRead(req.user?.userId || req.user?.id);
+  }
+
+  @Post('test-webhook')
+  async testWebhook(@Body() body: { email: string; userName?: string }) {
+    if (!body?.email?.trim()) {
+      return { success: false, message: 'email is required' };
+    }
+    return this.notificationsService.sendTestWebhook(body.email.trim(), body.userName?.trim());
   }
 }
 

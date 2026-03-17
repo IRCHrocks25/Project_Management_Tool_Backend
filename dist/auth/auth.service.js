@@ -327,14 +327,13 @@ let AuthService = class AuthService {
                 to: email,
                 otp: otp,
             };
+            if (userName)
+                payload.userName = userName;
             console.log('\n📤 [WEBHOOK] ==========================================');
             console.log(`📤 [WEBHOOK] Preparing to send OTP email to: ${email}`);
             console.log(`📤 [WEBHOOK] Webhook URL: ${this.WEBHOOK_URL}`);
             console.log(`📤 [WEBHOOK] Method: POST`);
-            console.log(`📤 [WEBHOOK] Payload Summary:`, {
-                to: payload.to,
-                otp: payload.otp,
-            });
+            console.log(`📤 [WEBHOOK] Payload Summary:`, payload);
             console.log(`📤 [WEBHOOK] Full Payload JSON:`, JSON.stringify(payload, null, 2));
             const requestBody = JSON.stringify(payload);
             console.log(`📤 [WEBHOOK] Request body length: ${requestBody.length} bytes`);
@@ -345,6 +344,7 @@ let AuthService = class AuthService {
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
+                        'Webhook-Token': this.configService.get('WEBHOOK_TOKEN', 'katalystPM2026'),
                     },
                     body: requestBody,
                 });

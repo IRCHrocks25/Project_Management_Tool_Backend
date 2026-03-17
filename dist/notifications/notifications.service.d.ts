@@ -2,12 +2,13 @@ import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
+import { NotificationsGateway } from './notifications.gateway';
 export declare class NotificationsService {
     private notificationsRepository;
     private usersRepository;
     private configService;
-    private resend;
-    constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>, configService: ConfigService);
+    private notificationsGateway;
+    constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>, configService: ConfigService, notificationsGateway: NotificationsGateway);
     private getDepartmentLabelFromTaskType;
     create(data: {
         type: NotificationType;
@@ -19,6 +20,11 @@ export declare class NotificationsService {
         assignedToId?: string;
     }): Promise<Notification>;
     private sendNotificationEmail;
+    private sendNotificationViaWebhook;
+    sendTestWebhook(email: string, userName?: string): Promise<{
+        success: boolean;
+        message?: string;
+    }>;
     notifyHeadPMsAlso(data: {
         type: NotificationType;
         title: string;

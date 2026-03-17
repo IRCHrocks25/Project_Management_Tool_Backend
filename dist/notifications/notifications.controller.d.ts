@@ -10,4 +10,11 @@ export declare class NotificationsController {
     markAllAsRead(req: any): Promise<{
         success: boolean;
     }>;
+    testWebhook(body: {
+        email: string;
+        userName?: string;
+    }): Promise<{
+        success: boolean;
+        message?: string;
+    }>;
 }

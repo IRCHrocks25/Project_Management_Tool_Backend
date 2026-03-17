@@ -43,6 +43,12 @@ let NotificationsController = class NotificationsController {
     markAllAsRead(req) {
         return this.notificationsService.markAllAsRead(req.user?.userId || req.user?.id);
     }
+    async testWebhook(body) {
+        if (!body?.email?.trim()) {
+            return { success: false, message: 'email is required' };
+        }
+        return this.notificationsService.sendTestWebhook(body.email.trim(), body.userName?.trim());
+    }
 };
 exports.NotificationsController = NotificationsController;
 __decorate([
@@ -74,6 +80,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], NotificationsController.prototype, "markAllAsRead", null);
+__decorate([
+    (0, common_1.Post)('test-webhook'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "testWebhook", null);
 exports.NotificationsController = NotificationsController = __decorate([
     (0, common_1.Controller)('notifications'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

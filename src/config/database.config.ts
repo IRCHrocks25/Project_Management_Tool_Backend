@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
 
+/** Entities come from TypeOrmModule.forFeature in each module (autoLoadEntities). */
 @Injectable()
 export class DatabaseConfig implements TypeOrmOptionsFactory {
   constructor(private configService: ConfigService) {}
@@ -19,7 +20,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       return {
         type: 'postgres',
         url: databaseUrl,
-        entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+        autoLoadEntities: true,
         synchronize: false, // Temporarily disabled to fix enum mismatch - run migration script first
         logging: this.configService.get<string>('NODE_ENV') === 'development',
         ssl: requiresSSL ? { rejectUnauthorized: false } : false,
@@ -39,7 +40,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       username: this.configService.get<string>('DB_USERNAME', 'postgres'),
       password: this.configService.get<string>('DB_PASSWORD', 'postgres'),
       database: this.configService.get<string>('DB_DATABASE', 'katalyst_pm'),
-      entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+      autoLoadEntities: true,
       synchronize: false, // Temporarily disabled to fix enum mismatch - run migration script first
       logging: this.configService.get<string>('NODE_ENV') === 'development',
     };

@@ -1,7 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import * as pg from 'pg';
 import { AppModule } from './app.module';
+
+// Force pg driver to return PostgreSQL DATE columns as raw 'YYYY-MM-DD' strings
+// instead of converting to JS Date objects (which can shift ±1 day depending on
+// server timezone).
+pg.types.setTypeParser(1082, (val: string) => val);
 
 async function bootstrap() {
   try {

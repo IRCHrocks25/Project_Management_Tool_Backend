@@ -11,7 +11,7 @@
   "scripts": {
     "build": "node node_modules/@nestjs/cli/bin/nest.js build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "node dist/main",
+    "start": "node node_modules/@nestjs/cli/bin/nest.js start",
     "start:dev": "cross-env NODE_OPTIONS=\"--no-deprecation --max-http-header-size=16384\" node node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:debug": "cross-env NODE_OPTIONS=\"--no-deprecation --max-http-header-size=16384\" node node_modules/@nestjs/cli/bin/nest.js start --debug --watch",
     "start:prod": "node dist/main",
@@ -43,7 +43,13 @@
     "migrate:task-conversations": "node scripts/create-task-conversations-tables.js",
     "migrate:conversation-notification-types": "node scripts/add-conversation-notification-types.js",
     "migrate:chat-tables": "node scripts/create-chat-tables.js",
-    "migrate:tickets": "node scripts/create-tickets-table.js"
+    "migrate:tickets": "node scripts/create-tickets-table.js",
+    "migrate:daily-focus-items": "node scripts/create-daily-focus-items.js",
+    "migrate:daily-focus-rank-limit": "node scripts/alter-daily-focus-rank-limit.js",
+    "migrate:eod-report-snapshots": "node scripts/create-eod-report-snapshots.js",
+    "migrate:department-project-focus": "node scripts/create-department-project-focus-items.js",
+    "migrate:department-project-focus-override": "node scripts/create-department-project-focus-override-items.js",
+    "migrate:department-project-focus-task-based": "node scripts/alter-department-project-focus-to-task-based.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -61,6 +67,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "cloudinary": "^2.9.0",
+    "luxon": "^3.7.2",
     "multer": "^2.0.2",
     "nodemailer": "^8.0.1",
     "passport": "^0.6.0",
@@ -80,6 +87,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.2",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^20.3.1",
     "@types/passport-jwt": "^3.0.9",
     "@types/passport-local": "^1.0.35",

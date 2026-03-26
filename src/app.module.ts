@@ -13,6 +13,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ClientUpdatesModule } from './client-updates/client-updates.module';
 import { ChatModule } from './chat/chat.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { DailyFocusModule } from './daily-focus/daily-focus.module';
+import { DepartmentProjectFocusModule } from './department-project-focus/department-project-focus.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { TicketsModule } from './tickets/tickets.module';
     ClientUpdatesModule,
     ChatModule,
     TicketsModule,
+    DailyFocusModule,
+    DepartmentProjectFocusModule,
   ],
   controllers: [AppController],
   providers: [AppService],

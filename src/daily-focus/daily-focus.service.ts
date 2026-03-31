@@ -189,6 +189,40 @@ export class DailyFocusService {
     return this.findByDate(dto.date);
   }
 
+  /**
+   * Matches department kanban: In Review in the "For approval" column (not Revision / Elliot / QA / Client).
+   */
+  private isTaskForApprovalColumn(task: Task | null | undefined): boolean {
+    if (!task || task.status !== TaskStatus.IN_REVIEW) return false;
+    const d = task.description || '';
+    if (d.includes('--- Column: Revision ---')) return false;
+    if (d.includes('--- Column: Elliot Review ---')) return false;
+    if (d.includes('--- Column: QA Review ---')) return false;
+    if (d.includes('--- Column: Client Review ---')) return false;
+    return true;
+  }
+
+  /** True when the task counts as "done" for EOD planned rows: formally completed (in window) or For approval (work submitted). */
+  private isPlannedTaskDoneForEod(
+    task: Task | null | undefined,
+    startUtc: Date,
+    endUtc: Date,
+  ): boolean {
+    if (!task || task.isArchived) return false;
+    const project = task.project;
+    if (project?.isArchived) return false;
+
+    const updatedAt = task.updatedAt instanceof Date ? task.updatedAt : new Date(task.updatedAt as any);
+    const updatedInWindow = updatedAt >= startUtc && updatedAt <= endUtc;
+
+    const formallyComplete = task.isCompleted === true || task.status === TaskStatus.COMPLETED;
+    if (formallyComplete && updatedInWindow) return true;
+
+    if (this.isTaskForApprovalColumn(task)) return true;
+
+    return false;
+  }
+
   async getEndOfDayReport(dateStr: string) {
     this.assertValidDate(dateStr);
     const { startUtc, endUtc, timezone } = this.getOrgDayBounds(dateStr);
@@ -198,11 +232,6 @@ export class DailyFocusService {
       relations: ['task', 'task.project', 'task.assignedTo', 'task.assignees', 'task.assignees.user'],
       order: { departmentKey: 'ASC', rank: 'ASC' },
     });
-
-    const planned = plannedRows.map((r) => ({
-      ...this.serializeFocusRow(r),
-      planned: true,
-    }));
 
     const completedTasks = await this.tasksRepository
       .createQueryBuilder('task')
@@ -215,14 +244,27 @@ export class DailyFocusService {
         completedStatus: TaskStatus.COMPLETED,
       })
       .andWhere('task.isArchived = false')
+      .andWhere('(project.isArchived = false OR project.id IS NULL)')
       .orderBy('task.updatedAt', 'DESC')
       .getMany();
 
-    const completed = completedTasks.map((t) => this.serializeTaskForReport(t));
-
     const completedIds = new Set(completedTasks.map((t) => t.id));
 
-    const notDoneBase = planned.filter((p) => !completedIds.has(p.taskId));
+    const planned = plannedRows.map((r) => {
+      const task = r.task;
+      const doneForEod =
+        completedIds.has(r.taskId) ||
+        this.isPlannedTaskDoneForEod(task, startUtc, endUtc);
+      return {
+        ...this.serializeFocusRow(r),
+        planned: true,
+        doneForEod,
+      };
+    });
+
+    const completed = completedTasks.map((t) => this.serializeTaskForReport(t));
+
+    const notDoneBase = planned.filter((p) => !p.doneForEod);
 
     const notDoneTaskIds = [...new Set(notDoneBase.map((p) => p.taskId).filter(Boolean))];
     const progressByTask = new Map<

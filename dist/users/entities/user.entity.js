@@ -15,6 +15,7 @@ var UserRole;
 (function (UserRole) {
     UserRole["FOUNDER_CEO"] = "FOUNDER/CEO";
     UserRole["PROJECT_MANAGER"] = "Project Manager";
+    UserRole["RAPID_PROSPECT"] = "Rapid Prospect";
     UserRole["COPY_WRITING"] = "Copy Writing";
     UserRole["DESIGNER"] = "Designer";
     UserRole["DEVELOPER"] = "Developer";

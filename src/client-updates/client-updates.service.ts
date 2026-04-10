@@ -6,7 +6,13 @@ import { ClientUpdate, UpdateStatus } from './entities/client-update.entity';
 import { ClientUpdateForm, FormBlock } from './entities/client-update-form.entity';
 import { ClientUpdateFormSubmission } from './entities/client-update-form-submission.entity';
 import { ClientUpdateComment } from './entities/client-update-comment.entity';
-import { Project } from '../projects/entities/project.entity';
+import {
+  Project,
+  ClientType,
+  OnboardingPhase,
+  OnboardingPhaseStatus,
+  OnboardingMilestones,
+} from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
 import { CreateClientUpdateDto } from './dto/create-client-update.dto';
 import { CreateFormDto } from './dto/create-form.dto';
@@ -146,6 +152,21 @@ export class ClientUpdatesService {
     return form;
   }
 
+  async getLatestRapidProspectPublishedFormToken(): Promise<{ publicToken: string | null }> {
+    const latestForm = await this.formsRepository
+      .createQueryBuilder('form')
+      .innerJoin('form.update', 'update')
+      .innerJoin('update.project', 'project')
+      .where('form.isPublished = :isPublished', { isPublished: true })
+      .andWhere('project.clientType = :clientType', { clientType: ClientType.RAPID_PROSPECT })
+      .andWhere('project.isArchived = :isArchived', { isArchived: false })
+      .andWhere('project.isCompleted = :isCompleted', { isCompleted: false })
+      .orderBy('form.updatedAt', 'DESC')
+      .getOne();
+
+    return { publicToken: latestForm?.publicToken || null };
+  }
+
   async submitForm(submitDto: SubmitFormDto): Promise<ClientUpdateFormSubmission> {
     const form = await this.formsRepository.findOne({
       where: { id: submitDto.formId, isPublished: true },
@@ -173,7 +194,43 @@ export class ClientUpdatesService {
       await this.clientUpdatesRepository.save(update);
     }
 
+    await this.tagProjectAsRapidProspect(form.update.projectId);
+
     return submission;
+  }
+
+  private async tagProjectAsRapidProspect(projectId: string): Promise<void> {
+    if (!projectId) {
+      return;
+    }
+
+    const project = await this.projectsRepository.findOne({ where: { id: projectId } });
+    if (!project || project.isArchived || project.isCompleted) {
+      return;
+    }
+
+    const now = new Date();
+    const milestones: OnboardingMilestones = {
+      ...(project.onboardingMilestones || {}),
+      paymentConfirmed: {
+        completed: true,
+        completedAt: now.toISOString(),
+        ...(project.onboardingMilestones?.paymentConfirmed || {}),
+      },
+      formSubmitted: {
+        completed: true,
+        completedAt: now.toISOString(),
+        ...(project.onboardingMilestones?.formSubmitted || {}),
+      },
+    };
+
+    project.clientType = ClientType.RAPID_PROSPECT;
+    project.onboardingPhase = project.onboardingPhase || OnboardingPhase.WELCOME_AND_CALL_BOOKING;
+    project.onboardingPhaseStatus = OnboardingPhaseStatus.IN_PROGRESS;
+    project.onboardingStartedAt = project.onboardingStartedAt || now;
+    project.onboardingMilestones = milestones;
+
+    await this.projectsRepository.save(project);
   }
 
   async getFormSubmissions(formId: string): Promise<ClientUpdateFormSubmission[]> {

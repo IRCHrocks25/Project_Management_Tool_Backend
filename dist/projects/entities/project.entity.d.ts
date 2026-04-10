@@ -9,7 +9,8 @@ export declare enum ClientType {
     KATALYST = "Katalyst",
     PRIVATE = "Private",
     PREMIUM = "Premium",
-    POWERED_UP = "Powered-Up"
+    POWERED_UP = "Powered-Up",
+    RAPID_PROSPECT = "Rapid Prospect"
 }
 export declare enum PackageType {
     STARTER = "Starter",
@@ -38,6 +39,28 @@ export declare enum ProjectStage {
     READY_TO_CLOSE = "Ready to Close",
     CLOSED = "Closed"
 }
+export declare enum OnboardingPhase {
+    PAYMENT_CONFIRMED = "Payment Confirmed",
+    WELCOME_AND_CALL_BOOKING = "Welcome + Call Booking",
+    ONBOARDING_CALL = "Onboarding Call",
+    CREDENTIAL_COLLECTION = "Credential Collection",
+    FOLLOW_UP_CALL = "Follow-Up Call",
+    SOFT_LAUNCH = "Soft Launch",
+    QA_MONITORING = "Background QA Monitoring",
+    FULL_GO_LIVE = "Full Go-Live"
+}
+export declare enum OnboardingPhaseStatus {
+    NOT_STARTED = "Not Started",
+    IN_PROGRESS = "In Progress",
+    COMPLETED = "Completed",
+    BLOCKED = "Blocked"
+}
+export type OnboardingMilestones = Record<string, {
+    completed: boolean;
+    completedAt?: string;
+    ownerUserId?: string;
+    notes?: string;
+}>;
 export declare class Project {
     id: string;
     clientName: string;
@@ -64,6 +87,14 @@ export declare class Project {
     completedAt: Date;
     completedBy: User;
     completedByUserId: string;
+    onboardingPhase?: OnboardingPhase;
+    onboardingPhaseStatus?: OnboardingPhaseStatus;
+    onboardingStartedAt?: Date;
+    onboardingCompletedAt?: Date;
+    onboardingMilestones?: OnboardingMilestones;
+    onboardingManagerId?: string;
+    automationSpecialistId?: string;
+    qaSpecialistId?: string;
     tasks: Task[];
     deliverables: Deliverable[];
     emails: Email[];

@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Project = exports.ProjectStage = exports.Priority = exports.PackageType = exports.ClientType = void 0;
+exports.Project = exports.OnboardingPhaseStatus = exports.OnboardingPhase = exports.ProjectStage = exports.Priority = exports.PackageType = exports.ClientType = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../users/entities/user.entity");
 const task_entity_1 = require("../../tasks/entities/task.entity");
@@ -24,6 +24,7 @@ var ClientType;
     ClientType["PRIVATE"] = "Private";
     ClientType["PREMIUM"] = "Premium";
     ClientType["POWERED_UP"] = "Powered-Up";
+    ClientType["RAPID_PROSPECT"] = "Rapid Prospect";
 })(ClientType || (exports.ClientType = ClientType = {}));
 var PackageType;
 (function (PackageType) {
@@ -55,6 +56,24 @@ var ProjectStage;
     ProjectStage["READY_TO_CLOSE"] = "Ready to Close";
     ProjectStage["CLOSED"] = "Closed";
 })(ProjectStage || (exports.ProjectStage = ProjectStage = {}));
+var OnboardingPhase;
+(function (OnboardingPhase) {
+    OnboardingPhase["PAYMENT_CONFIRMED"] = "Payment Confirmed";
+    OnboardingPhase["WELCOME_AND_CALL_BOOKING"] = "Welcome + Call Booking";
+    OnboardingPhase["ONBOARDING_CALL"] = "Onboarding Call";
+    OnboardingPhase["CREDENTIAL_COLLECTION"] = "Credential Collection";
+    OnboardingPhase["FOLLOW_UP_CALL"] = "Follow-Up Call";
+    OnboardingPhase["SOFT_LAUNCH"] = "Soft Launch";
+    OnboardingPhase["QA_MONITORING"] = "Background QA Monitoring";
+    OnboardingPhase["FULL_GO_LIVE"] = "Full Go-Live";
+})(OnboardingPhase || (exports.OnboardingPhase = OnboardingPhase = {}));
+var OnboardingPhaseStatus;
+(function (OnboardingPhaseStatus) {
+    OnboardingPhaseStatus["NOT_STARTED"] = "Not Started";
+    OnboardingPhaseStatus["IN_PROGRESS"] = "In Progress";
+    OnboardingPhaseStatus["COMPLETED"] = "Completed";
+    OnboardingPhaseStatus["BLOCKED"] = "Blocked";
+})(OnboardingPhaseStatus || (exports.OnboardingPhaseStatus = OnboardingPhaseStatus = {}));
 let Project = class Project {
 };
 exports.Project = Project;
@@ -175,6 +194,46 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Project.prototype, "completedByUserId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: OnboardingPhase,
+        nullable: true,
+    }),
+    __metadata("design:type", String)
+], Project.prototype, "onboardingPhase", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: OnboardingPhaseStatus,
+        nullable: true,
+    }),
+    __metadata("design:type", String)
+], Project.prototype, "onboardingPhaseStatus", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], Project.prototype, "onboardingStartedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], Project.prototype, "onboardingCompletedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'jsonb', nullable: true }),
+    __metadata("design:type", Object)
+], Project.prototype, "onboardingMilestones", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Project.prototype, "onboardingManagerId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Project.prototype, "automationSpecialistId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Project.prototype, "qaSpecialistId", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => task_entity_1.Task, (task) => task.project),
     __metadata("design:type", Array)

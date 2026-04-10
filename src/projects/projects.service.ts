@@ -1,7 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Project, ProjectStage, ClientType, PackageType } from './entities/project.entity';
+import {
+  Project,
+  ProjectStage,
+  ClientType,
+  PackageType,
+  OnboardingPhase,
+  OnboardingPhaseStatus,
+} from './entities/project.entity';
 import { ProjectTeamMember } from './entities/project-team-member.entity';
 import { Task, TaskType, TaskStatus } from '../tasks/entities/task.entity';
 import { Deliverable, DeliverableType, DeliverableStatus } from '../deliverables/entities/deliverable.entity';
@@ -12,8 +19,20 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { UpdateOnboardingPhaseDto } from './dto/update-onboarding-phase.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
+
+const ONBOARDING_PHASE_ORDER: OnboardingPhase[] = [
+  OnboardingPhase.PAYMENT_CONFIRMED,
+  OnboardingPhase.WELCOME_AND_CALL_BOOKING,
+  OnboardingPhase.ONBOARDING_CALL,
+  OnboardingPhase.CREDENTIAL_COLLECTION,
+  OnboardingPhase.FOLLOW_UP_CALL,
+  OnboardingPhase.SOFT_LAUNCH,
+  OnboardingPhase.QA_MONITORING,
+  OnboardingPhase.FULL_GO_LIVE,
+];
 
 @Injectable()
 export class ProjectsService {
@@ -927,6 +946,107 @@ export class ProjectsService {
       byStage,
       overdue,
     };
+  }
+
+  async getRapidProspectProjects(userId: string, userRole: string) {
+    const queryBuilder = this.projectsRepository
+      .createQueryBuilder('project')
+      .leftJoinAndSelect('project.pm', 'pm')
+      .where('project.clientType = :clientType', { clientType: ClientType.RAPID_PROSPECT })
+      .andWhere('project.isArchived = :isArchived', { isArchived: false })
+      .andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
+
+    if (userRole === 'Project Manager') {
+      queryBuilder.andWhere('project.pmId = :userId', { userId });
+    }
+
+    return queryBuilder.orderBy('project.updatedAt', 'DESC').getMany();
+  }
+
+  async updateOnboardingPhase(projectId: string, dto: UpdateOnboardingPhaseDto, actorUserId?: string) {
+    const project = await this.findOne(projectId);
+
+    if (project.clientType !== ClientType.RAPID_PROSPECT) {
+      throw new BadRequestException('Onboarding phase updates are only available for Rapid Prospect clients');
+    }
+
+    if (dto.onboardingManagerId !== undefined) {
+      project.onboardingManagerId = dto.onboardingManagerId;
+    }
+    if (dto.automationSpecialistId !== undefined) {
+      project.automationSpecialistId = dto.automationSpecialistId;
+    }
+    if (dto.qaSpecialistId !== undefined) {
+      project.qaSpecialistId = dto.qaSpecialistId;
+    }
+
+    const currentPhase = project.onboardingPhase || OnboardingPhase.WELCOME_AND_CALL_BOOKING;
+    let targetPhase = dto.phase || currentPhase;
+
+    if (dto.advanceToNextPhase) {
+      targetPhase = this.getNextOnboardingPhase(currentPhase);
+    }
+
+    const currentIndex = ONBOARDING_PHASE_ORDER.indexOf(currentPhase);
+    const targetIndex = ONBOARDING_PHASE_ORDER.indexOf(targetPhase);
+    if (currentIndex >= 0 && targetIndex > currentIndex + 1) {
+      throw new BadRequestException('Phase progression can only move one step at a time');
+    }
+
+    project.onboardingPhase = targetPhase;
+    project.onboardingPhaseStatus =
+      dto.status || (targetPhase === OnboardingPhase.FULL_GO_LIVE ? OnboardingPhaseStatus.COMPLETED : OnboardingPhaseStatus.IN_PROGRESS);
+    project.onboardingStartedAt = project.onboardingStartedAt || new Date();
+
+    const milestoneKey = dto.milestoneKey || this.phaseToMilestoneKey(targetPhase);
+    const nowIso = new Date().toISOString();
+    const milestones = { ...(project.onboardingMilestones || {}) };
+    const existingMilestone = milestones[milestoneKey] || { completed: false };
+
+    if (dto.markCurrentMilestoneComplete || project.onboardingPhaseStatus === OnboardingPhaseStatus.COMPLETED) {
+      milestones[milestoneKey] = {
+        ...existingMilestone,
+        completed: true,
+        completedAt: existingMilestone.completedAt || nowIso,
+        ownerUserId: dto.ownerUserId || existingMilestone.ownerUserId || actorUserId,
+        notes: dto.notes || existingMilestone.notes,
+      };
+    } else {
+      milestones[milestoneKey] = {
+        ...existingMilestone,
+        ownerUserId: dto.ownerUserId || existingMilestone.ownerUserId || actorUserId,
+        notes: dto.notes || existingMilestone.notes,
+      };
+    }
+
+    if (project.onboardingPhase === OnboardingPhase.FULL_GO_LIVE && project.onboardingPhaseStatus === OnboardingPhaseStatus.COMPLETED) {
+      project.onboardingCompletedAt = new Date();
+    }
+
+    project.onboardingMilestones = milestones;
+    return this.projectsRepository.save(project);
+  }
+
+  private getNextOnboardingPhase(phase: OnboardingPhase): OnboardingPhase {
+    const idx = ONBOARDING_PHASE_ORDER.indexOf(phase);
+    if (idx < 0 || idx === ONBOARDING_PHASE_ORDER.length - 1) {
+      return phase;
+    }
+    return ONBOARDING_PHASE_ORDER[idx + 1];
+  }
+
+  private phaseToMilestoneKey(phase: OnboardingPhase): string {
+    const keyMap: Record<OnboardingPhase, string> = {
+      [OnboardingPhase.PAYMENT_CONFIRMED]: 'paymentConfirmed',
+      [OnboardingPhase.WELCOME_AND_CALL_BOOKING]: 'welcomeAndCallBooking',
+      [OnboardingPhase.ONBOARDING_CALL]: 'onboardingCall',
+      [OnboardingPhase.CREDENTIAL_COLLECTION]: 'credentialCollection',
+      [OnboardingPhase.FOLLOW_UP_CALL]: 'followUpCall',
+      [OnboardingPhase.SOFT_LAUNCH]: 'softLaunch',
+      [OnboardingPhase.QA_MONITORING]: 'qaMonitoring',
+      [OnboardingPhase.FULL_GO_LIVE]: 'fullGoLive',
+    };
+    return keyMap[phase];
   }
 
   async addTeamMember(projectId: string, userId: string) {

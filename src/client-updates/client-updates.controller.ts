@@ -79,6 +79,11 @@ export class ClientUpdatesController {
     return await this.clientUpdatesService.getFormByToken(publicToken);
   }
 
+  @Get('forms/rapid-prospect/latest')
+  async getLatestRapidProspectFormToken() {
+    return await this.clientUpdatesService.getLatestRapidProspectPublishedFormToken();
+  }
+
   @Post('forms/:formId/publish')
   @UseGuards(JwtAuthGuard)
   async publishForm(@Param('formId') formId: string) {

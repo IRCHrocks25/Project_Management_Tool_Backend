@@ -3,6 +3,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { UpdateOnboardingPhaseDto } from './dto/update-onboarding-phase.dto';
 import { UserRole } from '../users/entities/user.entity';
 export declare class ProjectsController {
     private readonly projectsService;
@@ -22,6 +23,7 @@ export declare class ProjectsController {
         byStage: any[];
         overdue: number;
     }>;
+    getRapidProspectProjects(req: any): Promise<import("./entities/project.entity").Project[]>;
     getActivity(id: string): Promise<any[]>;
     updateStage(id: string, updateStageDto: UpdateProjectStageDto): Promise<import("./entities/project.entity").Project>;
     closeProject(id: string): Promise<import("./entities/project.entity").Project>;
@@ -46,4 +48,5 @@ export declare class ProjectsController {
         success: boolean;
     }>;
     update(id: string, updateProjectDto: UpdateProjectDto): Promise<import("./entities/project.entity").Project>;
+    updateOnboardingPhase(id: string, dto: UpdateOnboardingPhaseDto, req: any): Promise<import("./entities/project.entity").Project>;
 }

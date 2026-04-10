@@ -10,6 +10,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { UpdateOnboardingPhaseDto } from './dto/update-onboarding-phase.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
 export declare class ProjectsService {
@@ -54,6 +55,10 @@ export declare class ProjectsService {
         byStage: any[];
         overdue: number;
     }>;
+    getRapidProspectProjects(userId: string, userRole: string): Promise<Project[]>;
+    updateOnboardingPhase(projectId: string, dto: UpdateOnboardingPhaseDto, actorUserId?: string): Promise<Project>;
+    private getNextOnboardingPhase;
+    private phaseToMilestoneKey;
     addTeamMember(projectId: string, userId: string): Promise<ProjectTeamMember>;
     removeTeamMember(projectId: string, userId: string): Promise<{
         success: boolean;

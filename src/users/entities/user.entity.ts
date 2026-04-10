@@ -9,6 +9,7 @@ import {
 export enum UserRole {
   FOUNDER_CEO = 'FOUNDER/CEO',
   PROJECT_MANAGER = 'Project Manager',
+  RAPID_PROSPECT = 'Rapid Prospect',
   COPY_WRITING = 'Copy Writing',
   DESIGNER = 'Designer',
   DEVELOPER = 'Developer',

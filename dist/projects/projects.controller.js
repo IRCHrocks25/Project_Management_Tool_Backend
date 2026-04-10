@@ -19,6 +19,7 @@ const create_project_dto_1 = require("./dto/create-project.dto");
 const create_project_webhook_dto_1 = require("./dto/create-project-webhook.dto");
 const update_project_stage_dto_1 = require("./dto/update-project-stage.dto");
 const update_project_dto_1 = require("./dto/update-project.dto");
+const update_onboarding_phase_dto_1 = require("./dto/update-onboarding-phase.dto");
 const webhook_guard_1 = require("./guards/webhook.guard");
 const user_entity_1 = require("../users/entities/user.entity");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
@@ -57,6 +58,9 @@ let ProjectsController = class ProjectsController {
     }
     async getStats(req) {
         return this.projectsService.getStats(req.user?.userId, req.user?.role);
+    }
+    async getRapidProspectProjects(req) {
+        return this.projectsService.getRapidProspectProjects(req.user?.userId, req.user?.role);
     }
     async getActivity(id) {
         return this.projectsService.getActivity(id);
@@ -126,6 +130,9 @@ let ProjectsController = class ProjectsController {
     async update(id, updateProjectDto) {
         return this.projectsService.update(id, updateProjectDto);
     }
+    async updateOnboardingPhase(id, dto, req) {
+        return this.projectsService.updateOnboardingPhase(id, dto, req.user?.userId || req.user?.id);
+    }
 };
 exports.ProjectsController = ProjectsController;
 __decorate([
@@ -169,6 +176,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Get)('rapid-prospect'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "getRapidProspectProjects", null);
 __decorate([
     (0, common_1.Get)(':id/activity'),
     __param(0, (0, common_1.Param)('id')),
@@ -263,6 +278,16 @@ __decorate([
     __metadata("design:paramtypes", [String, update_project_dto_1.UpdateProjectDto]),
     __metadata("design:returntype", Promise)
 ], ProjectsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Patch)(':id/onboarding-phase'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_onboarding_phase_dto_1.UpdateOnboardingPhaseDto, Object]),
+    __metadata("design:returntype", Promise)
+], ProjectsController.prototype, "updateOnboardingPhase", null);
 exports.ProjectsController = ProjectsController = __decorate([
     (0, common_1.Controller)('projects'),
     __metadata("design:paramtypes", [projects_service_1.ProjectsService])

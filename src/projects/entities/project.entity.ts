@@ -23,6 +23,7 @@ export enum ClientType {
   PRIVATE = 'Private',
   PREMIUM = 'Premium',
   POWERED_UP = 'Powered-Up',
+  RAPID_PROSPECT = 'Rapid Prospect',
 }
 
 export enum PackageType {
@@ -54,6 +55,34 @@ export enum ProjectStage {
   READY_TO_CLOSE = 'Ready to Close',
   CLOSED = 'Closed',
 }
+
+export enum OnboardingPhase {
+  PAYMENT_CONFIRMED = 'Payment Confirmed',
+  WELCOME_AND_CALL_BOOKING = 'Welcome + Call Booking',
+  ONBOARDING_CALL = 'Onboarding Call',
+  CREDENTIAL_COLLECTION = 'Credential Collection',
+  FOLLOW_UP_CALL = 'Follow-Up Call',
+  SOFT_LAUNCH = 'Soft Launch',
+  QA_MONITORING = 'Background QA Monitoring',
+  FULL_GO_LIVE = 'Full Go-Live',
+}
+
+export enum OnboardingPhaseStatus {
+  NOT_STARTED = 'Not Started',
+  IN_PROGRESS = 'In Progress',
+  COMPLETED = 'Completed',
+  BLOCKED = 'Blocked',
+}
+
+export type OnboardingMilestones = Record<
+  string,
+  {
+    completed: boolean;
+    completedAt?: string;
+    ownerUserId?: string;
+    notes?: string;
+  }
+>;
 
 @Entity('projects')
 export class Project {
@@ -148,6 +177,38 @@ export class Project {
 
   @Column({ nullable: true })
   completedByUserId: string;
+
+  @Column({
+    type: 'enum',
+    enum: OnboardingPhase,
+    nullable: true,
+  })
+  onboardingPhase?: OnboardingPhase;
+
+  @Column({
+    type: 'enum',
+    enum: OnboardingPhaseStatus,
+    nullable: true,
+  })
+  onboardingPhaseStatus?: OnboardingPhaseStatus;
+
+  @Column({ type: 'timestamp', nullable: true })
+  onboardingStartedAt?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  onboardingCompletedAt?: Date;
+
+  @Column({ type: 'jsonb', nullable: true })
+  onboardingMilestones?: OnboardingMilestones;
+
+  @Column({ nullable: true })
+  onboardingManagerId?: string;
+
+  @Column({ nullable: true })
+  automationSpecialistId?: string;
+
+  @Column({ nullable: true })
+  qaSpecialistId?: string;
 
   @OneToMany(() => Task, (task) => task.project)
   tasks: Task[];

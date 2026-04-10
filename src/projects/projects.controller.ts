@@ -18,6 +18,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateProjectWebhookDto } from './dto/create-project-webhook.dto';
 import { UpdateProjectStageDto } from './dto/update-project-stage.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { UpdateOnboardingPhaseDto } from './dto/update-onboarding-phase.dto';
 import { WebhookGuard } from './guards/webhook.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -76,6 +77,12 @@ export class ProjectsController {
   @Get('stats')
   async getStats(@Request() req: any) {
     return this.projectsService.getStats(req.user?.userId, req.user?.role);
+  }
+
+  @Get('rapid-prospect')
+  @UseGuards(JwtAuthGuard)
+  async getRapidProspectProjects(@Request() req: any) {
+    return this.projectsService.getRapidProspectProjects(req.user?.userId, req.user?.role);
   }
 
   @Get(':id/activity')
@@ -188,6 +195,16 @@ export class ProjectsController {
   @UseGuards(JwtAuthGuard)
   async update(@Param('id') id: string, @Body() updateProjectDto: UpdateProjectDto) {
     return this.projectsService.update(id, updateProjectDto);
+  }
+
+  @Patch(':id/onboarding-phase')
+  @UseGuards(JwtAuthGuard)
+  async updateOnboardingPhase(
+    @Param('id') id: string,
+    @Body() dto: UpdateOnboardingPhaseDto,
+    @Request() req: any,
+  ) {
+    return this.projectsService.updateOnboardingPhase(id, dto, req.user?.userId || req.user?.id);
   }
 }
 

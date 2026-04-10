@@ -49,7 +49,10 @@
     "migrate:eod-report-snapshots": "node scripts/create-eod-report-snapshots.js",
     "migrate:department-project-focus": "node scripts/create-department-project-focus-items.js",
     "migrate:department-project-focus-override": "node scripts/create-department-project-focus-override-items.js",
-    "migrate:department-project-focus-task-based": "node scripts/alter-department-project-focus-to-task-based.js"
+    "migrate:department-project-focus-task-based": "node scripts/alter-department-project-focus-to-task-based.js",
+    "migrate:rapid-prospect-client-type": "node scripts/add-rapid-prospect-client-type.js",
+    "migrate:onboarding-lifecycle": "node scripts/add-onboarding-lifecycle-columns.js",
+    "migrate:rapid-prospect-user-role": "node scripts/add-rapid-prospect-user-role.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

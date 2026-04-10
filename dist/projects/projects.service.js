@@ -58,6 +58,16 @@ const task_file_history_entity_1 = require("../tasks/entities/task-file-history.
 const user_entity_1 = require("../users/entities/user.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 const auth_service_1 = require("../auth/auth.service");
+const ONBOARDING_PHASE_ORDER = [
+    project_entity_1.OnboardingPhase.PAYMENT_CONFIRMED,
+    project_entity_1.OnboardingPhase.WELCOME_AND_CALL_BOOKING,
+    project_entity_1.OnboardingPhase.ONBOARDING_CALL,
+    project_entity_1.OnboardingPhase.CREDENTIAL_COLLECTION,
+    project_entity_1.OnboardingPhase.FOLLOW_UP_CALL,
+    project_entity_1.OnboardingPhase.SOFT_LAUNCH,
+    project_entity_1.OnboardingPhase.QA_MONITORING,
+    project_entity_1.OnboardingPhase.FULL_GO_LIVE,
+];
 let ProjectsService = class ProjectsService {
     constructor(projectsRepository, teamMembersRepository, tasksRepository, deliverablesRepository, deliverableHistoryRepository, taskFileHistoryRepository, usersRepository, notificationsService, authService) {
         this.projectsRepository = projectsRepository;
@@ -757,6 +767,92 @@ let ProjectsService = class ProjectsService {
             byStage,
             overdue,
         };
+    }
+    async getRapidProspectProjects(userId, userRole) {
+        const queryBuilder = this.projectsRepository
+            .createQueryBuilder('project')
+            .leftJoinAndSelect('project.pm', 'pm')
+            .where('project.clientType = :clientType', { clientType: project_entity_1.ClientType.RAPID_PROSPECT })
+            .andWhere('project.isArchived = :isArchived', { isArchived: false })
+            .andWhere('project.isCompleted = :isCompleted', { isCompleted: false });
+        if (userRole === 'Project Manager') {
+            queryBuilder.andWhere('project.pmId = :userId', { userId });
+        }
+        return queryBuilder.orderBy('project.updatedAt', 'DESC').getMany();
+    }
+    async updateOnboardingPhase(projectId, dto, actorUserId) {
+        const project = await this.findOne(projectId);
+        if (project.clientType !== project_entity_1.ClientType.RAPID_PROSPECT) {
+            throw new common_1.BadRequestException('Onboarding phase updates are only available for Rapid Prospect clients');
+        }
+        if (dto.onboardingManagerId !== undefined) {
+            project.onboardingManagerId = dto.onboardingManagerId;
+        }
+        if (dto.automationSpecialistId !== undefined) {
+            project.automationSpecialistId = dto.automationSpecialistId;
+        }
+        if (dto.qaSpecialistId !== undefined) {
+            project.qaSpecialistId = dto.qaSpecialistId;
+        }
+        const currentPhase = project.onboardingPhase || project_entity_1.OnboardingPhase.WELCOME_AND_CALL_BOOKING;
+        let targetPhase = dto.phase || currentPhase;
+        if (dto.advanceToNextPhase) {
+            targetPhase = this.getNextOnboardingPhase(currentPhase);
+        }
+        const currentIndex = ONBOARDING_PHASE_ORDER.indexOf(currentPhase);
+        const targetIndex = ONBOARDING_PHASE_ORDER.indexOf(targetPhase);
+        if (currentIndex >= 0 && targetIndex > currentIndex + 1) {
+            throw new common_1.BadRequestException('Phase progression can only move one step at a time');
+        }
+        project.onboardingPhase = targetPhase;
+        project.onboardingPhaseStatus =
+            dto.status || (targetPhase === project_entity_1.OnboardingPhase.FULL_GO_LIVE ? project_entity_1.OnboardingPhaseStatus.COMPLETED : project_entity_1.OnboardingPhaseStatus.IN_PROGRESS);
+        project.onboardingStartedAt = project.onboardingStartedAt || new Date();
+        const milestoneKey = dto.milestoneKey || this.phaseToMilestoneKey(targetPhase);
+        const nowIso = new Date().toISOString();
+        const milestones = { ...(project.onboardingMilestones || {}) };
+        const existingMilestone = milestones[milestoneKey] || { completed: false };
+        if (dto.markCurrentMilestoneComplete || project.onboardingPhaseStatus === project_entity_1.OnboardingPhaseStatus.COMPLETED) {
+            milestones[milestoneKey] = {
+                ...existingMilestone,
+                completed: true,
+                completedAt: existingMilestone.completedAt || nowIso,
+                ownerUserId: dto.ownerUserId || existingMilestone.ownerUserId || actorUserId,
+                notes: dto.notes || existingMilestone.notes,
+            };
+        }
+        else {
+            milestones[milestoneKey] = {
+                ...existingMilestone,
+                ownerUserId: dto.ownerUserId || existingMilestone.ownerUserId || actorUserId,
+                notes: dto.notes || existingMilestone.notes,
+            };
+        }
+        if (project.onboardingPhase === project_entity_1.OnboardingPhase.FULL_GO_LIVE && project.onboardingPhaseStatus === project_entity_1.OnboardingPhaseStatus.COMPLETED) {
+            project.onboardingCompletedAt = new Date();
+        }
+        project.onboardingMilestones = milestones;
+        return this.projectsRepository.save(project);
+    }
+    getNextOnboardingPhase(phase) {
+        const idx = ONBOARDING_PHASE_ORDER.indexOf(phase);
+        if (idx < 0 || idx === ONBOARDING_PHASE_ORDER.length - 1) {
+            return phase;
+        }
+        return ONBOARDING_PHASE_ORDER[idx + 1];
+    }
+    phaseToMilestoneKey(phase) {
+        const keyMap = {
+            [project_entity_1.OnboardingPhase.PAYMENT_CONFIRMED]: 'paymentConfirmed',
+            [project_entity_1.OnboardingPhase.WELCOME_AND_CALL_BOOKING]: 'welcomeAndCallBooking',
+            [project_entity_1.OnboardingPhase.ONBOARDING_CALL]: 'onboardingCall',
+            [project_entity_1.OnboardingPhase.CREDENTIAL_COLLECTION]: 'credentialCollection',
+            [project_entity_1.OnboardingPhase.FOLLOW_UP_CALL]: 'followUpCall',
+            [project_entity_1.OnboardingPhase.SOFT_LAUNCH]: 'softLaunch',
+            [project_entity_1.OnboardingPhase.QA_MONITORING]: 'qaMonitoring',
+            [project_entity_1.OnboardingPhase.FULL_GO_LIVE]: 'fullGoLive',
+        };
+        return keyMap[phase];
     }
     async addTeamMember(projectId, userId) {
         const project = await this.projectsRepository.findOne({ where: { id: projectId } });

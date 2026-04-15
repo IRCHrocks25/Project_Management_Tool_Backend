@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -97,6 +98,10 @@ export class AuthService {
       }
       
       // Use found user
+      if (foundUser.isActive === false) {
+        throw new UnauthorizedException('Your account access has been revoked. Please contact Head PM.');
+      }
+
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
       
       if (!isPasswordValid) {
@@ -118,6 +123,10 @@ export class AuthService {
     }
 
     // Verify password
+    if (user.isActive === false) {
+      throw new UnauthorizedException('Your account access has been revoked. Please contact Head PM.');
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -147,12 +156,16 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    if (user.isActive === false) {
+      throw new UnauthorizedException('Your account access has been revoked');
+    }
+
     return user;
   }
 
   async getAllUsers() {
     const users = await this.usersRepository.find({
-      select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM', 'avatarUrl', 'birthday', 'bio'],
+      select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM', 'isActive', 'avatarUrl', 'birthday', 'bio'],
       order: { name: 'ASC' },
     });
     return users;
@@ -221,6 +234,75 @@ export class AuthService {
     const saved = await this.usersRepository.save(user);
     const { password, ...userWithoutPassword } = saved;
     return userWithoutPassword;
+  }
+
+  private async ensureCanManageUsers(actorUserId: string): Promise<User> {
+    const actor = await this.usersRepository.findOne({ where: { id: actorUserId } });
+    if (!actor) {
+      throw new UnauthorizedException('Requesting user not found');
+    }
+    const isFounder = actor.role === UserRole.FOUNDER_CEO;
+    if (!actor.isHeadPM && !isFounder) {
+      throw new ForbiddenException('Only Head PM can manage users');
+    }
+    return actor;
+  }
+
+  async updateUserRole(userId: string, role: UserRole, actorUserId: string) {
+    const actor = await this.ensureCanManageUsers(actorUserId);
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.id === actor.id && role !== user.role) {
+      throw new BadRequestException('You cannot change your own department');
+    }
+
+    user.role = role;
+    if (role !== UserRole.PROJECT_MANAGER) {
+      user.isHeadPM = false;
+    }
+    const saved = await this.usersRepository.save(user);
+    const { password, ...userWithoutPassword } = saved;
+    return userWithoutPassword;
+  }
+
+  async setUserAccess(userId: string, isActive: boolean, actorUserId: string) {
+    const actor = await this.ensureCanManageUsers(actorUserId);
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.id === actor.id && !isActive) {
+      throw new BadRequestException('You cannot revoke your own access');
+    }
+
+    user.isActive = isActive;
+    if (!isActive) {
+      user.isHeadPM = false;
+      user.isTeamLead = false;
+    }
+    const saved = await this.usersRepository.save(user);
+    const { password, ...userWithoutPassword } = saved;
+    return userWithoutPassword;
+  }
+
+  async adminResetUserPassword(userId: string, newPassword: string, actorUserId: string) {
+    await this.ensureCanManageUsers(actorUserId);
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    user.otpCode = null;
+    user.otpExpires = null;
+    await this.usersRepository.save(user);
+    return { message: 'User password has been reset successfully' };
   }
 
   /**

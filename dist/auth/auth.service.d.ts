@@ -26,6 +26,7 @@ export declare class AuthService {
             role: UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -46,6 +47,7 @@ export declare class AuthService {
             role: UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -67,6 +69,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;
@@ -87,6 +90,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;
@@ -104,6 +108,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;
@@ -113,6 +118,46 @@ export declare class AuthService {
         avatarUrl: string;
         birthday: string;
         bio: string;
+    }>;
+    private ensureCanManageUsers;
+    updateUserRole(userId: string, role: UserRole, actorUserId: string): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
+    }>;
+    setUserAccess(userId: string, isActive: boolean, actorUserId: string): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
+    }>;
+    adminResetUserPassword(userId: string, newPassword: string, actorUserId: string): Promise<{
+        message: string;
     }>;
     getOrCreateWebhookPM(): Promise<User>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;

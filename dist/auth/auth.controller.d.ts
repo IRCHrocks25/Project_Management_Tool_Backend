@@ -7,6 +7,9 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordOtpDto } from './dto/reset-password-otp.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { SetUserAccessDto } from './dto/set-user-access.dto';
+import { AdminResetUserPasswordDto } from './dto/admin-reset-user-password.dto';
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
@@ -18,6 +21,7 @@ export declare class AuthController {
             role: import("../users/entities/user.entity").UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -38,6 +42,7 @@ export declare class AuthController {
             role: import("../users/entities/user.entity").UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             resetPasswordToken: string;
@@ -60,6 +65,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;
@@ -79,6 +85,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;
@@ -88,6 +95,57 @@ export declare class AuthController {
         avatarUrl: string;
         birthday: string;
         bio: string;
+    }>;
+    updateUserRole(id: string, dto: UpdateUserRoleDto, req: {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: import("../users/entities/user.entity").UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
+    }>;
+    setUserAccess(id: string, dto: SetUserAccessDto, req: {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        role: import("../users/entities/user.entity").UserRole;
+        isTeamLead: boolean;
+        isHeadPM: boolean;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        resetPasswordToken: string;
+        resetPasswordExpires: Date;
+        otpCode: string;
+        otpExpires: Date;
+        avatarUrl: string;
+        birthday: string;
+        bio: string;
+    }>;
+    adminResetUserPassword(id: string, dto: AdminResetUserPasswordDto, req: {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        message: string;
     }>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<any>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
@@ -111,6 +169,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         resetPasswordToken: string;

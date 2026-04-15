@@ -46,6 +46,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   isHeadPM: boolean;
 
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

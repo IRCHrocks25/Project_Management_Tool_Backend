@@ -8,6 +8,9 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordOtpDto } from './dto/reset-password-otp.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { SetUserAccessDto } from './dto/set-user-access.dto';
+import { AdminResetUserPasswordDto } from './dto/admin-reset-user-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -50,6 +53,39 @@ export class AuthController {
     @Body() body: { isHeadPM: boolean },
   ) {
     return this.authService.setHeadPM(id, body.isHeadPM);
+  }
+
+  @Post('users/:id/role')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateUserRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserRoleDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.authService.updateUserRole(id, dto.role, req.user.userId);
+  }
+
+  @Post('users/:id/access')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async setUserAccess(
+    @Param('id') id: string,
+    @Body() dto: SetUserAccessDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.authService.setUserAccess(id, dto.isActive, req.user.userId);
+  }
+
+  @Post('users/:id/reset-password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async adminResetUserPassword(
+    @Param('id') id: string,
+    @Body() dto: AdminResetUserPasswordDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.authService.adminResetUserPassword(id, dto.newPassword, req.user.userId);
   }
 
   @Post('forgot-password')

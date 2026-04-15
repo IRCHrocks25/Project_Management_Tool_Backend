@@ -23,6 +23,9 @@ const verify_otp_dto_1 = require("./dto/verify-otp.dto");
 const reset_password_otp_dto_1 = require("./dto/reset-password-otp.dto");
 const update_profile_dto_1 = require("./dto/update-profile.dto");
 const change_password_dto_1 = require("./dto/change-password.dto");
+const update_user_role_dto_1 = require("./dto/update-user-role.dto");
+const set_user_access_dto_1 = require("./dto/set-user-access.dto");
+const admin_reset_user_password_dto_1 = require("./dto/admin-reset-user-password.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 let AuthController = class AuthController {
     constructor(authService) {
@@ -42,6 +45,15 @@ let AuthController = class AuthController {
     }
     async setHeadPM(id, body) {
         return this.authService.setHeadPM(id, body.isHeadPM);
+    }
+    async updateUserRole(id, dto, req) {
+        return this.authService.updateUserRole(id, dto.role, req.user.userId);
+    }
+    async setUserAccess(id, dto, req) {
+        return this.authService.setUserAccess(id, dto.isActive, req.user.userId);
+    }
+    async adminResetUserPassword(id, dto, req) {
+        return this.authService.adminResetUserPassword(id, dto.newPassword, req.user.userId);
     }
     async forgotPassword(forgotPasswordDto) {
         console.log('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
@@ -117,6 +129,39 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "setHeadPM", null);
+__decorate([
+    (0, common_1.Post)('users/:id/role'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_user_role_dto_1.UpdateUserRoleDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "updateUserRole", null);
+__decorate([
+    (0, common_1.Post)('users/:id/access'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, set_user_access_dto_1.SetUserAccessDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "setUserAccess", null);
+__decorate([
+    (0, common_1.Post)('users/:id/reset-password'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, admin_reset_user_password_dto_1.AdminResetUserPasswordDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "adminResetUserPassword", null);
 __decorate([
     (0, common_1.Post)('forgot-password'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

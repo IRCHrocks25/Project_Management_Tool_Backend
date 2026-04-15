@@ -101,6 +101,9 @@ let AuthService = class AuthService {
                 console.log(`Login attempt failed: User not found for email: ${normalizedEmail}`);
                 throw new common_1.UnauthorizedException('Invalid email or password');
             }
+            if (foundUser.isActive === false) {
+                throw new common_1.UnauthorizedException('Your account access has been revoked. Please contact Head PM.');
+            }
             const isPasswordValid = await bcrypt.compare(password, foundUser.password);
             if (!isPasswordValid) {
                 console.log(`Login attempt failed: Invalid password for email: ${normalizedEmail}`);
@@ -113,6 +116,9 @@ let AuthService = class AuthService {
                 user: userWithoutPassword,
                 token,
             };
+        }
+        if (user.isActive === false) {
+            throw new common_1.UnauthorizedException('Your account access has been revoked. Please contact Head PM.');
         }
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
@@ -134,11 +140,14 @@ let AuthService = class AuthService {
         if (!user) {
             throw new common_1.UnauthorizedException('User not found');
         }
+        if (user.isActive === false) {
+            throw new common_1.UnauthorizedException('Your account access has been revoked');
+        }
         return user;
     }
     async getAllUsers() {
         const users = await this.usersRepository.find({
-            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM', 'avatarUrl', 'birthday', 'bio'],
+            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM', 'isActive', 'avatarUrl', 'birthday', 'bio'],
             order: { name: 'ASC' },
         });
         return users;
@@ -203,6 +212,66 @@ let AuthService = class AuthService {
         const saved = await this.usersRepository.save(user);
         const { password, ...userWithoutPassword } = saved;
         return userWithoutPassword;
+    }
+    async ensureCanManageUsers(actorUserId) {
+        const actor = await this.usersRepository.findOne({ where: { id: actorUserId } });
+        if (!actor) {
+            throw new common_1.UnauthorizedException('Requesting user not found');
+        }
+        const isFounder = actor.role === user_entity_1.UserRole.FOUNDER_CEO;
+        if (!actor.isHeadPM && !isFounder) {
+            throw new common_1.ForbiddenException('Only Head PM can manage users');
+        }
+        return actor;
+    }
+    async updateUserRole(userId, role, actorUserId) {
+        const actor = await this.ensureCanManageUsers(actorUserId);
+        const user = await this.usersRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (user.id === actor.id && role !== user.role) {
+            throw new common_1.BadRequestException('You cannot change your own department');
+        }
+        user.role = role;
+        if (role !== user_entity_1.UserRole.PROJECT_MANAGER) {
+            user.isHeadPM = false;
+        }
+        const saved = await this.usersRepository.save(user);
+        const { password, ...userWithoutPassword } = saved;
+        return userWithoutPassword;
+    }
+    async setUserAccess(userId, isActive, actorUserId) {
+        const actor = await this.ensureCanManageUsers(actorUserId);
+        const user = await this.usersRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (user.id === actor.id && !isActive) {
+            throw new common_1.BadRequestException('You cannot revoke your own access');
+        }
+        user.isActive = isActive;
+        if (!isActive) {
+            user.isHeadPM = false;
+            user.isTeamLead = false;
+        }
+        const saved = await this.usersRepository.save(user);
+        const { password, ...userWithoutPassword } = saved;
+        return userWithoutPassword;
+    }
+    async adminResetUserPassword(userId, newPassword, actorUserId) {
+        await this.ensureCanManageUsers(actorUserId);
+        const user = await this.usersRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        user.otpCode = null;
+        user.otpExpires = null;
+        await this.usersRepository.save(user);
+        return { message: 'User password has been reset successfully' };
     }
     async getOrCreateWebhookPM() {
         const webhookEmail = 'webhook@katalyst.pm';

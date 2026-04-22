@@ -15,6 +15,7 @@ import { ChatModule } from './chat/chat.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { DailyFocusModule } from './daily-focus/daily-focus.module';
 import { DepartmentProjectFocusModule } from './department-project-focus/department-project-focus.module';
+import { MonthlyRemindersModule } from './monthly-reminders/monthly-reminders.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { DepartmentProjectFocusModule } from './department-project-focus/departm
     TicketsModule,
     DailyFocusModule,
     DepartmentProjectFocusModule,
+    MonthlyRemindersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

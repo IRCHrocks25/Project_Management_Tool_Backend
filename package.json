@@ -53,7 +53,8 @@
     "migrate:rapid-prospect-client-type": "node scripts/add-rapid-prospect-client-type.js",
     "migrate:onboarding-lifecycle": "node scripts/add-onboarding-lifecycle-columns.js",
     "migrate:rapid-prospect-user-role": "node scripts/add-rapid-prospect-user-role.js",
-    "migrate:user-active-flag": "node scripts/add-user-active-flag.js"
+    "migrate:user-active-flag": "node scripts/add-user-active-flag.js",
+    "migrate:monthly-reminders": "node scripts/create-monthly-reminders-table.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

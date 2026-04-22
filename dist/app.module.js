@@ -24,6 +24,7 @@ const chat_module_1 = require("./chat/chat.module");
 const tickets_module_1 = require("./tickets/tickets.module");
 const daily_focus_module_1 = require("./daily-focus/daily-focus.module");
 const department_project_focus_module_1 = require("./department-project-focus/department-project-focus.module");
+const monthly_reminders_module_1 = require("./monthly-reminders/monthly-reminders.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -48,6 +49,7 @@ exports.AppModule = AppModule = __decorate([
             tickets_module_1.TicketsModule,
             daily_focus_module_1.DailyFocusModule,
             department_project_focus_module_1.DepartmentProjectFocusModule,
+            monthly_reminders_module_1.MonthlyRemindersModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -47,6 +47,25 @@ let NotificationsService = class NotificationsService {
             return 'SEO/GEO';
         return null;
     }
+    normalizeFrontendUrl(rawUrl) {
+        if (!rawUrl)
+            return '';
+        const candidates = rawUrl
+            .split(/[\s,]+/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+        for (const candidate of candidates) {
+            try {
+                const parsed = new URL(candidate);
+                if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                    return parsed.toString().replace(/\/$/, '');
+                }
+            }
+            catch {
+            }
+        }
+        return '';
+    }
     async create(data) {
         const notification = this.notificationsRepository.create(data);
         const saved = await this.notificationsRepository.save(notification);
@@ -83,11 +102,11 @@ let NotificationsService = class NotificationsService {
         if (!user?.email)
             return;
         const appName = this.configService.get('APP_NAME', 'Katalyst PM');
-        const frontendUrl = this.configService.get('FRONTEND_URL', '').replace(/\/$/, '');
+        const frontendUrl = this.normalizeFrontendUrl(this.configService.get('FRONTEND_URL', ''));
         let viewLink = '';
         if (frontendUrl) {
             viewLink = projectId
-                ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}` : ''}`
+                ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}&tab=details` : ''}`
                 : frontendUrl;
         }
         await this.sendNotificationViaWebhook({

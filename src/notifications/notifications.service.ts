@@ -36,6 +36,31 @@ export class NotificationsService {
     return null;
   }
 
+  /**
+   * FRONTEND_URL can sometimes be provided as a comma/newline separated list.
+   * We pick the first valid http(s) URL to avoid malformed email links.
+   */
+  private normalizeFrontendUrl(rawUrl?: string): string {
+    if (!rawUrl) return '';
+    const candidates = rawUrl
+      .split(/[\s,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    for (const candidate of candidates) {
+      try {
+        const parsed = new URL(candidate);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          return parsed.toString().replace(/\/$/, '');
+        }
+      } catch {
+        // Skip invalid candidates.
+      }
+    }
+
+    return '';
+  }
+
   async create(data: {
     type: NotificationType;
     title: string;
@@ -101,11 +126,11 @@ export class NotificationsService {
     if (!user?.email) return;
 
     const appName = this.configService.get<string>('APP_NAME', 'Katalyst PM');
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', '').replace(/\/$/, '');
+    const frontendUrl = this.normalizeFrontendUrl(this.configService.get<string>('FRONTEND_URL', ''));
     let viewLink = '';
     if (frontendUrl) {
       viewLink = projectId
-        ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}` : ''}`
+        ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}&tab=details` : ''}`
         : frontendUrl;
     }
 

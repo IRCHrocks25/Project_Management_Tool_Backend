@@ -10,6 +10,7 @@ export declare class NotificationsService {
     private notificationsGateway;
     constructor(notificationsRepository: Repository<Notification>, usersRepository: Repository<User>, configService: ConfigService, notificationsGateway: NotificationsGateway);
     private getDepartmentLabelFromTaskType;
+    private normalizeFrontendUrl;
     create(data: {
         type: NotificationType;
         title: string;

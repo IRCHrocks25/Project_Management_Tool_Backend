@@ -18,5 +18,9 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsUUID()
   pmId?: string;
+
+  @IsOptional()
+  @IsString()
+  associatedLink?: string;
 }
 

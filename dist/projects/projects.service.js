@@ -515,6 +515,10 @@ let ProjectsService = class ProjectsService {
             project.pm = pmUser;
             console.log(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
         }
+        if (updateProjectDto.associatedLink !== undefined) {
+            const normalizedLink = updateProjectDto.associatedLink.trim();
+            project.associatedLink = normalizedLink || undefined;
+        }
         const allClientTypes = [
             project.clientType,
             ...(project.secondaryClientTypes || [])

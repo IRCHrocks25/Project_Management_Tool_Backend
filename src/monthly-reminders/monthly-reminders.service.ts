@@ -23,6 +23,12 @@ export class MonthlyRemindersService {
     private readonly projectsRepository: Repository<Project>,
   ) {}
 
+  private getCurrentMonthKey(): string {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${now.getFullYear()}-${month}`;
+  }
+
   private async assertPmAccess(userId: string): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new ForbiddenException('User not found');
@@ -74,6 +80,10 @@ export class MonthlyRemindersService {
       clientName,
       reminderDay: dto.reminderDay,
       note: dto.note.trim(),
+      reminderLink: dto.reminderLink?.trim() || null,
+      currentMonthKey: dto.currentMonthKey || this.getCurrentMonthKey(),
+      currentMonthStatus: dto.currentMonthStatus || 'pending',
+      nextMonthStatus: dto.nextMonthStatus ?? null,
       createdById: userId,
       updatedById: userId,
     });
@@ -103,6 +113,10 @@ export class MonthlyRemindersService {
 
     if (typeof dto.reminderDay === 'number') reminder.reminderDay = dto.reminderDay;
     if (typeof dto.note === 'string') reminder.note = dto.note.trim();
+    if (typeof dto.reminderLink === 'string') reminder.reminderLink = dto.reminderLink.trim() || null;
+    if (Object.prototype.hasOwnProperty.call(dto, 'currentMonthKey')) reminder.currentMonthKey = dto.currentMonthKey || null;
+    if (typeof dto.currentMonthStatus === 'string') reminder.currentMonthStatus = dto.currentMonthStatus;
+    if (Object.prototype.hasOwnProperty.call(dto, 'nextMonthStatus')) reminder.nextMonthStatus = dto.nextMonthStatus ?? null;
 
     const clientNameCandidate =
       project?.clientName ||
@@ -111,6 +125,8 @@ export class MonthlyRemindersService {
       throw new BadRequestException('Client name is required when no project is linked.');
     }
     reminder.clientName = clientNameCandidate;
+    if (!reminder.currentMonthKey) reminder.currentMonthKey = this.getCurrentMonthKey();
+    if (!reminder.currentMonthStatus) reminder.currentMonthStatus = 'pending';
     reminder.updatedById = userId;
 
     return this.remindersRepository.save(reminder);

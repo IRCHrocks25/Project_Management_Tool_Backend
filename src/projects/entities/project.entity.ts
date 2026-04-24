@@ -130,6 +130,9 @@ export class Project {
   @Column('text', { nullable: true })
   notes: string;
 
+  @Column('text', { nullable: true })
+  associatedLink?: string;
+
   @Column({
     type: 'enum',
     enum: ProjectStage,

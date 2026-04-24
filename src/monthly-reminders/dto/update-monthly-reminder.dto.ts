@@ -25,5 +25,21 @@ export class UpdateMonthlyReminderDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  reminderLink?: string;
+
+  @IsOptional()
+  @IsString()
+  currentMonthKey?: string | null;
+
+  @IsOptional()
+  @IsString()
+  currentMonthStatus?: 'pending' | 'done' | 'no';
+
+  @IsOptional()
+  @IsString()
+  nextMonthStatus?: 'pending' | 'done' | 'no' | null;
 }
 

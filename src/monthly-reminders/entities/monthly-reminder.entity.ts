@@ -34,6 +34,18 @@ export class MonthlyReminder {
   @Column({ type: 'text' })
   note: string;
 
+  @Column({ type: 'text', nullable: true })
+  reminderLink: string | null;
+
+  @Column({ type: 'varchar', length: 7, nullable: true })
+  currentMonthKey: string | null; // YYYY-MM
+
+  @Column({ type: 'varchar', length: 12, default: 'pending' })
+  currentMonthStatus: 'pending' | 'done' | 'no';
+
+  @Column({ type: 'varchar', length: 12, nullable: true })
+  nextMonthStatus: 'pending' | 'done' | 'no' | null;
+
   @Column({ nullable: true })
   createdById: string | null;
 

@@ -133,6 +133,10 @@ __decorate([
     __metadata("design:type", String)
 ], Project.prototype, "notes", void 0);
 __decorate([
+    (0, typeorm_1.Column)('text', { nullable: true }),
+    __metadata("design:type", String)
+], Project.prototype, "associatedLink", void 0);
+__decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
         enum: ProjectStage,

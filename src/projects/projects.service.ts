@@ -619,6 +619,12 @@ export class ProjectsService {
       console.log(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
     }
 
+    // Update associated project link if provided
+    if (updateProjectDto.associatedLink !== undefined) {
+      const normalizedLink = updateProjectDto.associatedLink.trim();
+      project.associatedLink = normalizedLink || undefined;
+    }
+
     // Check if Katalyst is in client types (primary or secondary) and update stage to CRM if needed
     const allClientTypes = [
       project.clientType,

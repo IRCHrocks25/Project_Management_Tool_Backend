@@ -73,6 +73,7 @@ export declare class Project {
     targetCloseMonth: string;
     clientStartDate: Date;
     notes: string;
+    associatedLink?: string;
     stage: ProjectStage;
     copyRevisionCount: number;
     designRevisionCount: number;

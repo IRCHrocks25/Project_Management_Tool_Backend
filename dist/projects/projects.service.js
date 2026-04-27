@@ -83,16 +83,18 @@ let ProjectsService = class ProjectsService {
     async create(createProjectDto, userId) {
         const allClientTypes = [
             createProjectDto.clientType,
-            ...(createProjectDto.secondaryClientTypes || [])
+            ...(createProjectDto.secondaryClientTypes || []),
         ];
-        const isKatalyst = allClientTypes.some(type => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
+        const isKatalyst = allClientTypes.some((type) => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
         const isPremiumOrPoweredUp = createProjectDto.clientType === project_entity_1.ClientType.PREMIUM ||
             createProjectDto.clientType === project_entity_1.ClientType.POWERED_UP;
-        const initialStage = (isKatalyst || isPremiumOrPoweredUp) ? project_entity_1.ProjectStage.CRM : project_entity_1.ProjectStage.INTAKE;
+        const initialStage = isKatalyst || isPremiumOrPoweredUp ? project_entity_1.ProjectStage.CRM : project_entity_1.ProjectStage.INTAKE;
         const project = this.projectsRepository.create({
             ...createProjectDto,
-            secondaryClientTypes: createProjectDto.secondaryClientTypes?.map(t => t.toString()) || null,
-            clientStartDate: createProjectDto.clientStartDate ? new Date(createProjectDto.clientStartDate) : null,
+            secondaryClientTypes: createProjectDto.secondaryClientTypes?.map((t) => t.toString()) || null,
+            clientStartDate: createProjectDto.clientStartDate
+                ? new Date(createProjectDto.clientStartDate)
+                : null,
             pmId: createProjectDto.pmId || userId,
             stage: initialStage,
         });
@@ -148,13 +150,13 @@ let ProjectsService = class ProjectsService {
         const deliverables = [];
         if (packageType === project_entity_1.PackageType.CUSTOM && customDeliverables && customDeliverables.length > 0) {
             const deliverableTypeMap = {
-                'Logo': deliverable_entity_1.DeliverableType.LOGO,
+                Logo: deliverable_entity_1.DeliverableType.LOGO,
                 'Brand Book': deliverable_entity_1.DeliverableType.BRAND_BOOK,
                 'Home Page': deliverable_entity_1.DeliverableType.LANDING_PAGE,
                 'Copy of Home Page': deliverable_entity_1.DeliverableType.COPY_OF_LANDING_PAGE,
                 'Speaker Kit': deliverable_entity_1.DeliverableType.SPEAKER_KIT,
                 'Social Banners': deliverable_entity_1.DeliverableType.SOCIAL_BANNERS,
-                'Other': deliverable_entity_1.DeliverableType.OTHER,
+                Other: deliverable_entity_1.DeliverableType.OTHER,
             };
             for (const deliverableName of customDeliverables) {
                 const deliverableType = deliverableTypeMap[deliverableName];
@@ -322,7 +324,14 @@ let ProjectsService = class ProjectsService {
             console.log(`[ProjectsService] Finding project with ID: ${id}`);
             const project = await this.projectsRepository.findOne({
                 where: { id },
-                relations: ['pm', 'deliverables', 'emails', 'emails.sentBy', 'teamMembers', 'teamMembers.user'],
+                relations: [
+                    'pm',
+                    'deliverables',
+                    'emails',
+                    'emails.sentBy',
+                    'teamMembers',
+                    'teamMembers.user',
+                ],
             });
             console.log(`[ProjectsService] Project found:`, project ? `Yes (${project.clientName})` : 'No');
             if (!project) {
@@ -434,7 +443,9 @@ let ProjectsService = class ProjectsService {
             const allTasks = await this.tasksRepository.find({
                 where: { projectId: project.id },
             });
-            const designTasks = allTasks.filter((t) => t.type === task_entity_1.TaskType.DESIGN && t.fileUrl && (t.fileUrl.includes('figma.com') || t.fileUrl.includes('figma')));
+            const designTasks = allTasks.filter((t) => t.type === task_entity_1.TaskType.DESIGN &&
+                t.fileUrl &&
+                (t.fileUrl.includes('figma.com') || t.fileUrl.includes('figma')));
             if (designTasks.length === 0) {
                 return;
             }
@@ -501,7 +512,8 @@ let ProjectsService = class ProjectsService {
             project.clientType = updateProjectDto.clientType;
         }
         if (updateProjectDto.secondaryClientTypes !== undefined) {
-            project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
+            project.secondaryClientTypes =
+                updateProjectDto.secondaryClientTypes.map((t) => t.toString()) || null;
         }
         if (updateProjectDto.pmId !== undefined) {
             const pmUser = await this.usersRepository.findOne({ where: { id: updateProjectDto.pmId } });
@@ -519,12 +531,10 @@ let ProjectsService = class ProjectsService {
             const normalizedLink = updateProjectDto.associatedLink.trim();
             project.associatedLink = normalizedLink || undefined;
         }
-        const allClientTypes = [
-            project.clientType,
-            ...(project.secondaryClientTypes || [])
-        ];
-        const isKatalyst = allClientTypes.some(type => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
-        if (isKatalyst && project.stage !== project_entity_1.ProjectStage.CRM &&
+        const allClientTypes = [project.clientType, ...(project.secondaryClientTypes || [])];
+        const isKatalyst = allClientTypes.some((type) => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
+        if (isKatalyst &&
+            project.stage !== project_entity_1.ProjectStage.CRM &&
             project.stage !== project_entity_1.ProjectStage.READY_TO_CLOSE &&
             project.stage !== project_entity_1.ProjectStage.CLOSED) {
             project.stage = project_entity_1.ProjectStage.CRM;
@@ -738,7 +748,8 @@ let ProjectsService = class ProjectsService {
     async getStats(userId, userRole) {
         const queryBuilder = this.projectsRepository.createQueryBuilder('project');
         if (userRole === 'Project Manager') {
-            queryBuilder.where('project.pmId = :userId', { userId })
+            queryBuilder
+                .where('project.pmId = :userId', { userId })
                 .andWhere('project.isArchived = :isArchived', { isArchived: false });
         }
         else {
@@ -752,7 +763,8 @@ let ProjectsService = class ProjectsService {
             .getRawMany();
         const overdueQueryBuilder = this.projectsRepository.createQueryBuilder('project');
         if (userRole === 'Project Manager') {
-            overdueQueryBuilder.where('project.pmId = :userId', { userId })
+            overdueQueryBuilder
+                .where('project.pmId = :userId', { userId })
                 .andWhere('project.isArchived = :isArchived', { isArchived: false });
         }
         else {
@@ -810,13 +822,17 @@ let ProjectsService = class ProjectsService {
         }
         project.onboardingPhase = targetPhase;
         project.onboardingPhaseStatus =
-            dto.status || (targetPhase === project_entity_1.OnboardingPhase.FULL_GO_LIVE ? project_entity_1.OnboardingPhaseStatus.COMPLETED : project_entity_1.OnboardingPhaseStatus.IN_PROGRESS);
+            dto.status ||
+                (targetPhase === project_entity_1.OnboardingPhase.FULL_GO_LIVE
+                    ? project_entity_1.OnboardingPhaseStatus.COMPLETED
+                    : project_entity_1.OnboardingPhaseStatus.IN_PROGRESS);
         project.onboardingStartedAt = project.onboardingStartedAt || new Date();
         const milestoneKey = dto.milestoneKey || this.phaseToMilestoneKey(targetPhase);
         const nowIso = new Date().toISOString();
         const milestones = { ...(project.onboardingMilestones || {}) };
         const existingMilestone = milestones[milestoneKey] || { completed: false };
-        if (dto.markCurrentMilestoneComplete || project.onboardingPhaseStatus === project_entity_1.OnboardingPhaseStatus.COMPLETED) {
+        if (dto.markCurrentMilestoneComplete ||
+            project.onboardingPhaseStatus === project_entity_1.OnboardingPhaseStatus.COMPLETED) {
             milestones[milestoneKey] = {
                 ...existingMilestone,
                 completed: true,
@@ -832,7 +848,8 @@ let ProjectsService = class ProjectsService {
                 notes: dto.notes || existingMilestone.notes,
             };
         }
-        if (project.onboardingPhase === project_entity_1.OnboardingPhase.FULL_GO_LIVE && project.onboardingPhaseStatus === project_entity_1.OnboardingPhaseStatus.COMPLETED) {
+        if (project.onboardingPhase === project_entity_1.OnboardingPhase.FULL_GO_LIVE &&
+            project.onboardingPhaseStatus === project_entity_1.OnboardingPhaseStatus.COMPLETED) {
             project.onboardingCompletedAt = new Date();
         }
         project.onboardingMilestones = milestones;
@@ -1086,7 +1103,9 @@ let ProjectsService = class ProjectsService {
                         },
                     });
                 }
-                if (task.updatedAt && task.updatedAt.getTime() !== task.createdAt.getTime() && !task.fileUrl) {
+                if (task.updatedAt &&
+                    task.updatedAt.getTime() !== task.createdAt.getTime() &&
+                    !task.fileUrl) {
                     activities.push({
                         id: `task-updated-${task.id}`,
                         type: 'task',
@@ -1115,7 +1134,10 @@ let ProjectsService = class ProjectsService {
     }
     getDepartmentFromDeliverableType(type) {
         const typeStr = type.toString();
-        if (typeStr.includes('Logo') || typeStr.includes('Social') || typeStr.includes('Home Page') || typeStr.includes('Brand Book')) {
+        if (typeStr.includes('Logo') ||
+            typeStr.includes('Social') ||
+            typeStr.includes('Home Page') ||
+            typeStr.includes('Brand Book')) {
             return 'Design';
         }
         if (typeStr.includes('Copy') || typeStr.includes('Speaker Kit')) {

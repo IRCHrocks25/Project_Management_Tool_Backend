@@ -10,4 +10,3 @@ export class CreateTaskCommentDto {
   @IsUUID(undefined, { each: true })
   mentionedUserIds?: string[];
 }
-

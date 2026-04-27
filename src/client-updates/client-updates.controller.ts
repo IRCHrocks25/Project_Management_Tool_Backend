@@ -129,4 +129,3 @@ export class ClientUpdatesController {
     return { url };
   }
 }
-

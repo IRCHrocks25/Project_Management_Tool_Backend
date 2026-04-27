@@ -72,7 +72,10 @@ export class ChatService {
       order: { createdAt: 'DESC' },
       relations: ['sender'],
     });
-    return this.formatRoomForUser({ ...withParticipants!, messages: lastMsg ? [lastMsg] : [] }, userId);
+    return this.formatRoomForUser(
+      { ...withParticipants!, messages: lastMsg ? [lastMsg] : [] },
+      userId,
+    );
   }
 
   async getMyRooms(userId: string): Promise<any[]> {
@@ -226,7 +229,10 @@ export class ChatService {
     return total;
   }
 
-  async getOtherParticipantLastReadAt(roomId: string, currentUserId: string): Promise<string | null> {
+  async getOtherParticipantLastReadAt(
+    roomId: string,
+    currentUserId: string,
+  ): Promise<string | null> {
     const participants = await this.participantRepository.find({
       where: { roomId },
     });

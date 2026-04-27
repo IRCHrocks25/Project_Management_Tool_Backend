@@ -11,7 +11,8 @@ export declare enum NotificationType {
     PROJECT_ALERT = "alert",
     REVISION_REQUESTED = "revision",
     MENTION = "mention",
-    TASK_UPDATE = "task_update"
+    TASK_UPDATE = "task_update",
+    TASK_TRANSFER = "TASK_TRANSFER"
 }
 export declare class Notification {
     id: string;

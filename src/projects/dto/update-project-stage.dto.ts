@@ -6,4 +6,3 @@ export class UpdateProjectStageDto {
   @IsEnum(ProjectStage)
   stage: ProjectStage;
 }
-

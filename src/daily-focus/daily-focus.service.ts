@@ -70,7 +70,13 @@ export class DailyFocusService {
     this.assertValidDate(dateStr);
     const rows = await this.dailyFocusRepository.find({
       where: { focusDate: dateStr },
-      relations: ['task', 'task.project', 'task.assignedTo', 'task.assignees', 'task.assignees.user'],
+      relations: [
+        'task',
+        'task.project',
+        'task.assignedTo',
+        'task.assignees',
+        'task.assignees.user',
+      ],
       order: { departmentKey: 'ASC', rank: 'ASC' },
     });
     return rows.map((r) => this.serializeFocusRow(r));
@@ -148,10 +154,15 @@ export class DailyFocusService {
 
       // Keep department dashboards synced with PM daily huddle priorities.
       // Persist task-level ordering so department dashboards reflect exact discussed tasks.
-      console.log(`[DailyFocus→DeptSync] date=${dto.date} items=${items.length} — deleting old DepartmentProjectFocusItem rows`);
+      console.log(
+        `[DailyFocus→DeptSync] date=${dto.date} items=${items.length} — deleting old DepartmentProjectFocusItem rows`,
+      );
       await em.delete(DepartmentProjectFocusItem, { focusDate: dto.date });
 
-      const byDeptRanked = new Map<string, Array<{ rank: number; taskId: string; projectId: string | null }>>();
+      const byDeptRanked = new Map<
+        string,
+        Array<{ rank: number; taskId: string; projectId: string | null }>
+      >();
       for (const item of items) {
         const task = taskById.get(item.taskId);
         if (!task) continue;
@@ -169,7 +180,9 @@ export class DailyFocusService {
           return true;
         });
 
-        console.log(`[DailyFocus→DeptSync] dept=${departmentKey} uniqueTasks=${uniqueRankedTasks.length} (from ${ranked.length} ranked tasks)`);
+        console.log(
+          `[DailyFocus→DeptSync] dept=${departmentKey} uniqueTasks=${uniqueRankedTasks.length} (from ${ranked.length} ranked tasks)`,
+        );
         let sortOrder = 0;
         for (const row of uniqueRankedTasks.slice(0, 30)) {
           const pin = em.create(DepartmentProjectFocusItem, {
@@ -182,7 +195,9 @@ export class DailyFocusService {
           });
           await em.save(pin);
         }
-        console.log(`[DailyFocus→DeptSync] dept=${departmentKey} — saved ${sortOrder} DepartmentProjectFocusItem rows for date=${dto.date}`);
+        console.log(
+          `[DailyFocus→DeptSync] dept=${departmentKey} — saved ${sortOrder} DepartmentProjectFocusItem rows for date=${dto.date}`,
+        );
       }
     });
 
@@ -212,7 +227,8 @@ export class DailyFocusService {
     const project = task.project;
     if (project?.isArchived) return false;
 
-    const updatedAt = task.updatedAt instanceof Date ? task.updatedAt : new Date(task.updatedAt as any);
+    const updatedAt =
+      task.updatedAt instanceof Date ? task.updatedAt : new Date(task.updatedAt as any);
     const updatedInWindow = updatedAt >= startUtc && updatedAt <= endUtc;
 
     const formallyComplete = task.isCompleted === true || task.status === TaskStatus.COMPLETED;
@@ -229,7 +245,13 @@ export class DailyFocusService {
 
     const plannedRows = await this.dailyFocusRepository.find({
       where: { focusDate: dateStr },
-      relations: ['task', 'task.project', 'task.assignedTo', 'task.assignees', 'task.assignees.user'],
+      relations: [
+        'task',
+        'task.project',
+        'task.assignedTo',
+        'task.assignees',
+        'task.assignees.user',
+      ],
       order: { departmentKey: 'ASC', rank: 'ASC' },
     });
 
@@ -253,8 +275,7 @@ export class DailyFocusService {
     const planned = plannedRows.map((r) => {
       const task = r.task;
       const doneForEod =
-        completedIds.has(r.taskId) ||
-        this.isPlannedTaskDoneForEod(task, startUtc, endUtc);
+        completedIds.has(r.taskId) || this.isPlannedTaskDoneForEod(task, startUtc, endUtc);
       return {
         ...this.serializeFocusRow(r),
         planned: true,

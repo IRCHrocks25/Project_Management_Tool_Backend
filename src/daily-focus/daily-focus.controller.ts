@@ -35,7 +35,10 @@ export class DailyFocusController {
 
   @Put()
   @UseGuards(JwtAuthGuard)
-  async put(@Body() body: UpdateDailyFocusDto, @Request() req: { user: { userId: string; role: UserRole } }) {
+  async put(
+    @Body() body: UpdateDailyFocusDto,
+    @Request() req: { user: { userId: string; role: UserRole } },
+  ) {
     return this.dailyFocusService.upsert(body, req.user.userId, req.user.role);
   }
 }

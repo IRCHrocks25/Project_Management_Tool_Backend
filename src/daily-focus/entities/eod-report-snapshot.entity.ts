@@ -31,4 +31,3 @@ export class EodReportSnapshot {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

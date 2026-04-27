@@ -13,4 +13,3 @@ export class UpdateDeliverableStatusDto {
   @IsString()
   fileUrl?: string; // Track which file is being approved/rejected
 }
-

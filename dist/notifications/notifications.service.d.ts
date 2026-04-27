@@ -34,6 +34,17 @@ export declare class NotificationsService {
         taskId?: string;
         assignedToId?: string;
     }, excludeUserId: string): Promise<void>;
+    emitTaskTransferred(payload: {
+        taskId: string;
+        fromDepartment: string;
+        toDepartment: string;
+        kind: 'forward' | 'return';
+        transferredBy: {
+            id: string;
+            name: string;
+        };
+        transferredAt: string;
+    }): void;
     findAll(userId: string, userRole?: string): Promise<Notification[]>;
     findUnreadCount(userId: string): Promise<number>;
     markAsRead(id: string, userId: string): Promise<Notification>;

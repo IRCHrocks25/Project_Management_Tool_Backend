@@ -1,4 +1,12 @@
-import { IsEnum, IsNotEmpty, IsString, IsOptional, IsUUID, IsArray, IsDateString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsArray,
+  IsDateString,
+} from 'class-validator';
 import { ClientType, PackageType, Priority } from '../entities/project.entity';
 
 export class CreateProjectDto {
@@ -44,4 +52,3 @@ export class CreateProjectDto {
   @IsEnum(ClientType, { each: true })
   secondaryClientTypes?: ClientType[];
 }
-

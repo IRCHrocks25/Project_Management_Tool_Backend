@@ -43,4 +43,3 @@ import { MonthlyRemindersModule } from './monthly-reminders/monthly-reminders.mo
   providers: [AppService],
 })
 export class AppModule {}
-

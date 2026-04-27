@@ -46,4 +46,3 @@ export class Email {
   @CreateDateColumn()
   createdAt: Date;
 }
-

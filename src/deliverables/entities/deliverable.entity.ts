@@ -73,4 +73,3 @@ export class Deliverable {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

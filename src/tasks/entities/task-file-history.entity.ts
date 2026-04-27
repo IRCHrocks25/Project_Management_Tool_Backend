@@ -49,4 +49,3 @@ export class TaskFileHistory {
   @CreateDateColumn()
   createdAt: Date;
 }
-

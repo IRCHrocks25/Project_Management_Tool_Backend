@@ -10,4 +10,3 @@ export class CreateTaskQuestionDto {
   @IsUUID(undefined, { each: true })
   mentionedUserIds?: string[];
 }
-

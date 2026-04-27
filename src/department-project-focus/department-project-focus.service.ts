@@ -177,7 +177,10 @@ export class DepartmentProjectFocusService {
     );
   }
 
-  async findByDateAndDepartment(dateStr: string, departmentKey: string): Promise<DepartmentFocusRowView[]> {
+  async findByDateAndDepartment(
+    dateStr: string,
+    departmentKey: string,
+  ): Promise<DepartmentFocusRowView[]> {
     this.assertValidDate(dateStr);
     if (!ALLOWED_DEPT_KEYS.has(departmentKey)) {
       throw new BadRequestException(`Invalid departmentKey: ${departmentKey}`);
@@ -206,7 +209,9 @@ export class DepartmentProjectFocusService {
         : await this.buildPmRowsFromDailyFocusFallback(dateStr, departmentKey);
 
     if (pmRows.length === 0) {
-      console.log(`[DeptFocus:GET] dailyFocus fallback returned ${pmMapped.length} derived PM rows`);
+      console.log(
+        `[DeptFocus:GET] dailyFocus fallback returned ${pmMapped.length} derived PM rows`,
+      );
     }
 
     const pmTaskIds = new Set(pmMapped.map((r) => r.taskId).filter(Boolean));
@@ -258,7 +263,11 @@ export class DepartmentProjectFocusService {
     if (!ALLOWED_DEPT_KEYS.has(dto.departmentKey)) {
       throw new BadRequestException(`Invalid departmentKey: ${dto.departmentKey}`);
     }
-    const taskIds = await this.normalizeAndValidateTaskIds(dto, dto.departmentKey, MAX_PROJECTS_OVERRIDE);
+    const taskIds = await this.normalizeAndValidateTaskIds(
+      dto,
+      dto.departmentKey,
+      MAX_PROJECTS_OVERRIDE,
+    );
 
     const pmRows = await this.focusRepository.find({
       where: { focusDate: dto.date, departmentKey: dto.departmentKey },

@@ -36,7 +36,9 @@ export class MonthlyRemindersService {
     const isPm = user.role === UserRole.PROJECT_MANAGER;
     const isFounder = user.role === UserRole.FOUNDER_CEO;
     if (!isPm && !isFounder && !user.isHeadPM) {
-      throw new ForbiddenException('Only Project Managers / Head PM / Founder can manage monthly reminders.');
+      throw new ForbiddenException(
+        'Only Project Managers / Head PM / Founder can manage monthly reminders.',
+      );
     }
     return user;
   }
@@ -113,10 +115,14 @@ export class MonthlyRemindersService {
 
     if (typeof dto.reminderDay === 'number') reminder.reminderDay = dto.reminderDay;
     if (typeof dto.note === 'string') reminder.note = dto.note.trim();
-    if (typeof dto.reminderLink === 'string') reminder.reminderLink = dto.reminderLink.trim() || null;
-    if (Object.prototype.hasOwnProperty.call(dto, 'currentMonthKey')) reminder.currentMonthKey = dto.currentMonthKey || null;
-    if (typeof dto.currentMonthStatus === 'string') reminder.currentMonthStatus = dto.currentMonthStatus;
-    if (Object.prototype.hasOwnProperty.call(dto, 'nextMonthStatus')) reminder.nextMonthStatus = dto.nextMonthStatus ?? null;
+    if (typeof dto.reminderLink === 'string')
+      reminder.reminderLink = dto.reminderLink.trim() || null;
+    if (Object.prototype.hasOwnProperty.call(dto, 'currentMonthKey'))
+      reminder.currentMonthKey = dto.currentMonthKey || null;
+    if (typeof dto.currentMonthStatus === 'string')
+      reminder.currentMonthStatus = dto.currentMonthStatus;
+    if (Object.prototype.hasOwnProperty.call(dto, 'nextMonthStatus'))
+      reminder.nextMonthStatus = dto.nextMonthStatus ?? null;
 
     const clientNameCandidate =
       project?.clientName ||
@@ -140,4 +146,3 @@ export class MonthlyRemindersService {
     return { success: true };
   }
 }
-

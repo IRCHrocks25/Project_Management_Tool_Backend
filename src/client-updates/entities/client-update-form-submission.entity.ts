@@ -39,4 +39,3 @@ export class ClientUpdateFormSubmission {
   @CreateDateColumn()
   submittedAt: Date;
 }
-

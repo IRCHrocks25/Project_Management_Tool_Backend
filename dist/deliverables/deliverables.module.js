@@ -24,7 +24,14 @@ exports.DeliverablesModule = DeliverablesModule;
 exports.DeliverablesModule = DeliverablesModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([deliverable_entity_1.Deliverable, deliverable_team_member_entity_1.DeliverableTeamMember, deliverable_history_entity_1.DeliverableHistory, task_entity_1.Task, project_entity_1.Project, user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([
+                deliverable_entity_1.Deliverable,
+                deliverable_team_member_entity_1.DeliverableTeamMember,
+                deliverable_history_entity_1.DeliverableHistory,
+                task_entity_1.Task,
+                project_entity_1.Project,
+                user_entity_1.User,
+            ]),
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
         ],
         controllers: [deliverables_controller_1.DeliverablesController],

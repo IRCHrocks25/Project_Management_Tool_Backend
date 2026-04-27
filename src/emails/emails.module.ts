@@ -16,4 +16,3 @@ import { NotificationsModule } from '../notifications/notifications.module';
   providers: [EmailsService],
 })
 export class EmailsModule {}
-

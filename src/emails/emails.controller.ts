@@ -16,4 +16,3 @@ export class EmailsController {
     return this.emailsService.findAll(projectId);
   }
 }
-

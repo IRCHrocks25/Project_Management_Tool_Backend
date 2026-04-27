@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, Inject, forwardRef, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  forwardRef,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Deliverable, DeliverableStatus, DeliverableType } from './entities/deliverable.entity';
@@ -106,10 +112,16 @@ export class DeliverablesService {
     return { success: true };
   }
 
-  async updateStatus(id: string, status: DeliverableStatus, notes?: string, userId?: string, fileUrl?: string) {
+  async updateStatus(
+    id: string,
+    status: DeliverableStatus,
+    notes?: string,
+    userId?: string,
+    fileUrl?: string,
+  ) {
     const deliverable = await this.findOne(id);
     const previousStatus = deliverable.status;
-    
+
     // If fileUrl is provided, this is a file-level approval/revision, not overall deliverable
     if (fileUrl) {
       // For file-level actions, we don't change the overall deliverable status
@@ -139,7 +151,10 @@ export class DeliverablesService {
       }
 
       // If Home Page design is approved, automatically move project to Development
-      if (status === DeliverableStatus.APPROVED && deliverable.type === DeliverableType.LANDING_PAGE) {
+      if (
+        status === DeliverableStatus.APPROVED &&
+        deliverable.type === DeliverableType.LANDING_PAGE
+      ) {
         const project = await this.projectsRepository.findOne({
           where: { id: deliverable.projectId },
         });
@@ -147,7 +162,7 @@ export class DeliverablesService {
         if (project) {
           // Check if this is a design file (Figma link) or associated with a design task
           const isDesignFile = fileUrl.includes('figma.com') || fileUrl.includes('figma');
-          
+
           // Also check if this file is associated with a design task
           const designTasks = await this.tasksRepository.find({
             where: {
@@ -161,17 +176,19 @@ export class DeliverablesService {
           if ((isDesignFile || designTasks.length > 0) && project.stage !== ProjectStage.DEV) {
             project.stage = ProjectStage.DEV;
             await this.projectsRepository.save(project);
-            console.log(`[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Home Page design approval`);
+            console.log(
+              `[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Home Page design approval`,
+            );
           }
         }
       }
 
       return deliverable; // Return deliverable without changing its overall status
     }
-    
+
     // Overall deliverable status change
     deliverable.status = status;
-    
+
     if (notes !== undefined) {
       deliverable.notes = notes;
     }
@@ -182,7 +199,10 @@ export class DeliverablesService {
     let action = DeliverableAction.STATUS_CHANGED;
     if (status === DeliverableStatus.APPROVED && previousStatus !== DeliverableStatus.APPROVED) {
       action = DeliverableAction.APPROVED;
-    } else if (status === DeliverableStatus.REVISION && previousStatus !== DeliverableStatus.REVISION) {
+    } else if (
+      status === DeliverableStatus.REVISION &&
+      previousStatus !== DeliverableStatus.REVISION
+    ) {
       action = DeliverableAction.REVISION_REQUESTED;
     }
 
@@ -231,15 +251,18 @@ export class DeliverablesService {
     ];
 
     // If it's a design deliverable, update project stage to Design Revision
-    if (designDeliverableTypes.includes(deliverable.type) && project.stage !== ProjectStage.DESIGN_REVISION) {
+    if (
+      designDeliverableTypes.includes(deliverable.type) &&
+      project.stage !== ProjectStage.DESIGN_REVISION
+    ) {
       project.stage = ProjectStage.DESIGN_REVISION;
       project.designRevisionCount += 1;
-      
+
       // Track Home Page revisions separately
       if (deliverable.type === DeliverableType.LANDING_PAGE) {
         project.landingPageRevisionCount += 1;
       }
-      
+
       await this.projectsRepository.save(project);
     }
 
@@ -273,7 +296,7 @@ export class DeliverablesService {
     if (fileUrl) {
       where.fileUrl = fileUrl;
     }
-    
+
     const history = await this.historyRepository.find({
       where,
       relations: ['user'],
@@ -318,9 +341,8 @@ export class DeliverablesService {
           },
         });
         // Match tasks where title contains the deliverable name
-        relatedCopyTasks = allCopyTasks.filter(task => 
-          task.title.includes(deliverableName) || 
-          task.title.includes(deliverable.type)
+        relatedCopyTasks = allCopyTasks.filter(
+          (task) => task.title.includes(deliverableName) || task.title.includes(deliverable.type),
         );
       }
 
@@ -430,8 +452,9 @@ export class DeliverablesService {
     }
 
     const updated = await this.deliverablesRepository.save(deliverable);
-    console.log(`[DeliverablesService] update completed for id: ${id}, new customType: ${updated.customType}`);
+    console.log(
+      `[DeliverablesService] update completed for id: ${id}, new customType: ${updated.customType}`,
+    );
     return updated;
   }
 }
-

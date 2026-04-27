@@ -56,7 +56,10 @@
     "migrate:user-active-flag": "node scripts/add-user-active-flag.js",
     "migrate:monthly-reminders": "node scripts/create-monthly-reminders-table.js",
     "migrate:project-associated-link": "node scripts/add-project-associated-link.js",
-    "migrate:monthly-reminders-month-status-link": "node scripts/alter-monthly-reminders-add-month-status-link.js"
+    "migrate:monthly-reminders-month-status-link": "node scripts/alter-monthly-reminders-add-month-status-link.js",
+    "migrate:task-attachments": "node scripts/add-task-attachments.js",
+    "migrate:task-transfers": "node scripts/add-task-transfers.js",
+    "migrate:task-transfer-notification-type": "node scripts/add-task-transfer-notification-type.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

@@ -10,4 +10,3 @@ export class ResetPasswordOtpDto {
   @MinLength(6)
   password: string;
 }
-

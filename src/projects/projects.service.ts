@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -11,7 +17,11 @@ import {
 } from './entities/project.entity';
 import { ProjectTeamMember } from './entities/project-team-member.entity';
 import { Task, TaskType, TaskStatus } from '../tasks/entities/task.entity';
-import { Deliverable, DeliverableType, DeliverableStatus } from '../deliverables/entities/deliverable.entity';
+import {
+  Deliverable,
+  DeliverableType,
+  DeliverableStatus,
+} from '../deliverables/entities/deliverable.entity';
 import { DeliverableHistory } from '../deliverables/entities/deliverable-history.entity';
 import { TaskFileHistory } from '../tasks/entities/task-file-history.entity';
 import { User } from '../users/entities/user.entity';
@@ -60,20 +70,24 @@ export class ProjectsService {
     // Determine initial stage: CRM if client type is Katalyst, Premium, or Powered-Up, otherwise INTAKE
     const allClientTypes = [
       createProjectDto.clientType,
-      ...(createProjectDto.secondaryClientTypes || [])
+      ...(createProjectDto.secondaryClientTypes || []),
     ];
-    const isKatalyst = allClientTypes.some(type => 
-      type === ClientType.KATALYST || String(type).toLowerCase() === 'katalyst'
+    const isKatalyst = allClientTypes.some(
+      (type) => type === ClientType.KATALYST || String(type).toLowerCase() === 'katalyst',
     );
-    const isPremiumOrPoweredUp = createProjectDto.clientType === ClientType.PREMIUM || 
-                                  createProjectDto.clientType === ClientType.POWERED_UP;
-    const initialStage = (isKatalyst || isPremiumOrPoweredUp) ? ProjectStage.CRM : ProjectStage.INTAKE;
+    const isPremiumOrPoweredUp =
+      createProjectDto.clientType === ClientType.PREMIUM ||
+      createProjectDto.clientType === ClientType.POWERED_UP;
+    const initialStage =
+      isKatalyst || isPremiumOrPoweredUp ? ProjectStage.CRM : ProjectStage.INTAKE;
 
     // Create project
     const project = this.projectsRepository.create({
       ...createProjectDto,
-      secondaryClientTypes: createProjectDto.secondaryClientTypes?.map(t => t.toString()) || null,
-      clientStartDate: createProjectDto.clientStartDate ? new Date(createProjectDto.clientStartDate) : null,
+      secondaryClientTypes: createProjectDto.secondaryClientTypes?.map((t) => t.toString()) || null,
+      clientStartDate: createProjectDto.clientStartDate
+        ? new Date(createProjectDto.clientStartDate)
+        : null,
       pmId: createProjectDto.pmId || userId,
       stage: initialStage,
     });
@@ -82,10 +96,10 @@ export class ProjectsService {
 
     // Auto-generate deliverables based on package and client type
     const deliverables = this.generateDeliverables(
-      savedProject.id, 
-      createProjectDto.package, 
+      savedProject.id,
+      createProjectDto.package,
       createProjectDto.clientType,
-      createProjectDto.customDeliverables
+      createProjectDto.customDeliverables,
     );
     await this.deliverablesRepository.save(deliverables);
 
@@ -112,7 +126,9 @@ export class ProjectsService {
     }
 
     // Log webhook project creation for audit purposes
-    console.log(`[Webhook] Creating project: ${webhookDto.clientName} (${webhookDto.clientType}) - Package: ${webhookDto.package}, PM: ${pmId}, Source: ${webhookDto.sourceEmail || 'unknown'}`);
+    console.log(
+      `[Webhook] Creating project: ${webhookDto.clientName} (${webhookDto.clientType}) - Package: ${webhookDto.package}, PM: ${pmId}, Source: ${webhookDto.sourceEmail || 'unknown'}`,
+    );
 
     // Convert webhook DTO to regular DTO format
     const createProjectDto: CreateProjectDto = {
@@ -124,18 +140,18 @@ export class ProjectsService {
       pmId: pmId,
       targetCloseMonth: webhookDto.targetCloseMonth,
       secondaryClientTypes: webhookDto.secondaryClientTypes,
-      notes: webhookDto.notes 
+      notes: webhookDto.notes
         ? `${webhookDto.notes}${webhookDto.sourceEmail ? `\n\nSource: ${webhookDto.sourceEmail}` : ''}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
-        : webhookDto.sourceEmail 
+        : webhookDto.sourceEmail
           ? `Created via webhook from: ${webhookDto.sourceEmail}${webhookDto.emailSubject ? `\nSubject: ${webhookDto.emailSubject}` : ''}`
           : 'Created via webhook',
     };
 
     // Use the existing create method with the webhook's pmId
     const project = await this.create(createProjectDto, pmId);
-    
+
     console.log(`[Webhook] Project created successfully: ${project.id} - ${project.clientName}`);
-    
+
     return project;
   }
 
@@ -146,23 +162,29 @@ export class ProjectsService {
       name: webhookPM.name,
       email: webhookPM.email,
       role: webhookPM.role,
-      message: 'Use this pmId in your webhook requests, or omit pmId to use this account automatically',
+      message:
+        'Use this pmId in your webhook requests, or omit pmId to use this account automatically',
     };
   }
 
-  private generateDeliverables(projectId: string, packageType: PackageType, clientType: ClientType, customDeliverables?: string[]): Deliverable[] {
+  private generateDeliverables(
+    projectId: string,
+    packageType: PackageType,
+    clientType: ClientType,
+    customDeliverables?: string[],
+  ): Deliverable[] {
     const deliverables: Deliverable[] = [];
 
     // If Custom package, use the provided custom deliverables list
     if (packageType === PackageType.CUSTOM && customDeliverables && customDeliverables.length > 0) {
       const deliverableTypeMap: Record<string, DeliverableType> = {
-        'Logo': DeliverableType.LOGO,
+        Logo: DeliverableType.LOGO,
         'Brand Book': DeliverableType.BRAND_BOOK,
         'Home Page': DeliverableType.LANDING_PAGE,
         'Copy of Home Page': DeliverableType.COPY_OF_LANDING_PAGE,
         'Speaker Kit': DeliverableType.SPEAKER_KIT,
         'Social Banners': DeliverableType.SOCIAL_BANNERS,
-        'Other': DeliverableType.OTHER,
+        Other: DeliverableType.OTHER,
       };
 
       for (const deliverableName of customDeliverables) {
@@ -269,7 +291,8 @@ export class ProjectsService {
       {
         projectId,
         title: 'Privacy Policy, Terms and Conditions, Cookiebot',
-        description: 'Submit privacy policy, terms and conditions, and Cookiebot information (URL or text)',
+        description:
+          'Submit privacy policy, terms and conditions, and Cookiebot information (URL or text)',
         type: TaskType.INTAKE,
         status: TaskStatus.TODO,
         isCompleted: false,
@@ -314,24 +337,33 @@ export class ProjectsService {
           });
           // Fix any tasks with old "Intake" enum value
           for (const task of project.tasks) {
-            if (task.type === 'Intake' as any) {
+            if (task.type === ('Intake' as any)) {
               task.type = TaskType.INTAKE;
               await this.tasksRepository.save(task);
             }
           }
-          
+
           // If project is in Onboarding stage and has no onboarding tasks, create them
           if (project.stage === ProjectStage.INTAKE) {
-            const onboardingTasks = project.tasks.filter((t: any) => t.type === TaskType.INTAKE || t.type === 'Onboarding');
+            const onboardingTasks = project.tasks.filter(
+              (t: any) => t.type === TaskType.INTAKE || t.type === 'Onboarding',
+            );
             if (onboardingTasks.length === 0) {
-              console.log(`[ProjectsService] No onboarding tasks found for project ${project.id} (${project.clientName}) in findAll, creating them...`);
+              console.log(
+                `[ProjectsService] No onboarding tasks found for project ${project.id} (${project.clientName}) in findAll, creating them...`,
+              );
               try {
                 const newTasks = this.generateIntakeTasks(project.id);
                 const savedTasks = await this.tasksRepository.save(newTasks);
                 project.tasks = [...project.tasks, ...savedTasks];
-                console.log(`[ProjectsService] Created ${savedTasks.length} onboarding tasks for project ${project.id}`);
+                console.log(
+                  `[ProjectsService] Created ${savedTasks.length} onboarding tasks for project ${project.id}`,
+                );
               } catch (createError) {
-                console.error(`[ProjectsService] Error creating onboarding tasks for project ${project.id}:`, createError);
+                console.error(
+                  `[ProjectsService] Error creating onboarding tasks for project ${project.id}:`,
+                  createError,
+                );
               }
             }
           }
@@ -356,10 +388,20 @@ export class ProjectsService {
       console.log(`[ProjectsService] Finding project with ID: ${id}`);
       const project = await this.projectsRepository.findOne({
         where: { id },
-        relations: ['pm', 'deliverables', 'emails', 'emails.sentBy', 'teamMembers', 'teamMembers.user'],
+        relations: [
+          'pm',
+          'deliverables',
+          'emails',
+          'emails.sentBy',
+          'teamMembers',
+          'teamMembers.user',
+        ],
       });
 
-      console.log(`[ProjectsService] Project found:`, project ? `Yes (${project.clientName})` : 'No');
+      console.log(
+        `[ProjectsService] Project found:`,
+        project ? `Yes (${project.clientName})` : 'No',
+      );
 
       if (!project) {
         console.log(`[ProjectsService] Project not found for ID: ${id}`);
@@ -374,39 +416,46 @@ export class ProjectsService {
           relations: ['assignedTo'],
         });
         console.log(`[ProjectsService] Loaded ${project.tasks.length} tasks for project ${id}`);
-        
+
         // Fix any tasks with old "Intake" enum value
         for (const task of project.tasks) {
-          if (task.type === 'Intake' as any) {
+          if (task.type === ('Intake' as any)) {
             task.type = TaskType.INTAKE;
             await this.tasksRepository.save(task);
           }
         }
-        
+
         // If project is in Onboarding stage and has no onboarding tasks, create them automatically
         if (project.stage === ProjectStage.INTAKE) {
-          const onboardingTasks = project.tasks.filter((t: any) => t.type === TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake');
+          const onboardingTasks = project.tasks.filter(
+            (t: any) =>
+              t.type === TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake',
+          );
           if (onboardingTasks.length === 0) {
-            console.log(`[ProjectsService] No onboarding tasks found for project ${id}, creating them automatically...`);
+            console.log(
+              `[ProjectsService] No onboarding tasks found for project ${id}, creating them automatically...`,
+            );
             try {
               const intakeTasks = this.generateIntakeTasks(id);
               const savedTasks: Task[] = [];
-              
+
               // Check enum values once
               let enumValue = 'Onboarding';
               try {
                 const enumCheck = await this.tasksRepository.manager.query(
-                  `SELECT unnest(enum_range(NULL::tasks_type_enum))::text as enum_value`
+                  `SELECT unnest(enum_range(NULL::tasks_type_enum))::text as enum_value`,
                 );
                 const hasOnboarding = enumCheck.some((e: any) => e.enum_value === 'Onboarding');
                 if (!hasOnboarding) {
-                  console.log(`[ProjectsService] 'Onboarding' not in enum, will use 'Intake' and update`);
+                  console.log(
+                    `[ProjectsService] 'Onboarding' not in enum, will use 'Intake' and update`,
+                  );
                   enumValue = 'Intake';
                 }
               } catch (enumError) {
                 console.log(`[ProjectsService] Could not check enum, defaulting to 'Onboarding'`);
               }
-              
+
               // Save all tasks using raw SQL for reliability
               for (const taskData of intakeTasks) {
                 try {
@@ -414,58 +463,72 @@ export class ProjectsService {
                     `INSERT INTO tasks (id, "projectId", title, description, type, status, "isCompleted", "createdAt", "updatedAt")
                      VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, NOW(), NOW())
                      RETURNING id`,
-                    [id, taskData.title, taskData.description || null, enumValue, 'Todo', false]
+                    [id, taskData.title, taskData.description || null, enumValue, 'Todo', false],
                   );
-                  
+
                   if (result && result.length > 0) {
                     // If we used 'Intake', try to update to 'Onboarding'
                     if (enumValue === 'Intake') {
                       try {
                         await this.tasksRepository.manager.query(
                           `UPDATE tasks SET type = 'Onboarding' WHERE id = $1 AND type = 'Intake'`,
-                          [result[0].id]
+                          [result[0].id],
                         );
                       } catch (updateError) {
                         // If update fails, that's okay - 'Intake' will work too
-                        console.log(`[ProjectsService] Could not update task ${result[0].id} to 'Onboarding', keeping 'Intake'`);
+                        console.log(
+                          `[ProjectsService] Could not update task ${result[0].id} to 'Onboarding', keeping 'Intake'`,
+                        );
                       }
                     }
-                    
+
                     const savedTask = await this.tasksRepository.findOne({
                       where: { id: result[0].id },
                       relations: ['assignedTo'],
                     });
                     if (savedTask) {
                       savedTasks.push(savedTask);
-                      console.log(`[ProjectsService] Auto-created task: ${savedTask.title} (${savedTask.type})`);
+                      console.log(
+                        `[ProjectsService] Auto-created task: ${savedTask.title} (${savedTask.type})`,
+                      );
                     }
                   }
                 } catch (taskError: any) {
-                  console.error(`[ProjectsService] Failed to create task ${taskData.title}:`, taskError.message);
+                  console.error(
+                    `[ProjectsService] Failed to create task ${taskData.title}:`,
+                    taskError.message,
+                  );
                 }
               }
-              
+
               // Reload all tasks to include the newly created ones
               const allTasks = await this.tasksRepository.find({
                 where: { projectId: id },
                 relations: ['assignedTo'],
               });
-              
+
               // Fix enum values for any tasks that might have 'Intake'
               for (const task of allTasks) {
-                if (task.type === 'Intake' as any) {
+                if (task.type === ('Intake' as any)) {
                   task.type = TaskType.INTAKE;
                   await this.tasksRepository.save(task);
                 }
               }
-              
+
               project.tasks = allTasks;
-              console.log(`[ProjectsService] Auto-created ${savedTasks.length} onboarding tasks. Total tasks now: ${project.tasks.length}`);
+              console.log(
+                `[ProjectsService] Auto-created ${savedTasks.length} onboarding tasks. Total tasks now: ${project.tasks.length}`,
+              );
             } catch (createError: any) {
-              console.error(`[ProjectsService] Error auto-creating onboarding tasks:`, createError.message);
+              console.error(
+                `[ProjectsService] Error auto-creating onboarding tasks:`,
+                createError.message,
+              );
             }
           } else {
-            console.log(`[ProjectsService] Project ${id} already has ${onboardingTasks.length} onboarding tasks`);
+            console.log(
+              `[ProjectsService] Project ${id} already has ${onboardingTasks.length} onboarding tasks`,
+            );
           }
         }
       } catch (error) {
@@ -492,7 +555,7 @@ export class ProjectsService {
 
       // Find Home Page deliverable
       const landingPageDeliverable = project.deliverables?.find(
-        (d: any) => d.type === DeliverableType.LANDING_PAGE
+        (d: any) => d.type === DeliverableType.LANDING_PAGE,
       );
 
       if (!landingPageDeliverable) {
@@ -506,7 +569,10 @@ export class ProjectsService {
 
       // Find design tasks with fileUrls (Figma links)
       const designTasks = allTasks.filter(
-        (t: any) => t.type === TaskType.DESIGN && t.fileUrl && (t.fileUrl.includes('figma.com') || t.fileUrl.includes('figma'))
+        (t: any) =>
+          t.type === TaskType.DESIGN &&
+          t.fileUrl &&
+          (t.fileUrl.includes('figma.com') || t.fileUrl.includes('figma')),
       );
 
       if (designTasks.length === 0) {
@@ -514,9 +580,10 @@ export class ProjectsService {
       }
 
       // Check deliverable history to see if all design files are approved
-      const { DeliverableHistory } = await import('../deliverables/entities/deliverable-history.entity');
+      const { DeliverableHistory } =
+        await import('../deliverables/entities/deliverable-history.entity');
       const historyRepository = this.projectsRepository.manager.getRepository(DeliverableHistory);
-      
+
       let allDesignFilesApproved = true;
       for (const task of designTasks) {
         const fileHistory = await historyRepository.find({
@@ -539,7 +606,9 @@ export class ProjectsService {
       if (allDesignFilesApproved) {
         project.stage = ProjectStage.DEV;
         await this.projectsRepository.save(project);
-        console.log(`[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Home Page design files are approved`);
+        console.log(
+          `[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Home Page design files are approved`,
+        );
       }
     } catch (error) {
       console.error('[ProjectsService] Error checking Home Page design approval:', error);
@@ -584,7 +653,7 @@ export class ProjectsService {
 
   async update(id: string, updateProjectDto: UpdateProjectDto) {
     const project = await this.findOne(id);
-    
+
     if (!project) {
       throw new NotFoundException(`Project with ID ${id} not found`);
     }
@@ -601,7 +670,8 @@ export class ProjectsService {
 
     // Update secondary client types if provided
     if (updateProjectDto.secondaryClientTypes !== undefined) {
-      project.secondaryClientTypes = updateProjectDto.secondaryClientTypes.map(t => t.toString()) || null;
+      project.secondaryClientTypes =
+        updateProjectDto.secondaryClientTypes.map((t) => t.toString()) || null;
     }
 
     // Update PM if provided
@@ -616,7 +686,9 @@ export class ProjectsService {
       }
       project.pmId = updateProjectDto.pmId;
       project.pm = pmUser; // Sync relation so TypeORM save() doesn't overwrite with stale pm
-      console.log(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
+      console.log(
+        `[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`,
+      );
     }
 
     // Update associated project link if provided
@@ -626,18 +698,18 @@ export class ProjectsService {
     }
 
     // Check if Katalyst is in client types (primary or secondary) and update stage to CRM if needed
-    const allClientTypes = [
-      project.clientType,
-      ...(project.secondaryClientTypes || [])
-    ];
-    const isKatalyst = allClientTypes.some(type => 
-      type === ClientType.KATALYST || String(type).toLowerCase() === 'katalyst'
+    const allClientTypes = [project.clientType, ...(project.secondaryClientTypes || [])];
+    const isKatalyst = allClientTypes.some(
+      (type) => type === ClientType.KATALYST || String(type).toLowerCase() === 'katalyst',
     );
-    
+
     // If Katalyst is present and project is not already in CRM or later stages, move to CRM
-    if (isKatalyst && project.stage !== ProjectStage.CRM && 
-        project.stage !== ProjectStage.READY_TO_CLOSE && 
-        project.stage !== ProjectStage.CLOSED) {
+    if (
+      isKatalyst &&
+      project.stage !== ProjectStage.CRM &&
+      project.stage !== ProjectStage.READY_TO_CLOSE &&
+      project.stage !== ProjectStage.CLOSED
+    ) {
       project.stage = ProjectStage.CRM;
     }
 
@@ -680,18 +752,22 @@ export class ProjectsService {
         throw new NotFoundException('Project not found');
       }
 
-      console.log(`[ProjectsService] Project found: ${project.clientName}, stage: ${project.stage}`);
+      console.log(
+        `[ProjectsService] Project found: ${project.clientName}, stage: ${project.stage}`,
+      );
 
       // Check if onboarding tasks already exist (check both enum value and string)
       const existingTasks = await this.tasksRepository.find({
         where: { projectId: id },
       });
-      
-      const onboardingTasks = existingTasks.filter((t: any) => 
-        t.type === TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake'
+
+      const onboardingTasks = existingTasks.filter(
+        (t: any) => t.type === TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake',
       );
 
-      console.log(`[ProjectsService] Found ${onboardingTasks.length} existing onboarding tasks out of ${existingTasks.length} total tasks`);
+      console.log(
+        `[ProjectsService] Found ${onboardingTasks.length} existing onboarding tasks out of ${existingTasks.length} total tasks`,
+      );
 
       if (onboardingTasks.length > 0) {
         console.log(`[ProjectsService] Onboarding tasks already exist, returning them`);
@@ -701,8 +777,11 @@ export class ProjectsService {
       // Generate and save onboarding tasks
       console.log(`[ProjectsService] Generating ${6} onboarding tasks...`);
       const intakeTasks = this.generateIntakeTasks(id);
-      console.log(`[ProjectsService] Generated tasks:`, intakeTasks.map((t: any) => ({ title: t.title, type: t.type })));
-      
+      console.log(
+        `[ProjectsService] Generated tasks:`,
+        intakeTasks.map((t: any) => ({ title: t.title, type: t.type })),
+      );
+
       // Use raw SQL to insert tasks, bypassing enum type checking issues
       const savedTasks: Task[] = [];
       for (const taskData of intakeTasks) {
@@ -715,16 +794,22 @@ export class ProjectsService {
             console.log(`[ProjectsService] Saved task via TypeORM: ${saved.title} (${saved.id})`);
           } catch (typeormError: any) {
             // If TypeORM fails (likely enum issue), use raw SQL
-            console.log(`[ProjectsService] TypeORM save failed, trying raw SQL for ${taskData.title}:`, typeormError.message);
-            
+            console.log(
+              `[ProjectsService] TypeORM save failed, trying raw SQL for ${taskData.title}:`,
+              typeormError.message,
+            );
+
             try {
               // Use raw SQL without enum casting - let PostgreSQL handle it
               // First check what enum values exist
               const enumCheck = await this.tasksRepository.manager.query(
-                `SELECT unnest(enum_range(NULL::tasks_type_enum))::text as enum_value`
+                `SELECT unnest(enum_range(NULL::tasks_type_enum))::text as enum_value`,
               );
-              console.log(`[ProjectsService] Available enum values:`, enumCheck.map((e: any) => e.enum_value));
-              
+              console.log(
+                `[ProjectsService] Available enum values:`,
+                enumCheck.map((e: any) => e.enum_value),
+              );
+
               // Try inserting with 'Onboarding' first
               let enumValue = 'Onboarding';
               const hasOnboarding = enumCheck.some((e: any) => e.enum_value === 'Onboarding');
@@ -732,7 +817,7 @@ export class ProjectsService {
                 console.log(`[ProjectsService] 'Onboarding' not in enum, using 'Intake' instead`);
                 enumValue = 'Intake';
               }
-              
+
               const result = await this.tasksRepository.manager.query(
                 `INSERT INTO tasks (id, "projectId", title, description, type, status, "isCompleted", "createdAt", "updatedAt")
                  VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, NOW(), NOW())
@@ -744,22 +829,24 @@ export class ProjectsService {
                   enumValue,
                   'Todo',
                   taskData.isCompleted || false,
-                ]
+                ],
               );
-              
+
               if (result && result.length > 0) {
                 // If we used 'Intake', update it to 'Onboarding' if possible
                 if (enumValue === 'Intake' && hasOnboarding) {
                   try {
                     await this.tasksRepository.manager.query(
                       `UPDATE tasks SET type = 'Onboarding' WHERE id = $1`,
-                      [result[0].id]
+                      [result[0].id],
                     );
                   } catch (updateError) {
-                    console.log(`[ProjectsService] Could not update to 'Onboarding', keeping 'Intake'`);
+                    console.log(
+                      `[ProjectsService] Could not update to 'Onboarding', keeping 'Intake'`,
+                    );
                   }
                 }
-                
+
                 // Load the full task with relations
                 const savedTask = await this.tasksRepository.findOne({
                   where: { id: result[0].id },
@@ -767,18 +854,27 @@ export class ProjectsService {
                 });
                 if (savedTask) {
                   savedTasks.push(savedTask);
-                  console.log(`[ProjectsService] Saved task via raw SQL: ${savedTask.title} (${savedTask.id})`);
+                  console.log(
+                    `[ProjectsService] Saved task via raw SQL: ${savedTask.title} (${savedTask.id})`,
+                  );
                 }
               }
             } catch (sqlError: any) {
-              console.error(`[ProjectsService] Raw SQL failed for ${taskData.title}:`, sqlError.message);
+              console.error(
+                `[ProjectsService] Raw SQL failed for ${taskData.title}:`,
+                sqlError.message,
+              );
               console.error(`[ProjectsService] SQL error code:`, sqlError.code);
               console.error(`[ProjectsService] SQL error detail:`, sqlError.detail);
             }
           }
         } catch (taskError: any) {
           console.error(`[ProjectsService] Error saving task ${taskData.title}:`, taskError);
-          console.error(`[ProjectsService] Task error details:`, taskError.message, taskError.stack);
+          console.error(
+            `[ProjectsService] Task error details:`,
+            taskError.message,
+            taskError.stack,
+          );
           // Continue with other tasks even if one fails
         }
       }
@@ -786,7 +882,10 @@ export class ProjectsService {
       console.log(`[ProjectsService] Successfully created ${savedTasks.length} onboarding tasks`);
       return { message: 'Onboarding tasks created successfully', tasks: savedTasks };
     } catch (error: any) {
-      console.error(`[ProjectsService] Error generating onboarding tasks for project ${id}:`, error);
+      console.error(
+        `[ProjectsService] Error generating onboarding tasks for project ${id}:`,
+        error,
+      );
       console.error(`[ProjectsService] Error details:`, error.message, error.stack);
       throw error;
     }
@@ -827,11 +926,7 @@ export class ProjectsService {
       await transactionalEntityManager.save(Project, project);
 
       // Bulk update all tasks for this project (much faster than looping)
-      await transactionalEntityManager.update(
-        Task,
-        { projectId: id },
-        { isArchived: true },
-      );
+      await transactionalEntityManager.update(Task, { projectId: id }, { isArchived: true });
 
       return project;
     });
@@ -840,34 +935,36 @@ export class ProjectsService {
   async completeProject(id: string, userId?: string) {
     try {
       // Use transaction to ensure atomicity
-      return await this.projectsRepository.manager.transaction(async (transactionalEntityManager) => {
-        // Find project (this will still work even if completed, for direct links)
-        const project = await transactionalEntityManager.findOne(Project, {
-          where: { id },
-        });
+      return await this.projectsRepository.manager.transaction(
+        async (transactionalEntityManager) => {
+          // Find project (this will still work even if completed, for direct links)
+          const project = await transactionalEntityManager.findOne(Project, {
+            where: { id },
+          });
 
-        if (!project) {
-          throw new NotFoundException(`Project not found with ID: ${id}`);
-        }
+          if (!project) {
+            throw new NotFoundException(`Project not found with ID: ${id}`);
+          }
 
-        if (project.isCompleted) {
-          // Already completed, return as-is
+          if (project.isCompleted) {
+            // Already completed, return as-is
+            return project;
+          }
+
+          // Update project: set completed flag, timestamp, and user
+          project.isCompleted = true;
+          project.completedAt = new Date();
+          if (userId) {
+            project.completedByUserId = userId;
+          }
+
+          // Save project
+          await transactionalEntityManager.save(Project, project);
+
+          console.log(`[ProjectsService] Project ${id} marked as complete by user ${userId}`);
           return project;
-        }
-
-        // Update project: set completed flag, timestamp, and user
-        project.isCompleted = true;
-        project.completedAt = new Date();
-        if (userId) {
-          project.completedByUserId = userId;
-        }
-
-        // Save project
-        await transactionalEntityManager.save(Project, project);
-
-        console.log(`[ProjectsService] Project ${id} marked as complete by user ${userId}`);
-        return project;
-      });
+        },
+      );
     } catch (error: any) {
       console.error(`[ProjectsService] Error completing project ${id}:`, error);
       console.error(`[ProjectsService] Error details:`, error.message, error.stack);
@@ -918,7 +1015,8 @@ export class ProjectsService {
 
     // Exclude archived projects from stats
     if (userRole === 'Project Manager') {
-      queryBuilder.where('project.pmId = :userId', { userId })
+      queryBuilder
+        .where('project.pmId = :userId', { userId })
         .andWhere('project.isArchived = :isArchived', { isArchived: false });
     } else {
       queryBuilder.where('project.isArchived = :isArchived', { isArchived: false });
@@ -933,7 +1031,8 @@ export class ProjectsService {
 
     const overdueQueryBuilder = this.projectsRepository.createQueryBuilder('project');
     if (userRole === 'Project Manager') {
-      overdueQueryBuilder.where('project.pmId = :userId', { userId })
+      overdueQueryBuilder
+        .where('project.pmId = :userId', { userId })
         .andWhere('project.isArchived = :isArchived', { isArchived: false });
     } else {
       overdueQueryBuilder.where('project.isArchived = :isArchived', { isArchived: false });
@@ -969,11 +1068,17 @@ export class ProjectsService {
     return queryBuilder.orderBy('project.updatedAt', 'DESC').getMany();
   }
 
-  async updateOnboardingPhase(projectId: string, dto: UpdateOnboardingPhaseDto, actorUserId?: string) {
+  async updateOnboardingPhase(
+    projectId: string,
+    dto: UpdateOnboardingPhaseDto,
+    actorUserId?: string,
+  ) {
     const project = await this.findOne(projectId);
 
     if (project.clientType !== ClientType.RAPID_PROSPECT) {
-      throw new BadRequestException('Onboarding phase updates are only available for Rapid Prospect clients');
+      throw new BadRequestException(
+        'Onboarding phase updates are only available for Rapid Prospect clients',
+      );
     }
 
     if (dto.onboardingManagerId !== undefined) {
@@ -1001,7 +1106,10 @@ export class ProjectsService {
 
     project.onboardingPhase = targetPhase;
     project.onboardingPhaseStatus =
-      dto.status || (targetPhase === OnboardingPhase.FULL_GO_LIVE ? OnboardingPhaseStatus.COMPLETED : OnboardingPhaseStatus.IN_PROGRESS);
+      dto.status ||
+      (targetPhase === OnboardingPhase.FULL_GO_LIVE
+        ? OnboardingPhaseStatus.COMPLETED
+        : OnboardingPhaseStatus.IN_PROGRESS);
     project.onboardingStartedAt = project.onboardingStartedAt || new Date();
 
     const milestoneKey = dto.milestoneKey || this.phaseToMilestoneKey(targetPhase);
@@ -1009,7 +1117,10 @@ export class ProjectsService {
     const milestones = { ...(project.onboardingMilestones || {}) };
     const existingMilestone = milestones[milestoneKey] || { completed: false };
 
-    if (dto.markCurrentMilestoneComplete || project.onboardingPhaseStatus === OnboardingPhaseStatus.COMPLETED) {
+    if (
+      dto.markCurrentMilestoneComplete ||
+      project.onboardingPhaseStatus === OnboardingPhaseStatus.COMPLETED
+    ) {
       milestones[milestoneKey] = {
         ...existingMilestone,
         completed: true,
@@ -1025,7 +1136,10 @@ export class ProjectsService {
       };
     }
 
-    if (project.onboardingPhase === OnboardingPhase.FULL_GO_LIVE && project.onboardingPhaseStatus === OnboardingPhaseStatus.COMPLETED) {
+    if (
+      project.onboardingPhase === OnboardingPhase.FULL_GO_LIVE &&
+      project.onboardingPhaseStatus === OnboardingPhaseStatus.COMPLETED
+    ) {
       project.onboardingCompletedAt = new Date();
     }
 
@@ -1117,34 +1231,34 @@ export class ProjectsService {
 
       // Project creation
       activities.push({
-      id: `project-created-${project.id}`,
-      type: 'project',
-      action: 'Project Created',
-      department: 'Project Management',
-      user: project.pm,
-      userId: project.pmId,
-      createdAt: project.createdAt,
-      metadata: {
-        projectName: project.clientName,
-        stage: project.stage,
-      },
-    });
-
-      // Project stage changes (we'll track these from project updates)
-      if (project.lastEmailedAt) {
-      activities.push({
-        id: `email-sent-${project.id}`,
-        type: 'email',
-        action: 'Email Sent',
+        id: `project-created-${project.id}`,
+        type: 'project',
+        action: 'Project Created',
         department: 'Project Management',
         user: project.pm,
         userId: project.pmId,
-        createdAt: project.lastEmailedAt,
+        createdAt: project.createdAt,
         metadata: {
           projectName: project.clientName,
+          stage: project.stage,
         },
       });
-    }
+
+      // Project stage changes (we'll track these from project updates)
+      if (project.lastEmailedAt) {
+        activities.push({
+          id: `email-sent-${project.id}`,
+          type: 'email',
+          action: 'Email Sent',
+          department: 'Project Management',
+          user: project.pm,
+          userId: project.pmId,
+          createdAt: project.lastEmailedAt,
+          metadata: {
+            projectName: project.clientName,
+          },
+        });
+      }
 
       if (project.closedAt) {
         activities.push({
@@ -1169,69 +1283,69 @@ export class ProjectsService {
 
       // Get deliverable history and creation
       for (const deliverable of deliverables) {
-      const department = this.getDepartmentFromDeliverableType(deliverable.type);
-      
-      // Add deliverable creation as activity
-      activities.push({
-        id: `deliverable-created-${deliverable.id}`,
-        type: 'deliverable',
-        action: 'Deliverable Created',
-        department,
-        user: null,
-        userId: null,
-        createdAt: deliverable.createdAt,
-        metadata: {
-          deliverableType: deliverable.type,
-          deliverableCustomType: deliverable.customType,
-          status: deliverable.status,
-        },
-      });
+        const department = this.getDepartmentFromDeliverableType(deliverable.type);
 
-      // Get deliverable history (status changes, approvals, revisions)
-      const deliverableHistory = await this.deliverableHistoryRepository.find({
-        where: { deliverableId: deliverable.id },
-        relations: ['user', 'deliverable'],
-        order: { createdAt: 'ASC' },
-      });
-
-      for (const history of deliverableHistory) {
+        // Add deliverable creation as activity
         activities.push({
-          id: `deliverable-${history.id}`,
+          id: `deliverable-created-${deliverable.id}`,
           type: 'deliverable',
-          action: String(history.action), // Ensure it's a string
-          department,
-          user: history.user,
-          userId: history.userId,
-          createdAt: history.createdAt,
-          metadata: {
-            deliverableType: deliverable.type,
-            deliverableCustomType: deliverable.customType,
-            fileUrl: history.fileUrl,
-            previousStatus: history.previousStatus,
-            newStatus: history.newStatus,
-            notes: history.notes,
-          },
-        });
-      }
-
-      // If deliverable has fileUrl but no history entry, add it as activity
-      if (deliverable.fileUrl && deliverableHistory.length === 0 && deliverable.updatedAt) {
-        activities.push({
-          id: `deliverable-file-added-${deliverable.id}`,
-          type: 'deliverable',
-          action: 'File Added',
+          action: 'Deliverable Created',
           department,
           user: null,
           userId: null,
-          createdAt: deliverable.updatedAt,
+          createdAt: deliverable.createdAt,
           metadata: {
             deliverableType: deliverable.type,
             deliverableCustomType: deliverable.customType,
-            fileUrl: deliverable.fileUrl,
             status: deliverable.status,
           },
         });
-      }
+
+        // Get deliverable history (status changes, approvals, revisions)
+        const deliverableHistory = await this.deliverableHistoryRepository.find({
+          where: { deliverableId: deliverable.id },
+          relations: ['user', 'deliverable'],
+          order: { createdAt: 'ASC' },
+        });
+
+        for (const history of deliverableHistory) {
+          activities.push({
+            id: `deliverable-${history.id}`,
+            type: 'deliverable',
+            action: String(history.action), // Ensure it's a string
+            department,
+            user: history.user,
+            userId: history.userId,
+            createdAt: history.createdAt,
+            metadata: {
+              deliverableType: deliverable.type,
+              deliverableCustomType: deliverable.customType,
+              fileUrl: history.fileUrl,
+              previousStatus: history.previousStatus,
+              newStatus: history.newStatus,
+              notes: history.notes,
+            },
+          });
+        }
+
+        // If deliverable has fileUrl but no history entry, add it as activity
+        if (deliverable.fileUrl && deliverableHistory.length === 0 && deliverable.updatedAt) {
+          activities.push({
+            id: `deliverable-file-added-${deliverable.id}`,
+            type: 'deliverable',
+            action: 'File Added',
+            department,
+            user: null,
+            userId: null,
+            createdAt: deliverable.updatedAt,
+            metadata: {
+              deliverableType: deliverable.type,
+              deliverableCustomType: deliverable.customType,
+              fileUrl: deliverable.fileUrl,
+              status: deliverable.status,
+            },
+          });
+        }
       }
 
       // Get all tasks for this project
@@ -1243,110 +1357,116 @@ export class ProjectsService {
 
       // Task creation
       for (const task of tasks) {
-      const department = this.getDepartmentFromTaskType(task.type);
-      activities.push({
-        id: `task-created-${task.id}`,
-        type: 'task',
-        action: 'Task Created',
-        department,
-        user: task.assignedTo,
-        userId: task.assignedToId,
-        createdAt: task.createdAt,
-        metadata: {
-          taskTitle: task.title,
-          taskType: task.type,
-          status: task.status,
-        },
-      });
-
-      // Task file history (submissions from TaskFileHistory table)
-      const taskFileHistory = await this.taskFileHistoryRepository.find({
-        where: { taskId: task.id },
-        relations: ['user', 'task'],
-        order: { createdAt: 'ASC' },
-      });
-
-      for (const history of taskFileHistory) {
+        const department = this.getDepartmentFromTaskType(task.type);
         activities.push({
-          id: `task-file-${history.id}`,
+          id: `task-created-${task.id}`,
           type: 'task',
-          action: String(history.action), // Ensure it's a string
-          department,
-          user: history.user,
-          userId: history.userId,
-          createdAt: history.createdAt,
-          metadata: {
-            taskTitle: task.title,
-            taskType: task.type,
-            fileUrl: history.fileUrl,
-            notes: history.notes,
-          },
-        });
-      }
-
-      // If task has fileUrl but no TaskFileHistory entry, treat it as a submission
-      // Use updatedAt as the submission time (when fileUrl was likely added)
-      if (task.fileUrl && taskFileHistory.length === 0 && task.updatedAt) {
-        activities.push({
-          id: `task-submitted-${task.id}`,
-          type: 'task',
-          action: 'Submitted',
+          action: 'Task Created',
           department,
           user: task.assignedTo,
           userId: task.assignedToId,
-          createdAt: task.updatedAt,
-          metadata: {
-            taskTitle: task.title,
-            taskType: task.type,
-            fileUrl: task.fileUrl,
-            status: task.status,
-          },
-        });
-      }
-
-      // Track status changes
-      if (task.status === 'In Review' && task.fileUrl) {
-        // Task was sent for review
-        activities.push({
-          id: `task-sent-for-review-${task.id}`,
-          type: 'task',
-          action: 'Sent for Review',
-          department,
-          user: task.assignedTo,
-          userId: task.assignedToId,
-          createdAt: task.updatedAt || task.createdAt,
-          metadata: {
-            taskTitle: task.title,
-            taskType: task.type,
-            fileUrl: task.fileUrl,
-            status: task.status,
-          },
-        });
-      }
-
-      // Task updates (if updatedAt is different from createdAt and not already covered)
-      if (task.updatedAt && task.updatedAt.getTime() !== task.createdAt.getTime() && !task.fileUrl) {
-        activities.push({
-          id: `task-updated-${task.id}`,
-          type: 'task',
-          action: 'Task Updated',
-          department,
-          user: task.assignedTo,
-          userId: task.assignedToId,
-          createdAt: task.updatedAt,
+          createdAt: task.createdAt,
           metadata: {
             taskTitle: task.title,
             taskType: task.type,
             status: task.status,
           },
         });
-      }
+
+        // Task file history (submissions from TaskFileHistory table)
+        const taskFileHistory = await this.taskFileHistoryRepository.find({
+          where: { taskId: task.id },
+          relations: ['user', 'task'],
+          order: { createdAt: 'ASC' },
+        });
+
+        for (const history of taskFileHistory) {
+          activities.push({
+            id: `task-file-${history.id}`,
+            type: 'task',
+            action: String(history.action), // Ensure it's a string
+            department,
+            user: history.user,
+            userId: history.userId,
+            createdAt: history.createdAt,
+            metadata: {
+              taskTitle: task.title,
+              taskType: task.type,
+              fileUrl: history.fileUrl,
+              notes: history.notes,
+            },
+          });
+        }
+
+        // If task has fileUrl but no TaskFileHistory entry, treat it as a submission
+        // Use updatedAt as the submission time (when fileUrl was likely added)
+        if (task.fileUrl && taskFileHistory.length === 0 && task.updatedAt) {
+          activities.push({
+            id: `task-submitted-${task.id}`,
+            type: 'task',
+            action: 'Submitted',
+            department,
+            user: task.assignedTo,
+            userId: task.assignedToId,
+            createdAt: task.updatedAt,
+            metadata: {
+              taskTitle: task.title,
+              taskType: task.type,
+              fileUrl: task.fileUrl,
+              status: task.status,
+            },
+          });
+        }
+
+        // Track status changes
+        if (task.status === 'In Review' && task.fileUrl) {
+          // Task was sent for review
+          activities.push({
+            id: `task-sent-for-review-${task.id}`,
+            type: 'task',
+            action: 'Sent for Review',
+            department,
+            user: task.assignedTo,
+            userId: task.assignedToId,
+            createdAt: task.updatedAt || task.createdAt,
+            metadata: {
+              taskTitle: task.title,
+              taskType: task.type,
+              fileUrl: task.fileUrl,
+              status: task.status,
+            },
+          });
+        }
+
+        // Task updates (if updatedAt is different from createdAt and not already covered)
+        if (
+          task.updatedAt &&
+          task.updatedAt.getTime() !== task.createdAt.getTime() &&
+          !task.fileUrl
+        ) {
+          activities.push({
+            id: `task-updated-${task.id}`,
+            type: 'task',
+            action: 'Task Updated',
+            department,
+            user: task.assignedTo,
+            userId: task.assignedToId,
+            createdAt: task.updatedAt,
+            metadata: {
+              taskTitle: task.title,
+              taskType: task.type,
+              status: task.status,
+            },
+          });
+        }
       }
 
       // Sort by date (oldest first - newest at bottom)
       activities.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-      console.log(`[ProjectsService] Returning ${activities.length} activities for project ${projectId}`);
+      console.log(
+        `[ProjectsService] Returning ${activities.length} activities for project ${projectId}`,
+      );
       return activities;
     } catch (error: any) {
       console.error(`[ProjectsService] Error getting activity for project ${projectId}:`, error);
@@ -1357,7 +1477,12 @@ export class ProjectsService {
 
   private getDepartmentFromDeliverableType(type: DeliverableType | string): string {
     const typeStr = type.toString();
-    if (typeStr.includes('Logo') || typeStr.includes('Social') || typeStr.includes('Home Page') || typeStr.includes('Brand Book')) {
+    if (
+      typeStr.includes('Logo') ||
+      typeStr.includes('Social') ||
+      typeStr.includes('Home Page') ||
+      typeStr.includes('Brand Book')
+    ) {
       return 'Design';
     }
     if (typeStr.includes('Copy') || typeStr.includes('Speaker Kit')) {
@@ -1383,4 +1508,3 @@ export class ProjectsService {
     return 'General';
   }
 }
-

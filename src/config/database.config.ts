@@ -9,14 +9,15 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     const databaseUrl = this.configService.get<string>('DATABASE_URL');
-    
+
     // If DATABASE_URL is provided, use it directly
     if (databaseUrl) {
       // Railway and other cloud providers often require SSL
-      const requiresSSL = databaseUrl.includes('railway') || 
-                          databaseUrl.includes('sslmode=require') ||
-                          databaseUrl.includes('trolley.proxy.rlwy.net');
-      
+      const requiresSSL =
+        databaseUrl.includes('railway') ||
+        databaseUrl.includes('sslmode=require') ||
+        databaseUrl.includes('trolley.proxy.rlwy.net');
+
       return {
         type: 'postgres',
         url: databaseUrl,
@@ -24,11 +25,13 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         synchronize: false, // Temporarily disabled to fix enum mismatch - run migration script first
         logging: this.configService.get<string>('NODE_ENV') === 'development',
         ssl: requiresSSL ? { rejectUnauthorized: false } : false,
-        extra: requiresSSL ? {
-          ssl: {
-            rejectUnauthorized: false,
-          },
-        } : {},
+        extra: requiresSSL
+          ? {
+              ssl: {
+                rejectUnauthorized: false,
+              },
+            }
+          : {},
       };
     }
 
@@ -46,4 +49,3 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
     };
   }
 }
-

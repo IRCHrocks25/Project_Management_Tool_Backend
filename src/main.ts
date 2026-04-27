@@ -13,36 +13,39 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
     app.useWebSocketAdapter(new IoAdapter(app));
-    
+
     // Enable CORS for frontend communication
-    const envOrigins = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
+    const envOrigins = (process.env.CORS_ORIGINS || '')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
     const allowedOrigins = [
       'http://localhost:3001',
       'https://projectmanagementtoolfrontend-production-fbc2.up.railway.app',
       'https://telos.katek-ai.com',
       ...envOrigins,
     ];
-    
+
     app.enableCors({
       origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps, curl, or webhook requests)
         if (!origin) return callback(null, true);
-        
+
         // Check exact matches first
         if (allowedOrigins.indexOf(origin) !== -1) {
           return callback(null, true);
         }
-        
+
         // In development, allow localhost for local testing (n8n, Postman, etc.)
         if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
           return callback(null, true);
         }
-        
+
         // In production, allow Railway preview deployments (optional - for flexibility)
         if (process.env.NODE_ENV === 'production' && origin.includes('.up.railway.app')) {
           return callback(null, true);
         }
-        
+
         callback(new Error('Not allowed by CORS'));
       },
       credentials: true,
@@ -62,7 +65,9 @@ async function bootstrap() {
     const port = process.env.PORT || 3000;
     await app.listen(port);
     console.log(`🚀 Backend server running on http://localhost:${port}`);
-    console.log(`📊 Database: ${process.env.DATABASE_URL ? 'Connected via DATABASE_URL' : 'Using local config'}`);
+    console.log(
+      `📊 Database: ${process.env.DATABASE_URL ? 'Connected via DATABASE_URL' : 'Using local config'}`,
+    );
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     if (error.message?.includes('ECONNREFUSED')) {
@@ -75,4 +80,3 @@ async function bootstrap() {
   }
 }
 bootstrap();
-

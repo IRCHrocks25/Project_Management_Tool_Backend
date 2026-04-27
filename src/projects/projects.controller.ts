@@ -37,7 +37,10 @@ export class ProjectsController {
     } catch (error: any) {
       console.error('[ProjectsController] Error in create:', error);
       console.error('[ProjectsController] Error stack:', error?.stack);
-      console.error('[ProjectsController] Request body:', JSON.stringify(createProjectDto, null, 2));
+      console.error(
+        '[ProjectsController] Request body:',
+        JSON.stringify(createProjectDto, null, 2),
+      );
       throw error;
     }
   }
@@ -62,16 +65,9 @@ export class ProjectsController {
   }
 
   @Get()
-  async findAll(
-    @Request() req: any,
-    @Query('includeArchived') includeArchived?: string,
-  ) {
+  async findAll(@Request() req: any, @Query('includeArchived') includeArchived?: string) {
     const includeArchivedBool = includeArchived === 'true';
-    return this.projectsService.findAll(
-      req.user?.userId,
-      req.user?.role,
-      includeArchivedBool,
-    );
+    return this.projectsService.findAll(req.user?.userId, req.user?.role, includeArchivedBool);
   }
 
   @Get('stats')
@@ -105,22 +101,19 @@ export class ProjectsController {
   async archiveProject(@Param('id') id: string, @Request() req: any) {
     // Restrict archiving to PM and Admin roles
     const userRole = req.user?.role;
-    
+
     // Normalize role comparison - handle both enum and string values
     const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
-    const isProjectManager = 
-      normalizedRole === UserRole.PROJECT_MANAGER || 
-      normalizedRole === 'Project Manager';
-    const isFounder = 
-      normalizedRole === UserRole.FOUNDER_CEO || 
-      normalizedRole === 'FOUNDER/CEO';
-    
+    const isProjectManager =
+      normalizedRole === UserRole.PROJECT_MANAGER || normalizedRole === 'Project Manager';
+    const isFounder = normalizedRole === UserRole.FOUNDER_CEO || normalizedRole === 'FOUNDER/CEO';
+
     if (!isProjectManager && !isFounder) {
       throw new ForbiddenException(
-        `Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`
+        `Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`,
       );
     }
-    
+
     return this.projectsService.archiveProject(id, req.user?.userId);
   }
 
@@ -130,22 +123,19 @@ export class ProjectsController {
     try {
       // Restrict completing to PM and Admin roles
       const userRole = req.user?.role;
-      
+
       // Normalize role comparison - handle both enum and string values
       const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
-      const isProjectManager = 
-        normalizedRole === UserRole.PROJECT_MANAGER || 
-        normalizedRole === 'Project Manager';
-      const isFounder = 
-        normalizedRole === UserRole.FOUNDER_CEO || 
-        normalizedRole === 'FOUNDER/CEO';
-      
+      const isProjectManager =
+        normalizedRole === UserRole.PROJECT_MANAGER || normalizedRole === 'Project Manager';
+      const isFounder = normalizedRole === UserRole.FOUNDER_CEO || normalizedRole === 'FOUNDER/CEO';
+
       if (!isProjectManager && !isFounder) {
         throw new ForbiddenException(
-          `Only Project Managers and Admins can mark projects as complete. Your role: "${userRole || 'undefined'}"`
+          `Only Project Managers and Admins can mark projects as complete. Your role: "${userRole || 'undefined'}"`,
         );
       }
-      
+
       console.log(`[ProjectsController] Completing project ${id} for user ${req.user?.userId}`);
       return await this.projectsService.completeProject(id, req.user?.userId);
     } catch (error: any) {
@@ -207,4 +197,3 @@ export class ProjectsController {
     return this.projectsService.updateOnboardingPhase(id, dto, req.user?.userId || req.user?.id);
   }
 }
-

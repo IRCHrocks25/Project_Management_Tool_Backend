@@ -41,4 +41,3 @@ export class TaskComment {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

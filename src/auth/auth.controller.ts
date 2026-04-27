@@ -1,4 +1,15 @@
-import { Controller, Post, Body, Get, Patch, HttpCode, HttpStatus, UseGuards, Param, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Patch,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Param,
+  Req,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -38,20 +49,14 @@ export class AuthController {
   @Post('users/:id/team-lead')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async setTeamLead(
-    @Param('id') id: string,
-    @Body() body: { isTeamLead: boolean },
-  ) {
+  async setTeamLead(@Param('id') id: string, @Body() body: { isTeamLead: boolean }) {
     return this.authService.setTeamLead(id, body.isTeamLead);
   }
 
   @Post('users/:id/head-pm')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async setHeadPM(
-    @Param('id') id: string,
-    @Body() body: { isHeadPM: boolean },
-  ) {
+  async setHeadPM(@Param('id') id: string, @Body() body: { isHeadPM: boolean }) {
     return this.authService.setHeadPM(id, body.isHeadPM);
   }
 
@@ -94,7 +99,7 @@ export class AuthController {
     console.log('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
     console.log('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
     console.log('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
-    
+
     try {
       const result = await this.authService.forgotPassword(forgotPasswordDto);
       console.log('🚀 [CONTROLLER] forgotPassword completed successfully');
@@ -137,4 +142,3 @@ export class AuthController {
     return this.authService.changePassword(req.user.userId, dto);
   }
 }
-

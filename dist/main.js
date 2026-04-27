@@ -43,7 +43,10 @@ async function bootstrap() {
     try {
         const app = await core_1.NestFactory.create(app_module_1.AppModule);
         app.useWebSocketAdapter(new platform_socket_io_1.IoAdapter(app));
-        const envOrigins = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
+        const envOrigins = (process.env.CORS_ORIGINS || '')
+            .split(',')
+            .map((o) => o.trim())
+            .filter(Boolean);
         const allowedOrigins = [
             'http://localhost:3001',
             'https://projectmanagementtoolfrontend-production-fbc2.up.railway.app',

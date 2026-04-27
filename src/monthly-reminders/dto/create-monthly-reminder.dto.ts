@@ -1,12 +1,4 @@
-import {
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-  IsUUID,
-} from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, IsUUID } from 'class-validator';
 
 export class CreateMonthlyReminderDto {
   @IsOptional()
@@ -43,4 +35,3 @@ export class CreateMonthlyReminderDto {
   @IsString()
   nextMonthStatus?: 'pending' | 'done' | 'no' | null;
 }
-

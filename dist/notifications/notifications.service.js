@@ -81,7 +81,9 @@ let NotificationsService = class NotificationsService {
                 userId: saved.userId,
                 assignedToId: saved.assignedToId ?? undefined,
                 isRead: saved.isRead,
-                createdAt: saved.createdAt instanceof Date ? saved.createdAt.toISOString() : saved.createdAt,
+                createdAt: saved.createdAt instanceof Date
+                    ? saved.createdAt.toISOString()
+                    : saved.createdAt,
             };
             this.notificationsGateway.emitNewNotification(data.userId, payload);
         }
@@ -216,24 +218,32 @@ let NotificationsService = class NotificationsService {
             console.error('[NotificationsService] notifyHeadPMsAlso error:', err);
         }
     }
+    emitTaskTransferred(payload) {
+        try {
+            this.notificationsGateway.server.emit('task:transferred', payload);
+        }
+        catch (err) {
+            console.error('[NotificationsService] emitTaskTransferred error:', err);
+        }
+    }
     async findAll(userId, userRole) {
         console.log('[NotificationsService] findAll called with:', { userId, userRole });
         const allNotifications = await this.notificationsRepository.find({
             take: 5,
-            order: { createdAt: 'DESC' }
+            order: { createdAt: 'DESC' },
         });
         console.log('[NotificationsService] Sample notifications in DB:', {
             totalSample: allNotifications.length,
-            userIds: allNotifications.map(n => ({ id: n.id, userId: n.userId, type: n.type }))
+            userIds: allNotifications.map((n) => ({ id: n.id, userId: n.userId, type: n.type })),
         });
         const userNotifications = await this.notificationsRepository.find({
             where: { userId },
-            take: 5
+            take: 5,
         });
         console.log('[NotificationsService] Notifications for current user:', {
             userId,
             count: userNotifications.length,
-            sample: userNotifications[0]
+            sample: userNotifications[0],
         });
         const queryBuilder = this.notificationsRepository
             .createQueryBuilder('notification')
@@ -243,11 +253,11 @@ let NotificationsService = class NotificationsService {
         if (userRole && userRole !== 'FOUNDER/CEO' && userRole !== 'Project Manager') {
             const roleToTaskTypeMap = {
                 'Copy Writing': 'Copy',
-                'Designer': 'Design',
-                'Developer': 'Dev',
+                Designer: 'Design',
+                Developer: 'Dev',
                 'AI Developer': 'AI',
                 'Social Media': 'Social Media',
-                'CRM': 'CRM',
+                CRM: 'CRM',
                 'SEO/GEO': 'SEO/GEO',
             };
             const taskType = roleToTaskTypeMap[userRole];
@@ -260,7 +270,7 @@ let NotificationsService = class NotificationsService {
           )`, {
                     taskType,
                     taskTypes: ['task', 'task_completed', 'revision'],
-                    taskAvailableType: 'task_available'
+                    taskAvailableType: 'task_available',
                 });
             }
         }
@@ -268,7 +278,7 @@ let NotificationsService = class NotificationsService {
         console.log('[NotificationsService] Query result:', {
             userId,
             count: result.length,
-            sample: result[0]
+            sample: result[0],
         });
         return result;
     }

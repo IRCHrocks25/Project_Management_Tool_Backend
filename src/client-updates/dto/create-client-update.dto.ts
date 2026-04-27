@@ -14,4 +14,3 @@ export class CreateClientUpdateDto {
   @IsString({ each: true })
   links?: string[];
 }
-

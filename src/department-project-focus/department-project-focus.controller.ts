@@ -18,10 +18,7 @@ export class DepartmentProjectFocusController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async get(
-    @Query('date') date: string,
-    @Query('departmentKey') departmentKey: string,
-  ) {
+  async get(@Query('date') date: string, @Query('departmentKey') departmentKey: string) {
     if (!date || !departmentKey) {
       throw new BadRequestException('Query parameters "date" and "departmentKey" are required');
     }

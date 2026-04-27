@@ -25,7 +25,8 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
-  private readonly WEBHOOK_URL = 'https://katalyst-crm2.fly.dev/webhook/5bd4150f-d3c8-43e7-9238-18c4634b0679';
+  private readonly WEBHOOK_URL =
+    'https://katalyst-crm2.fly.dev/webhook/5bd4150f-d3c8-43e7-9238-18c4634b0679';
 
   constructor(
     @InjectRepository(User)
@@ -90,32 +91,34 @@ export class AuthService {
     if (!user) {
       // Try case-insensitive search as fallback
       const allUsers = await this.usersRepository.find();
-      const foundUser = allUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-      
+      const foundUser = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail);
+
       if (!foundUser) {
         console.log(`Login attempt failed: User not found for email: ${normalizedEmail}`);
         throw new UnauthorizedException('Invalid email or password');
       }
-      
+
       // Use found user
       if (foundUser.isActive === false) {
-        throw new UnauthorizedException('Your account access has been revoked. Please contact Head PM.');
+        throw new UnauthorizedException(
+          'Your account access has been revoked. Please contact Head PM.',
+        );
       }
 
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
-      
+
       if (!isPasswordValid) {
         console.log(`Login attempt failed: Invalid password for email: ${normalizedEmail}`);
         throw new UnauthorizedException('Invalid email or password');
       }
-      
+
       // Generate JWT token
       const payload = { sub: foundUser.id, email: foundUser.email, role: foundUser.role };
       const token = this.jwtService.sign(payload);
-      
+
       // Return user data without password
       const { password: _, ...userWithoutPassword } = foundUser;
-      
+
       return {
         user: userWithoutPassword,
         token,
@@ -124,7 +127,9 @@ export class AuthService {
 
     // Verify password
     if (user.isActive === false) {
-      throw new UnauthorizedException('Your account access has been revoked. Please contact Head PM.');
+      throw new UnauthorizedException(
+        'Your account access has been revoked. Please contact Head PM.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -165,7 +170,19 @@ export class AuthService {
 
   async getAllUsers() {
     const users = await this.usersRepository.find({
-      select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM', 'isActive', 'avatarUrl', 'birthday', 'bio'],
+      select: [
+        'id',
+        'name',
+        'email',
+        'role',
+        'createdAt',
+        'isTeamLead',
+        'isHeadPM',
+        'isActive',
+        'avatarUrl',
+        'birthday',
+        'bio',
+      ],
       order: { name: 'ASC' },
     });
     return users;
@@ -311,7 +328,7 @@ export class AuthService {
    */
   async getOrCreateWebhookPM(): Promise<User> {
     const webhookEmail = 'webhook@katalyst.pm';
-    
+
     // Try to find existing webhook PM
     let webhookPM = await this.usersRepository.findOne({
       where: { email: webhookEmail },
@@ -344,7 +361,9 @@ export class AuthService {
     process.stdout.write('\n');
     console.log('🔔 [FORGOT PASSWORD] ==========================================');
     console.log('🔔 [FORGOT PASSWORD] Request received for email:', normalizedEmail);
-    console.log('🔔 [FORGOT PASSWORD] Flow: Email submit → Generate OTP → Save to DB → Send via Webhook');
+    console.log(
+      '🔔 [FORGOT PASSWORD] Flow: Email submit → Generate OTP → Save to DB → Send via Webhook',
+    );
     console.log('🔔 [FORGOT PASSWORD] ==========================================\n');
 
     try {
@@ -355,14 +374,19 @@ export class AuthService {
 
       // Fallback: case-insensitive search if not found
       if (!user) {
-        console.log('🔔 [FORGOT PASSWORD] User not found with exact match, trying case-insensitive search...');
+        console.log(
+          '🔔 [FORGOT PASSWORD] User not found with exact match, trying case-insensitive search...',
+        );
         console.log('🔔 [FORGOT PASSWORD] Searching for normalized email:', normalizedEmail);
         const allUsers = await this.usersRepository.find();
         console.log('🔔 [FORGOT PASSWORD] Total users in database:', allUsers.length);
-        console.log('🔔 [FORGOT PASSWORD] Sample emails in DB:', allUsers.slice(0, 5).map(u => u.email));
-        
-        user = allUsers.find(u => u.email.toLowerCase() === normalizedEmail) || null;
-        
+        console.log(
+          '🔔 [FORGOT PASSWORD] Sample emails in DB:',
+          allUsers.slice(0, 5).map((u) => u.email),
+        );
+
+        user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
+
         if (user) {
           console.log('🔔 [FORGOT PASSWORD] ✅ User found with case-insensitive search!');
           console.log('🔔 [FORGOT PASSWORD] Found user email:', user.email);
@@ -401,18 +425,26 @@ export class AuthService {
       } catch (dbError: any) {
         console.error(`[OTP Password Reset] Database error saving OTP:`, dbError);
         if (dbError.message?.includes('column') || dbError.code === '42703') {
-          throw new BadRequestException('OTP password reset feature is not fully configured. Please run database migration to add OTP fields.');
+          throw new BadRequestException(
+            'OTP password reset feature is not fully configured. Please run database migration to add OTP fields.',
+          );
         }
         throw dbError;
       }
 
       // Send OTP via webhook
       console.log('🔔 [FORGOT PASSWORD] Sending OTP via webhook...');
-      let webhookStatus: { success: boolean; status?: number; message?: string; error?: string; emailSent?: boolean } | null = null;
-      
+      let webhookStatus: {
+        success: boolean;
+        status?: number;
+        message?: string;
+        error?: string;
+        emailSent?: boolean;
+      } | null = null;
+
       try {
         webhookStatus = await this.sendOtpViaWebhook(normalizedEmail, otpCode, user.name);
-        
+
         // Check if webhook response indicates email was sent
         if (webhookStatus.success && webhookStatus.message?.includes('Email sent')) {
           webhookStatus.emailSent = true;
@@ -439,7 +471,7 @@ export class AuthService {
 
       console.log('🔔 [FORGOT PASSWORD] Returning response with webhook status');
       console.log('🔔 [FORGOT PASSWORD] ==========================================\n');
-      
+
       return response;
     } catch (error: any) {
       console.error(`[OTP Password Reset] Unexpected error:`, error);
@@ -453,7 +485,17 @@ export class AuthService {
     }
   }
 
-  private async sendOtpViaWebhook(email: string, otp: string, userName?: string): Promise<{ success: boolean; status?: number; message?: string; error?: string; emailSent?: boolean }> {
+  private async sendOtpViaWebhook(
+    email: string,
+    otp: string,
+    userName?: string,
+  ): Promise<{
+    success: boolean;
+    status?: number;
+    message?: string;
+    error?: string;
+    emailSent?: boolean;
+  }> {
     try {
       // Payload for n8n: to, otp, optional userName for personalization
       const payload: { to: string; otp: string; userName?: string } = {
@@ -478,7 +520,7 @@ export class AuthService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
             'Webhook-Token': this.configService.get<string>('WEBHOOK_TOKEN', 'katalystPM2026'),
           },
           body: requestBody,
@@ -486,11 +528,14 @@ export class AuthService {
 
         console.log(`📥 [WEBHOOK] Response received!`);
         console.log(`📥 [WEBHOOK] Response status: ${response.status} ${response.statusText}`);
-        console.log(`📥 [WEBHOOK] Response headers:`, Object.fromEntries(response.headers.entries()));
-        
+        console.log(
+          `📥 [WEBHOOK] Response headers:`,
+          Object.fromEntries(response.headers.entries()),
+        );
+
         const responseText = await response.text();
         console.log(`📥 [WEBHOOK] Response body:`, responseText);
-        
+
         // Try to parse JSON response
         let responseData: any = null;
         try {
@@ -499,7 +544,7 @@ export class AuthService {
         } catch (e) {
           console.log(`📥 [WEBHOOK] Response is not JSON, treating as text`);
         }
-        
+
         if (!response.ok) {
           console.error(`❌ [WEBHOOK] Error: Webhook returned status ${response.status}`);
           console.error(`❌ [WEBHOOK] Error response:`, responseText);
@@ -513,14 +558,14 @@ export class AuthService {
         }
 
         // Check if response indicates email was sent (format: {"response": "Email sent to test@example.com."})
-        const emailSent = responseData?.response?.includes('Email sent') || 
-                         responseText.includes('Email sent to');
-        
+        const emailSent =
+          responseData?.response?.includes('Email sent') || responseText.includes('Email sent to');
+
         console.log(`✅ [WEBHOOK] Successfully sent OTP email to ${email} via webhook`);
         console.log(`✅ [WEBHOOK] Response status: ${response.status}`);
         console.log(`✅ [WEBHOOK] Email sent confirmation: ${emailSent}`);
         console.log(`📤 [WEBHOOK] ==========================================\n`);
-        
+
         return {
           success: true,
           status: response.status,
@@ -533,7 +578,7 @@ export class AuthService {
         console.error(`❌ [WEBHOOK] Error message:`, fetchError.message);
         console.error(`❌ [WEBHOOK] Error stack:`, fetchError.stack);
         console.error(`❌ [WEBHOOK] ==========================================\n`);
-        
+
         return {
           success: false,
           message: 'Network error occurred',
@@ -546,7 +591,7 @@ export class AuthService {
       console.error(`❌ [WEBHOOK] Error message:`, error.message);
       console.error(`❌ [WEBHOOK] Full error:`, error);
       console.error(`❌ [WEBHOOK] ==========================================\n`);
-      
+
       return {
         success: false,
         message: 'Unexpected error occurred',
@@ -569,10 +614,12 @@ export class AuthService {
 
     // Fallback: case-insensitive search if not found
     if (!user) {
-      console.log('🔔 [VERIFY OTP] User not found with exact match, trying case-insensitive search...');
+      console.log(
+        '🔔 [VERIFY OTP] User not found with exact match, trying case-insensitive search...',
+      );
       const allUsers = await this.usersRepository.find();
-      user = allUsers.find(u => u.email.toLowerCase() === normalizedEmail) || null;
-      
+      user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
+
       if (user) {
         console.log('🔔 [VERIFY OTP] ✅ User found with case-insensitive search:', user.email);
       }
@@ -593,14 +640,14 @@ export class AuthService {
       console.log('🔔 [VERIFY OTP] ❌ No OTP code found for user');
       throw new BadRequestException('Invalid OTP code');
     }
-    
+
     if (user.otpCode !== otp) {
       console.log('🔔 [VERIFY OTP] ❌ OTP mismatch!');
       console.log('🔔 [VERIFY OTP] Expected:', user.otpCode);
       console.log('🔔 [VERIFY OTP] Received:', otp);
       throw new BadRequestException('Invalid OTP code');
     }
-    
+
     console.log('🔔 [VERIFY OTP] ✅ OTP matches!');
 
     // Check if OTP has expired
@@ -632,10 +679,12 @@ export class AuthService {
 
     // Fallback: case-insensitive search if not found
     if (!user) {
-      console.log('🔔 [RESET PASSWORD] User not found with exact match, trying case-insensitive search...');
+      console.log(
+        '🔔 [RESET PASSWORD] User not found with exact match, trying case-insensitive search...',
+      );
       const allUsers = await this.usersRepository.find();
-      user = allUsers.find(u => u.email.toLowerCase() === normalizedEmail) || null;
-      
+      user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
+
       if (user) {
         console.log('🔔 [RESET PASSWORD] ✅ User found with case-insensitive search:', user.email);
       } else {
@@ -654,17 +703,17 @@ export class AuthService {
     console.log('🔔 [RESET PASSWORD] Checking OTP validity...');
     console.log('🔔 [RESET PASSWORD] User OTP in database:', user.otpCode);
     console.log('🔔 [RESET PASSWORD] OTP expires at:', user.otpExpires);
-    
+
     if (!user.otpCode) {
       console.log('🔔 [RESET PASSWORD] ❌ No OTP code found');
       throw new BadRequestException('OTP has expired or is invalid. Please request a new OTP.');
     }
-    
+
     if (!user.otpExpires || user.otpExpires < new Date()) {
       console.log('🔔 [RESET PASSWORD] ❌ OTP has expired');
       throw new BadRequestException('OTP has expired or is invalid. Please request a new OTP.');
     }
-    
+
     console.log('🔔 [RESET PASSWORD] ✅ OTP is valid');
 
     // Hash new password
@@ -712,4 +761,3 @@ export class AuthService {
     };
   }
 }
-

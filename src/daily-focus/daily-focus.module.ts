@@ -10,7 +10,15 @@ import { DailyFocusController } from './daily-focus.controller';
 import { ReportsController } from './reports.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DailyFocusItem, EodReportSnapshot, DepartmentProjectFocusItem, Task, TaskQuestion])],
+  imports: [
+    TypeOrmModule.forFeature([
+      DailyFocusItem,
+      EodReportSnapshot,
+      DepartmentProjectFocusItem,
+      Task,
+      TaskQuestion,
+    ]),
+  ],
   controllers: [DailyFocusController, ReportsController],
   providers: [DailyFocusService],
   exports: [DailyFocusService],

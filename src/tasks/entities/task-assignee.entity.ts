@@ -33,4 +33,3 @@ export class TaskAssignee {
   @CreateDateColumn()
   assignedAt: Date;
 }
-

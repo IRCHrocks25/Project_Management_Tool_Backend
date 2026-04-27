@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, Delete, Request, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  Delete,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { DeliverablesService } from './deliverables.service';
 import { UpdateDeliverableStatusDto } from './dto/update-deliverable-status.dto';
 import { UpdateDeliverableDto } from './dto/update-deliverable.dto';
@@ -10,7 +21,11 @@ export class DeliverablesController {
 
   @Post()
   async create(@Body() createDto: CreateDeliverableDto) {
-    return this.deliverablesService.create(createDto.projectId, createDto.type, createDto.customType);
+    return this.deliverablesService.create(
+      createDto.projectId,
+      createDto.type,
+      createDto.customType,
+    );
   }
 
   @Get()
@@ -25,19 +40,16 @@ export class DeliverablesController {
     @Request() req: any,
   ) {
     return this.deliverablesService.updateStatus(
-      id, 
-      updateDto.status, 
-      updateDto.notes, 
+      id,
+      updateDto.status,
+      updateDto.notes,
       req.user?.userId || req.user?.id,
-      updateDto.fileUrl
+      updateDto.fileUrl,
     );
   }
 
   @Patch(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() updateDto: UpdateDeliverableDto,
-  ) {
+  async update(@Param('id') id: string, @Body() updateDto: UpdateDeliverableDto) {
     console.log(`[DeliverablesController] PATCH /deliverables/${id} called with:`, updateDto);
     return this.deliverablesService.update(id, updateDto);
   }
@@ -72,4 +84,3 @@ export class DeliverablesController {
     return this.deliverablesService.removeTeamMember(deliverableId, userId);
   }
 }
-

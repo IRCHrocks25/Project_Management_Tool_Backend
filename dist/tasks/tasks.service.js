@@ -73,7 +73,7 @@ let TasksService = class TasksService {
                 console.log('[TasksService] Loading all tasks (loadAll=true)');
             }
             const tasks = await queryBuilder.orderBy('task.createdAt', 'DESC').getMany();
-            tasks.forEach(task => {
+            tasks.forEach((task) => {
                 if (task.type === 'Intake') {
                     task.type = task_entity_1.TaskType.INTAKE;
                 }
@@ -145,7 +145,9 @@ let TasksService = class TasksService {
                 const projectWithPM = task.project;
                 const promises = [];
                 if (projectWithPM && projectWithPM.pmId) {
-                    promises.push(this.notificationsService.createTaskSentForReviewNotification(projectWithPM.pmId, savedTask.id, task.projectId, task.title, projectWithPM.clientName, !!fileUrl, task.type).catch(err => {
+                    promises.push(this.notificationsService
+                        .createTaskSentForReviewNotification(projectWithPM.pmId, savedTask.id, task.projectId, task.title, projectWithPM.clientName, !!fileUrl, task.type)
+                        .catch((err) => {
                         console.error('Failed to create notification:', err);
                     }));
                 }
@@ -156,12 +158,12 @@ let TasksService = class TasksService {
                         });
                         let targetDeliverable = null;
                         if (deliverableId) {
-                            targetDeliverable = deliverables.find(d => d.id === deliverableId);
+                            targetDeliverable = deliverables.find((d) => d.id === deliverableId);
                         }
                         else {
-                            targetDeliverable = deliverables.find(d => d.type === deliverableType);
+                            targetDeliverable = deliverables.find((d) => d.type === deliverableType);
                             if (!targetDeliverable && deliverableType === 'Other') {
-                                targetDeliverable = deliverables.find(d => d.type === 'Other' && d.customType);
+                                targetDeliverable = deliverables.find((d) => d.type === 'Other' && d.customType);
                             }
                         }
                         if (targetDeliverable) {
@@ -174,14 +176,16 @@ let TasksService = class TasksService {
                                 targetDeliverable.status = deliverable_entity_1.DeliverableStatus.READY_FOR_REVIEW;
                             }
                             await this.deliverablesRepository.save(targetDeliverable);
-                            if (task.type === task_entity_1.TaskType.DESIGN && projectWithPM && projectWithPM.stage === project_entity_1.ProjectStage.DESIGN_REVISION) {
+                            if (task.type === task_entity_1.TaskType.DESIGN &&
+                                projectWithPM &&
+                                projectWithPM.stage === project_entity_1.ProjectStage.DESIGN_REVISION) {
                                 const designDeliverableTypes = [
                                     deliverable_entity_1.DeliverableType.LOGO,
                                     deliverable_entity_1.DeliverableType.SOCIAL_BANNERS,
                                     deliverable_entity_1.DeliverableType.SPEAKER_KIT,
                                     deliverable_entity_1.DeliverableType.LANDING_PAGE,
                                 ];
-                                const otherDesignDeliverables = deliverables.filter(d => designDeliverableTypes.includes(d.type) &&
+                                const otherDesignDeliverables = deliverables.filter((d) => designDeliverableTypes.includes(d.type) &&
                                     d.id !== targetDeliverable.id &&
                                     d.status === deliverable_entity_1.DeliverableStatus.REVISION);
                                 if (otherDesignDeliverables.length === 0) {
@@ -200,7 +204,7 @@ let TasksService = class TasksService {
                             });
                             await this.deliverablesRepository.save(newDeliverable);
                         }
-                    })().catch(err => {
+                    })().catch((err) => {
                         console.error('Failed to update deliverables:', err);
                     }));
                 }
@@ -281,24 +285,25 @@ let TasksService = class TasksService {
         if (!savedTask.assignedToId && savedTask.type && savedTask.projectId) {
             try {
                 const taskTypeToRoles = {
-                    'Copy': [user_entity_1.UserRole.COPY_WRITING],
-                    'Design': [user_entity_1.UserRole.DESIGNER],
-                    'Dev': [user_entity_1.UserRole.DEVELOPER],
-                    'AI': [user_entity_1.UserRole.AI_DEVELOPER],
+                    Copy: [user_entity_1.UserRole.COPY_WRITING],
+                    Design: [user_entity_1.UserRole.DESIGNER],
+                    Dev: [user_entity_1.UserRole.DEVELOPER],
+                    AI: [user_entity_1.UserRole.AI_DEVELOPER],
                     'Social Media': [user_entity_1.UserRole.SOCIAL_MEDIA],
-                    'CRM': [user_entity_1.UserRole.CRM],
+                    CRM: [user_entity_1.UserRole.CRM],
                     'SEO/GEO': [user_entity_1.UserRole.SEO_GEO],
                 };
                 const roles = taskTypeToRoles[savedTask.type];
                 if (roles && roles.length > 0) {
                     const departmentUsers = await this.usersRepository.find({
-                        where: roles.map(role => ({ role })),
+                        where: roles.map((role) => ({ role })),
                         select: ['id', 'name', 'email', 'role'],
                     });
                     const project = await this.tasksRepository.manager
                         .getRepository(project_entity_1.Project)
                         .findOne({ where: { id: savedTask.projectId }, select: ['id', 'clientName'] });
-                    const notificationPromises = departmentUsers.map(user => this.notificationsService.create({
+                    const notificationPromises = departmentUsers.map((user) => this.notificationsService
+                        .create({
                         type: notification_entity_1.NotificationType.TASK_AVAILABLE,
                         title: 'New task available',
                         message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
@@ -306,7 +311,8 @@ let TasksService = class TasksService {
                         taskId: savedTask.id,
                         projectId: savedTask.projectId,
                         assignedToId: null,
-                    }).catch(err => {
+                    })
+                        .catch((err) => {
                         console.error(`Failed to create notification for user ${user.id}:`, err);
                     }));
                     await Promise.all(notificationPromises);
@@ -579,7 +585,9 @@ let TasksService = class TasksService {
             id: q.id,
             text: q.text,
             createdAt: q.createdAt,
-            user: q.user ? { id: q.user.id, name: q.user.name, email: q.user.email, avatarUrl: q.user.avatarUrl } : null,
+            user: q.user
+                ? { id: q.user.id, name: q.user.name, email: q.user.email, avatarUrl: q.user.avatarUrl }
+                : null,
             comments: (q.comments || []).map((c) => ({
                 id: c.id,
                 text: c.text,

@@ -12,7 +12,14 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Deliverable, DeliverableTeamMember, DeliverableHistory, Task, Project, User]),
+    TypeOrmModule.forFeature([
+      Deliverable,
+      DeliverableTeamMember,
+      DeliverableHistory,
+      Task,
+      Project,
+      User,
+    ]),
     forwardRef(() => NotificationsModule),
   ],
   controllers: [DeliverablesController],
@@ -20,4 +27,3 @@ import { NotificationsModule } from '../notifications/notifications.module';
   exports: [DeliverablesService],
 })
 export class DeliverablesModule {}
-

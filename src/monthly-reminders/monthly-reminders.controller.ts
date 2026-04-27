@@ -50,11 +50,7 @@ export class MonthlyRemindersController {
   }
 
   @Delete(':id')
-  async remove(
-    @Param('id') id: string,
-    @Request() req: { user: { userId: string } },
-  ) {
+  async remove(@Param('id') id: string, @Request() req: { user: { userId: string } }) {
     return this.remindersService.remove(id, req.user.userId);
   }
 }
-

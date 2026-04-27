@@ -33,4 +33,3 @@ export class DeliverableTeamMember {
   @CreateDateColumn()
   assignedAt: Date;
 }
-

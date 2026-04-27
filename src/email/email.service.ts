@@ -26,12 +26,17 @@ export class EmailService {
         },
       });
     } else {
-      console.warn('[EmailService] Email credentials not configured. Email sending will be disabled.');
+      console.warn(
+        '[EmailService] Email credentials not configured. Email sending will be disabled.',
+      );
     }
   }
 
   async sendPasswordResetEmail(email: string, resetLink: string, userName?: string): Promise<void> {
-    const fromEmail = this.configService.get<string>('EMAIL_FROM', this.configService.get<string>('EMAIL_USER'));
+    const fromEmail = this.configService.get<string>(
+      'EMAIL_FROM',
+      this.configService.get<string>('EMAIL_USER'),
+    );
     const appName = this.configService.get<string>('APP_NAME', 'Katalyst PM');
 
     const mailOptions = {
@@ -139,8 +144,12 @@ export class EmailService {
 
     // Check if email is configured
     if (!this.transporter) {
-      console.warn(`[EmailService] Email not configured. Cannot send password reset email to ${email}`);
-      throw new Error('Email service is not configured. Please set EMAIL_USER and EMAIL_PASSWORD in your .env file.');
+      console.warn(
+        `[EmailService] Email not configured. Cannot send password reset email to ${email}`,
+      );
+      throw new Error(
+        'Email service is not configured. Please set EMAIL_USER and EMAIL_PASSWORD in your .env file.',
+      );
     }
 
     try {
@@ -159,4 +168,3 @@ export class EmailService {
     }
   }
 }
-

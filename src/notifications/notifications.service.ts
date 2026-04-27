@@ -31,7 +31,8 @@ export class NotificationsService {
     if (normalized === 'ai') return 'AI';
     if (normalized === 'social media') return 'Social Media';
     if (normalized === 'crm') return 'CRM';
-    if (normalized === 'seo/geo' || normalized === 'seo_geo' || normalized === 'seo') return 'SEO/GEO';
+    if (normalized === 'seo/geo' || normalized === 'seo_geo' || normalized === 'seo')
+      return 'SEO/GEO';
 
     return null;
   }
@@ -80,7 +81,9 @@ export class NotificationsService {
       data.projectId,
       data.taskId,
       data.type,
-    ).catch((err) => console.error('[NotificationsService] Failed to send notification email:', err));
+    ).catch((err) =>
+      console.error('[NotificationsService] Failed to send notification email:', err),
+    );
     // Emit real-time event so the recipient's UI updates without refresh
     try {
       const payload = {
@@ -93,7 +96,10 @@ export class NotificationsService {
         userId: saved.userId,
         assignedToId: saved.assignedToId ?? undefined,
         isRead: saved.isRead,
-        createdAt: saved.createdAt instanceof Date ? saved.createdAt.toISOString() : (saved.createdAt as string),
+        createdAt:
+          saved.createdAt instanceof Date
+            ? saved.createdAt.toISOString()
+            : (saved.createdAt as string),
       };
       this.notificationsGateway.emitNewNotification(data.userId, payload);
     } catch (err) {
@@ -126,7 +132,9 @@ export class NotificationsService {
     if (!user?.email) return;
 
     const appName = this.configService.get<string>('APP_NAME', 'Katalyst PM');
-    const frontendUrl = this.normalizeFrontendUrl(this.configService.get<string>('FRONTEND_URL', ''));
+    const frontendUrl = this.normalizeFrontendUrl(
+      this.configService.get<string>('FRONTEND_URL', ''),
+    );
     let viewLink = '';
     if (frontendUrl) {
       viewLink = projectId
@@ -189,7 +197,11 @@ export class NotificationsService {
         body: requestBody,
       });
       if (!response.ok) {
-        console.error('[NotificationsService] Notification webhook failed:', response.status, await response.text());
+        console.error(
+          '[NotificationsService] Notification webhook failed:',
+          response.status,
+          await response.text(),
+        );
       }
     } catch (err) {
       console.error('[NotificationsService] Notification webhook error:', err);
@@ -200,7 +212,10 @@ export class NotificationsService {
    * Send a test notification payload to the webhook (for dashboard "Test webhook" button).
    * Uses NOTIFICATION_WEBHOOK_URL and Webhook-Token: katalystPM2026.
    */
-  async sendTestWebhook(email: string, userName?: string): Promise<{ success: boolean; message?: string }> {
+  async sendTestWebhook(
+    email: string,
+    userName?: string,
+  ): Promise<{ success: boolean; message?: string }> {
     const webhookUrl =
       this.configService.get<string>('NOTIFICATION_WEBHOOK_URL') ||
       'https://katalyst-crm2.fly.dev/webhook/60052967-5dd2-44f1-b81d-771c99f6e133';
@@ -213,7 +228,8 @@ export class NotificationsService {
       userName: userName ?? null,
       notification_type: 'task_update',
       title: 'Test notification',
-      message: 'This is a test from the dashboard. If you received this email, the webhook is working.',
+      message:
+        'This is a test from the dashboard. If you received this email, the webhook is working.',
       view_link: null,
       project_id: null,
       task_id: null,
@@ -277,30 +293,46 @@ export class NotificationsService {
     }
   }
 
+  /** Broadcast a task:transferred event to all connected clients. */
+  emitTaskTransferred(payload: {
+    taskId: string;
+    fromDepartment: string;
+    toDepartment: string;
+    kind: 'forward' | 'return';
+    transferredBy: { id: string; name: string };
+    transferredAt: string;
+  }): void {
+    try {
+      this.notificationsGateway.server.emit('task:transferred', payload);
+    } catch (err) {
+      console.error('[NotificationsService] emitTaskTransferred error:', err);
+    }
+  }
+
   async findAll(userId: string, userRole?: string) {
     console.log('[NotificationsService] findAll called with:', { userId, userRole });
-    
+
     // Debug: Check all notifications to see their userId values
     const allNotifications = await this.notificationsRepository.find({
       take: 5,
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
     console.log('[NotificationsService] Sample notifications in DB:', {
       totalSample: allNotifications.length,
-      userIds: allNotifications.map(n => ({ id: n.id, userId: n.userId, type: n.type }))
+      userIds: allNotifications.map((n) => ({ id: n.id, userId: n.userId, type: n.type })),
     });
-    
+
     // Check what notifications exist for this specific user
     const userNotifications = await this.notificationsRepository.find({
       where: { userId },
-      take: 5
+      take: 5,
     });
     console.log('[NotificationsService] Notifications for current user:', {
       userId,
       count: userNotifications.length,
-      sample: userNotifications[0]
+      sample: userNotifications[0],
     });
-    
+
     const queryBuilder = this.notificationsRepository
       .createQueryBuilder('notification')
       .leftJoinAndSelect('notification.project', 'project')
@@ -312,11 +344,11 @@ export class NotificationsService {
       // For role-specific users, only show notifications for their task type
       const roleToTaskTypeMap: Record<string, string> = {
         'Copy Writing': 'Copy',
-        'Designer': 'Design',
-        'Developer': 'Dev',
+        Designer: 'Design',
+        Developer: 'Dev',
         'AI Developer': 'AI',
         'Social Media': 'Social Media',
-        'CRM': 'CRM',
+        CRM: 'CRM',
         'SEO/GEO': 'SEO/GEO',
       };
 
@@ -334,11 +366,11 @@ export class NotificationsService {
             task.type IS NULL OR 
             task.type = :taskType
           )`,
-          { 
+          {
             taskType,
             taskTypes: ['task', 'task_completed', 'revision'],
-            taskAvailableType: 'task_available' // Always include TASK_AVAILABLE notifications
-          }
+            taskAvailableType: 'task_available', // Always include TASK_AVAILABLE notifications
+          },
         );
       }
     }
@@ -347,7 +379,7 @@ export class NotificationsService {
     console.log('[NotificationsService] Query result:', {
       userId,
       count: result.length,
-      sample: result[0]
+      sample: result[0],
     });
     return result;
   }
@@ -372,10 +404,7 @@ export class NotificationsService {
   }
 
   async markAllAsRead(userId: string) {
-    await this.notificationsRepository.update(
-      { userId, isRead: false },
-      { isRead: true },
-    );
+    await this.notificationsRepository.update({ userId, isRead: false }, { isRead: true });
     return { success: true };
   }
 
@@ -407,11 +436,7 @@ export class NotificationsService {
     return result;
   }
 
-  async createEmailSentNotification(
-    userId: string,
-    projectId: string,
-    projectName: string,
-  ) {
+  async createEmailSentNotification(userId: string, projectId: string, projectName: string) {
     const data = {
       type: NotificationType.EMAIL_SENT,
       title: 'Email sent',
@@ -508,4 +533,3 @@ export class NotificationsService {
     return result;
   }
 }
-

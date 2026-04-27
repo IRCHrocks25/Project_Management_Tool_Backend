@@ -11,26 +11,42 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const tasks_service_1 = require("./tasks.service");
 const tasks_controller_1 = require("./tasks.controller");
+const attachments_service_1 = require("./attachments.service");
+const transfers_service_1 = require("./transfers.service");
 const task_entity_1 = require("./entities/task.entity");
 const task_assignee_entity_1 = require("./entities/task-assignee.entity");
+const task_attachment_entity_1 = require("./entities/task-attachment.entity");
 const task_file_history_entity_1 = require("./entities/task-file-history.entity");
 const task_question_entity_1 = require("./entities/task-question.entity");
 const task_comment_entity_1 = require("./entities/task-comment.entity");
+const task_transfer_entity_1 = require("./entities/task-transfer.entity");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const notifications_module_1 = require("../notifications/notifications.module");
+const shared_module_1 = require("../shared/shared.module");
 let TasksModule = class TasksModule {
 };
 exports.TasksModule = TasksModule;
 exports.TasksModule = TasksModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([task_entity_1.Task, task_assignee_entity_1.TaskAssignee, task_file_history_entity_1.TaskFileHistory, task_question_entity_1.TaskQuestion, task_comment_entity_1.TaskComment, deliverable_entity_1.Deliverable, user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([
+                task_entity_1.Task,
+                task_assignee_entity_1.TaskAssignee,
+                task_attachment_entity_1.TaskAttachment,
+                task_file_history_entity_1.TaskFileHistory,
+                task_question_entity_1.TaskQuestion,
+                task_comment_entity_1.TaskComment,
+                task_transfer_entity_1.TaskTransfer,
+                deliverable_entity_1.Deliverable,
+                user_entity_1.User,
+            ]),
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
+            shared_module_1.SharedModule,
         ],
         controllers: [tasks_controller_1.TasksController],
-        providers: [tasks_service_1.TasksService],
-        exports: [tasks_service_1.TasksService],
+        providers: [tasks_service_1.TasksService, attachments_service_1.AttachmentsService, transfers_service_1.TransfersService],
+        exports: [tasks_service_1.TasksService, attachments_service_1.AttachmentsService, transfers_service_1.TransfersService],
     })
 ], TasksModule);
 //# sourceMappingURL=tasks.module.js.map

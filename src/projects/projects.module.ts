@@ -15,7 +15,15 @@ import { WebhookGuard } from './guards/webhook.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, ProjectTeamMember, Task, Deliverable, DeliverableHistory, TaskFileHistory, User]),
+    TypeOrmModule.forFeature([
+      Project,
+      ProjectTeamMember,
+      Task,
+      Deliverable,
+      DeliverableHistory,
+      TaskFileHistory,
+      User,
+    ]),
     forwardRef(() => NotificationsModule),
     AuthModule,
   ],
@@ -24,4 +32,3 @@ import { WebhookGuard } from './guards/webhook.guard';
   exports: [ProjectsService],
 })
 export class ProjectsModule {}
-

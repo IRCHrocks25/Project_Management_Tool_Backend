@@ -19,4 +19,3 @@ export class CreateEmailDto {
   @IsUUID()
   projectId: string;
 }
-

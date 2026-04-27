@@ -242,7 +242,7 @@ export class ClientUpdatesService {
 
   async uploadImage(file: Express.Multer.File, projectId?: string): Promise<string> {
     let folder = 'PM_tool/uploads';
-    
+
     // If projectId is provided, fetch the project to get client name
     if (projectId) {
       try {
@@ -250,7 +250,7 @@ export class ClientUpdatesService {
           where: { id: projectId },
           select: ['clientName'],
         });
-        
+
         if (project?.clientName) {
           // Sanitize client name for folder path (remove special characters)
           const sanitizedClientName = project.clientName
@@ -264,11 +264,15 @@ export class ClientUpdatesService {
         // Fall back to default folder
       }
     }
-    
+
     return await this.cloudinaryService.uploadImage(file, folder);
   }
 
-  async createComment(updateId: string, createDto: CreateCommentDto, userId: string): Promise<ClientUpdateComment> {
+  async createComment(
+    updateId: string,
+    createDto: CreateCommentDto,
+    userId: string,
+  ): Promise<ClientUpdateComment> {
     const update = await this.clientUpdatesRepository.findOne({
       where: { id: updateId },
     });
@@ -281,9 +285,10 @@ export class ClientUpdatesService {
       updateId,
       userId,
       text: createDto.text,
-      mentionedUserIds: createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0 
-        ? createDto.mentionedUserIds 
-        : null,
+      mentionedUserIds:
+        createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
+          ? createDto.mentionedUserIds
+          : null,
     });
 
     const savedComment = await this.commentsRepository.save(comment);
@@ -316,4 +321,3 @@ export class ClientUpdatesService {
     });
   }
 }
-

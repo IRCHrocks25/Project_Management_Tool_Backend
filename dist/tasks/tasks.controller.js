@@ -13,14 +13,21 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TasksController = void 0;
+require("multer");
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const tasks_service_1 = require("./tasks.service");
+const attachments_service_1 = require("./attachments.service");
+const transfers_service_1 = require("./transfers.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const create_task_question_dto_1 = require("./dto/create-task-question.dto");
 const create_task_comment_dto_1 = require("./dto/create-task-comment.dto");
+const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024;
 let TasksController = class TasksController {
-    constructor(tasksService) {
+    constructor(tasksService, attachmentsService, transfersService) {
         this.tasksService = tasksService;
+        this.attachmentsService = attachmentsService;
+        this.transfersService = transfersService;
     }
     async findAll(projectId, assignedToId, limit, all, taskType) {
         return this.tasksService.findAll(projectId, assignedToId, limit ? parseInt(limit) : undefined, all === 'true', taskType);
@@ -37,8 +44,33 @@ let TasksController = class TasksController {
     async createQuestion(id, createDto, req) {
         return this.tasksService.createQuestion(id, createDto, req.user.userId);
     }
+    async getAttachments(taskId) {
+        return this.attachmentsService.findByTask(taskId);
+    }
+    async addAttachmentLink(taskId, body, req) {
+        return this.attachmentsService.addLink(taskId, body.url, body.label, req.user.userId);
+    }
+    async uploadAttachments(taskId, files, req) {
+        if (!files || files.length === 0) {
+            throw new common_1.BadRequestException('No files provided');
+        }
+        return this.attachmentsService.upload(taskId, files, req.user.userId);
+    }
+    async deleteAttachment(attachmentId, req) {
+        return this.attachmentsService.delete(attachmentId, req.user.userId);
+    }
+    async transferTask(id, body, req) {
+        return this.transfersService.transferTask(id, body, req.user.userId);
+    }
+    async getTransfers(id) {
+        return this.transfersService.getTransfers(id);
+    }
     async findOne(id) {
-        return this.tasksService.findOne(id);
+        const [task, attachments] = await Promise.all([
+            this.tasksService.findOne(id),
+            this.attachmentsService.findByTask(id),
+        ]);
+        return { ...task, attachments };
     }
     async create(createTaskDto) {
         return this.tasksService.create(createTaskDto);
@@ -54,7 +86,7 @@ let TasksController = class TasksController {
             return this.tasksService.assignTask(id, body.assignedToId);
         }
         else {
-            throw new Error('Either assignedToId or userIds must be provided');
+            throw new common_1.BadRequestException('Either assignedToId or userIds must be provided');
         }
     }
     async submitOnboardingData(id, body) {
@@ -115,6 +147,64 @@ __decorate([
     __metadata("design:paramtypes", [String, create_task_question_dto_1.CreateTaskQuestionDto, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "createQuestion", null);
+__decorate([
+    (0, common_1.Get)(':id/attachments'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "getAttachments", null);
+__decorate([
+    (0, common_1.Post)(':id/attachments/link'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "addAttachmentLink", null);
+__decorate([
+    (0, common_1.Post)(':id/attachments'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10, {
+        limits: { fileSize: MAX_ATTACHMENT_SIZE_BYTES },
+    })),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "uploadAttachments", null);
+__decorate([
+    (0, common_1.Delete)(':id/attachments/:attachmentId'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('attachmentId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "deleteAttachment", null);
+__decorate([
+    (0, common_1.Post)(':id/transfer'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "transferTask", null);
+__decorate([
+    (0, common_1.Get)(':id/transfers'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "getTransfers", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
@@ -180,6 +270,8 @@ __decorate([
 ], TasksController.prototype, "createComment", null);
 exports.TasksController = TasksController = __decorate([
     (0, common_1.Controller)('tasks'),
-    __metadata("design:paramtypes", [tasks_service_1.TasksService])
+    __metadata("design:paramtypes", [tasks_service_1.TasksService,
+        attachments_service_1.AttachmentsService,
+        transfers_service_1.TransfersService])
 ], TasksController);
 //# sourceMappingURL=tasks.controller.js.map

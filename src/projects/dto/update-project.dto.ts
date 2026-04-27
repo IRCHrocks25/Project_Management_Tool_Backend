@@ -23,4 +23,3 @@ export class UpdateProjectDto {
   @IsString()
   associatedLink?: string;
 }
-

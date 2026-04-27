@@ -55,4 +55,3 @@ export class DeliverableHistory {
   @CreateDateColumn()
   createdAt: Date;
 }
-

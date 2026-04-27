@@ -21,6 +21,7 @@ export enum NotificationType {
   REVISION_REQUESTED = 'revision',
   MENTION = 'mention', // User was mentioned in a task conversation
   TASK_UPDATE = 'task_update', // Task-related update (e.g., question answered)
+  TASK_TRANSFER = 'TASK_TRANSFER', // Task transferred between departments
 }
 
 @Entity('notifications')
@@ -70,4 +71,3 @@ export class Notification {
   @CreateDateColumn()
   createdAt: Date;
 }
-

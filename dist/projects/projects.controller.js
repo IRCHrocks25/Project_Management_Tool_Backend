@@ -74,10 +74,8 @@ let ProjectsController = class ProjectsController {
     async archiveProject(id, req) {
         const userRole = req.user?.role;
         const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
-        const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER ||
-            normalizedRole === 'Project Manager';
-        const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO ||
-            normalizedRole === 'FOUNDER/CEO';
+        const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER || normalizedRole === 'Project Manager';
+        const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO || normalizedRole === 'FOUNDER/CEO';
         if (!isProjectManager && !isFounder) {
             throw new common_1.ForbiddenException(`Only Project Managers and Admins can archive projects. Your role: "${userRole || 'undefined'}"`);
         }
@@ -87,10 +85,8 @@ let ProjectsController = class ProjectsController {
         try {
             const userRole = req.user?.role;
             const normalizedRole = typeof userRole === 'string' ? userRole.trim() : userRole;
-            const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER ||
-                normalizedRole === 'Project Manager';
-            const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO ||
-                normalizedRole === 'FOUNDER/CEO';
+            const isProjectManager = normalizedRole === user_entity_1.UserRole.PROJECT_MANAGER || normalizedRole === 'Project Manager';
+            const isFounder = normalizedRole === user_entity_1.UserRole.FOUNDER_CEO || normalizedRole === 'FOUNDER/CEO';
             if (!isProjectManager && !isFounder) {
                 throw new common_1.ForbiddenException(`Only Project Managers and Admins can mark projects as complete. Your role: "${userRole || 'undefined'}"`);
             }

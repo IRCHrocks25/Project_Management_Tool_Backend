@@ -114,7 +114,8 @@ let DeliverablesService = class DeliverablesService {
             if (status === deliverable_entity_1.DeliverableStatus.REVISION) {
                 await this.handleFileRevisionRequest(deliverable, fileUrl);
             }
-            if (status === deliverable_entity_1.DeliverableStatus.APPROVED && deliverable.type === deliverable_entity_1.DeliverableType.LANDING_PAGE) {
+            if (status === deliverable_entity_1.DeliverableStatus.APPROVED &&
+                deliverable.type === deliverable_entity_1.DeliverableType.LANDING_PAGE) {
                 const project = await this.projectsRepository.findOne({
                     where: { id: deliverable.projectId },
                 });
@@ -145,7 +146,8 @@ let DeliverablesService = class DeliverablesService {
         if (status === deliverable_entity_1.DeliverableStatus.APPROVED && previousStatus !== deliverable_entity_1.DeliverableStatus.APPROVED) {
             action = deliverable_history_entity_1.DeliverableAction.APPROVED;
         }
-        else if (status === deliverable_entity_1.DeliverableStatus.REVISION && previousStatus !== deliverable_entity_1.DeliverableStatus.REVISION) {
+        else if (status === deliverable_entity_1.DeliverableStatus.REVISION &&
+            previousStatus !== deliverable_entity_1.DeliverableStatus.REVISION) {
             action = deliverable_history_entity_1.DeliverableAction.REVISION_REQUESTED;
         }
         const history = this.historyRepository.create({
@@ -181,7 +183,8 @@ let DeliverablesService = class DeliverablesService {
             deliverable_entity_1.DeliverableType.SPEAKER_KIT,
             deliverable_entity_1.DeliverableType.LANDING_PAGE,
         ];
-        if (designDeliverableTypes.includes(deliverable.type) && project.stage !== project_entity_1.ProjectStage.DESIGN_REVISION) {
+        if (designDeliverableTypes.includes(deliverable.type) &&
+            project.stage !== project_entity_1.ProjectStage.DESIGN_REVISION) {
             project.stage = project_entity_1.ProjectStage.DESIGN_REVISION;
             project.designRevisionCount += 1;
             if (deliverable.type === deliverable_entity_1.DeliverableType.LANDING_PAGE) {
@@ -250,8 +253,7 @@ let DeliverablesService = class DeliverablesService {
                         type: task_entity_1.TaskType.COPY,
                     },
                 });
-                relatedCopyTasks = allCopyTasks.filter(task => task.title.includes(deliverableName) ||
-                    task.title.includes(deliverable.type));
+                relatedCopyTasks = allCopyTasks.filter((task) => task.title.includes(deliverableName) || task.title.includes(deliverable.type));
             }
             for (const task of relatedCopyTasks) {
                 task.status = task_entity_1.TaskStatus.IN_PROGRESS;

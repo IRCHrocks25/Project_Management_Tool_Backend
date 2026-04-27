@@ -46,4 +46,3 @@ export class TaskQuestion {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

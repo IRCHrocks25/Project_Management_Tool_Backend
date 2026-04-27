@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Patch,
-  Param,
-  Post,
-  Body,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Patch, Param, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -30,7 +21,9 @@ export class NotificationsController {
   async getUnreadCount(@Request() req) {
     const userId = req.user?.userId || req.user?.id;
     if (!userId) {
-      console.error('[NotificationsController] getUnreadCount: userId is undefined', { user: req.user });
+      console.error('[NotificationsController] getUnreadCount: userId is undefined', {
+        user: req.user,
+      });
       return { count: 0 };
     }
     const count = await this.notificationsService.findUnreadCount(userId);
@@ -55,4 +48,3 @@ export class NotificationsController {
     return this.notificationsService.sendTestWebhook(body.email.trim(), body.userName?.trim());
   }
 }
-

@@ -19,4 +19,3 @@ export class SignupDto {
   @IsEnum(UserRole)
   role: UserRole;
 }
-

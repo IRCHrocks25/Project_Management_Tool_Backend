@@ -79,8 +79,10 @@ export class Task {
   @Column({ default: false })
   isCompleted: boolean;
 
+  // @deprecated — backfilled into task_attachments; do not write new values here.
+  // Column is retained until a confirmed removal pass; see risk register.
   @Column('text', { nullable: true })
-  fileUrl: string; // Google Drive link or file URL
+  fileUrl: string;
 
   @Column('text', { nullable: true })
   submissionData: string; // URL or text submission for onboarding tasks
@@ -100,4 +102,3 @@ export class Task {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

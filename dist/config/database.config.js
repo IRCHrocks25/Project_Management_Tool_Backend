@@ -29,11 +29,13 @@ let DatabaseConfig = class DatabaseConfig {
                 synchronize: false,
                 logging: this.configService.get('NODE_ENV') === 'development',
                 ssl: requiresSSL ? { rejectUnauthorized: false } : false,
-                extra: requiresSSL ? {
-                    ssl: {
-                        rejectUnauthorized: false,
-                    },
-                } : {},
+                extra: requiresSSL
+                    ? {
+                        ssl: {
+                            rejectUnauthorized: false,
+                        },
+                    }
+                    : {},
             };
         }
         return {

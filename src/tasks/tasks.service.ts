@@ -6,7 +6,11 @@ import { TaskAssignee } from './entities/task-assignee.entity';
 import { TaskQuestion } from './entities/task-question.entity';
 import { TaskComment } from './entities/task-comment.entity';
 import { NotificationsService } from '../notifications/notifications.service';
-import { Deliverable, DeliverableType, DeliverableStatus } from '../deliverables/entities/deliverable.entity';
+import {
+  Deliverable,
+  DeliverableType,
+  DeliverableStatus,
+} from '../deliverables/entities/deliverable.entity';
 import { Project, ProjectStage } from '../projects/entities/project.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { NotificationType } from '../notifications/entities/notification.entity';
@@ -32,13 +36,21 @@ export class TasksService {
     private notificationsService: NotificationsService,
   ) {}
 
-  async findAll(projectId?: string, assignedToId?: string, limit?: number, loadAll?: boolean, taskType?: string) {
+  async findAll(
+    projectId?: string,
+    assignedToId?: string,
+    limit?: number,
+    loadAll?: boolean,
+    taskType?: string,
+  ) {
     try {
-      console.log(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}, taskType: ${taskType}`);
-      
+      console.log(
+        `[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}, taskType: ${taskType}`,
+      );
+
       // Removed enum fix query - it was running on every request and slowing things down
       // Run this once via migration script instead of on every request
-      
+
       // Now try to load tasks normally
       // Use inner joins only when we have filters to improve performance
       const queryBuilder = this.tasksRepository
@@ -47,7 +59,7 @@ export class TasksService {
         .leftJoinAndSelect('task.assignedTo', 'assignedTo')
         .leftJoinAndSelect('task.assignees', 'assignees')
         .leftJoinAndSelect('assignees.user', 'assigneeUser');
-      
+
       // Add index hint for better performance on large datasets
       // PostgreSQL will use the index on createdAt for ordering
 
@@ -78,7 +90,9 @@ export class TasksService {
         const defaultLimit = limit || 200; // Increased default limit to 200
         if (!projectId && !assignedToId) {
           queryBuilder.limit(defaultLimit);
-          console.log(`[TasksService] No filters provided - limiting to ${defaultLimit} most recent tasks for performance`);
+          console.log(
+            `[TasksService] No filters provided - limiting to ${defaultLimit} most recent tasks for performance`,
+          );
         } else if (limit) {
           queryBuilder.limit(limit);
         }
@@ -87,15 +101,15 @@ export class TasksService {
       }
 
       const tasks = await queryBuilder.orderBy('task.createdAt', 'DESC').getMany();
-      
+
       // Fix enum issues in memory only (don't save to DB on every request - too slow)
       // Only fix in memory for display, actual DB fix should be done via migration
-      tasks.forEach(task => {
+      tasks.forEach((task) => {
         if ((task.type as any) === 'Intake') {
           task.type = TaskType.INTAKE;
         }
       });
-      
+
       console.log(`[TasksService] Found ${tasks.length} tasks`);
       return tasks;
     } catch (error: any) {
@@ -105,16 +119,16 @@ export class TasksService {
         stack: error.stack,
         name: error.name,
       });
-      
+
       // If the error is related to enum, try to fix it and retry
       if (error.message && error.message.includes('enum')) {
         console.log('[TasksService] Enum error detected, attempting to fix...');
         try {
           // Use raw query to update enum values
           await this.tasksRepository.manager.query(
-            `UPDATE tasks SET type = 'Onboarding' WHERE type = 'Intake'`
+            `UPDATE tasks SET type = 'Onboarding' WHERE type = 'Intake'`,
           );
-          
+
           // Retry the query
           const queryBuilder = this.tasksRepository
             .createQueryBuilder('task')
@@ -136,7 +150,7 @@ export class TasksService {
           console.error('[TasksService] Retry after enum fix also failed:', retryError);
         }
       }
-      
+
       // Last resort: return empty array instead of crashing
       console.error('[TasksService] Returning empty array due to error');
       return [];
@@ -156,12 +170,19 @@ export class TasksService {
     return task;
   }
 
-  async updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string) {
+  async updateStatus(
+    id: string,
+    status: TaskStatus,
+    isCompleted?: boolean,
+    fileUrl?: string,
+    deliverableType?: string,
+    deliverableId?: string,
+  ) {
     const task = await this.findOne(id);
     const wasCompleted = task.isCompleted;
     const wasInReview = task.status === TaskStatus.IN_REVIEW; // Check BEFORE updating status
     const isChangingToInReview = status === TaskStatus.IN_REVIEW && !wasInReview;
-    
+
     task.status = status;
     if (isCompleted !== undefined) {
       task.isCompleted = isCompleted;
@@ -189,17 +210,19 @@ export class TasksService {
         // Notify PM that copy/design has been sent for review
         if (projectWithPM && projectWithPM.pmId) {
           promises.push(
-            this.notificationsService.createTaskSentForReviewNotification(
-              projectWithPM.pmId,
-              savedTask.id,
-              task.projectId,
-              task.title,
-              projectWithPM.clientName,
-              !!fileUrl,
-              task.type,
-            ).catch(err => {
-              console.error('Failed to create notification:', err);
-            })
+            this.notificationsService
+              .createTaskSentForReviewNotification(
+                projectWithPM.pmId,
+                savedTask.id,
+                task.projectId,
+                task.title,
+                projectWithPM.clientName,
+                !!fileUrl,
+                task.type,
+              )
+              .catch((err) => {
+                console.error('Failed to create notification:', err);
+              }),
           );
         }
 
@@ -214,16 +237,16 @@ export class TasksService {
 
               // Find the specific deliverable - prefer deliverableId if provided
               let targetDeliverable: any = null;
-              
+
               if (deliverableId) {
-                targetDeliverable = deliverables.find(d => d.id === deliverableId);
+                targetDeliverable = deliverables.find((d) => d.id === deliverableId);
               } else {
-                targetDeliverable = deliverables.find(d => d.type === deliverableType);
+                targetDeliverable = deliverables.find((d) => d.type === deliverableType);
                 if (!targetDeliverable && deliverableType === 'Other') {
-                  targetDeliverable = deliverables.find(d => d.type === 'Other' && d.customType);
+                  targetDeliverable = deliverables.find((d) => d.type === 'Other' && d.customType);
                 }
               }
-              
+
               if (targetDeliverable) {
                 // Update the selected deliverable
                 targetDeliverable.fileUrl = fileUrl;
@@ -234,22 +257,27 @@ export class TasksService {
                   targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
                 }
                 await this.deliverablesRepository.save(targetDeliverable);
-                
+
                 // If this is a design task and project is in Design Revision stage, update it back to Design
                 // Reuse project from task instead of querying again
-                if (task.type === TaskType.DESIGN && projectWithPM && projectWithPM.stage === ProjectStage.DESIGN_REVISION) {
+                if (
+                  task.type === TaskType.DESIGN &&
+                  projectWithPM &&
+                  projectWithPM.stage === ProjectStage.DESIGN_REVISION
+                ) {
                   const designDeliverableTypes = [
                     DeliverableType.LOGO,
                     DeliverableType.SOCIAL_BANNERS,
                     DeliverableType.SPEAKER_KIT,
                     DeliverableType.LANDING_PAGE,
                   ];
-                  const otherDesignDeliverables = deliverables.filter(d => 
-                    designDeliverableTypes.includes(d.type) && 
-                    d.id !== targetDeliverable.id &&
-                    d.status === DeliverableStatus.REVISION
+                  const otherDesignDeliverables = deliverables.filter(
+                    (d) =>
+                      designDeliverableTypes.includes(d.type) &&
+                      d.id !== targetDeliverable.id &&
+                      d.status === DeliverableStatus.REVISION,
                   );
-                  
+
                   // Only change back to Design if no other design deliverables are in revision
                   if (otherDesignDeliverables.length === 0) {
                     const projectRepo = this.tasksRepository.manager.getRepository(Project);
@@ -267,9 +295,9 @@ export class TasksService {
                 });
                 await this.deliverablesRepository.save(newDeliverable);
               }
-            })().catch(err => {
+            })().catch((err) => {
               console.error('Failed to update deliverables:', err);
-            })
+            }),
           );
         }
 
@@ -379,10 +407,7 @@ export class TasksService {
             task.type,
           );
         } catch (error) {
-          console.error(
-            `Failed to create notification for user ${userId}:`,
-            error,
-          );
+          console.error(`Failed to create notification for user ${userId}:`, error);
         }
       }
     }
@@ -393,13 +418,13 @@ export class TasksService {
   async create(createTaskDto: any) {
     const task = this.tasksRepository.create(createTaskDto);
     const savedTaskResult = await this.tasksRepository.save(task);
-    
+
     // TypeORM save() can return Task | Task[], but we're saving a single entity
     // Ensure we have a single Task object
     if (Array.isArray(savedTaskResult)) {
       throw new Error('Unexpected: save() returned an array when saving a single task');
     }
-    
+
     // TypeScript needs explicit typing after the array check
     // Use type assertion to ensure TypeScript recognizes it as a single Task
     const savedTask = savedTaskResult as Task;
@@ -409,12 +434,12 @@ export class TasksService {
       try {
         // Map task type to user roles
         const taskTypeToRoles: Record<string, UserRole[]> = {
-          'Copy': [UserRole.COPY_WRITING],
-          'Design': [UserRole.DESIGNER],
-          'Dev': [UserRole.DEVELOPER],
-          'AI': [UserRole.AI_DEVELOPER],
+          Copy: [UserRole.COPY_WRITING],
+          Design: [UserRole.DESIGNER],
+          Dev: [UserRole.DEVELOPER],
+          AI: [UserRole.AI_DEVELOPER],
           'Social Media': [UserRole.SOCIAL_MEDIA],
-          'CRM': [UserRole.CRM],
+          CRM: [UserRole.CRM],
           'SEO/GEO': [UserRole.SEO_GEO],
         };
 
@@ -422,7 +447,7 @@ export class TasksService {
         if (roles && roles.length > 0) {
           // Get all users with matching roles
           const departmentUsers = await this.usersRepository.find({
-            where: roles.map(role => ({ role })),
+            where: roles.map((role) => ({ role })),
             select: ['id', 'name', 'email', 'role'],
           });
 
@@ -433,22 +458,26 @@ export class TasksService {
 
           // Create notifications for all department members
           // Use TASK_AVAILABLE type to distinguish from TASK_ASSIGNED (which requires assignedToId)
-          const notificationPromises = departmentUsers.map(user =>
-            this.notificationsService.create({
-              type: NotificationType.TASK_AVAILABLE, // New type for unassigned tasks
-              title: 'New task available',
-              message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
-              userId: user.id, // userId (the user receiving the notification)
-              taskId: savedTask.id,
-              projectId: savedTask.projectId,
-              assignedToId: null, // assignedToId is null since task is unassigned
-            }).catch(err => {
-              console.error(`Failed to create notification for user ${user.id}:`, err);
-            })
+          const notificationPromises = departmentUsers.map((user) =>
+            this.notificationsService
+              .create({
+                type: NotificationType.TASK_AVAILABLE, // New type for unassigned tasks
+                title: 'New task available',
+                message: `A new "${savedTask.title}" task is available for ${project?.clientName || 'Unknown Project'}. No one is assigned yet.`,
+                userId: user.id, // userId (the user receiving the notification)
+                taskId: savedTask.id,
+                projectId: savedTask.projectId,
+                assignedToId: null, // assignedToId is null since task is unassigned
+              })
+              .catch((err) => {
+                console.error(`Failed to create notification for user ${user.id}:`, err);
+              }),
           );
 
           await Promise.all(notificationPromises);
-          console.log(`[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`);
+          console.log(
+            `[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`,
+          );
 
           // Also notify Head PMs (birds-eye view)
           const headPMData = {
@@ -472,7 +501,7 @@ export class TasksService {
 
   async submitOnboardingData(id: string, submissionData: string, submissionType: 'url' | 'text') {
     const task = await this.findOne(id);
-    
+
     // Only allow submission for onboarding tasks
     if (task.type !== TaskType.INTAKE) {
       throw new Error('Submissions are only allowed for onboarding tasks');
@@ -482,13 +511,16 @@ export class TasksService {
     task.submissionType = submissionType;
     task.isCompleted = true;
     task.status = TaskStatus.COMPLETED;
-    
+
     return this.tasksRepository.save(task);
   }
 
-  async update(id: string, updateTaskDto: { title?: string; description?: string; dueDate?: Date; deliverableId?: string }) {
+  async update(
+    id: string,
+    updateTaskDto: { title?: string; description?: string; dueDate?: Date; deliverableId?: string },
+  ) {
     const task = await this.findOne(id);
-    
+
     if (updateTaskDto.title !== undefined) {
       task.title = updateTaskDto.title;
     }
@@ -501,7 +533,7 @@ export class TasksService {
     if (updateTaskDto.deliverableId !== undefined) {
       task.deliverableId = updateTaskDto.deliverableId;
     }
-    
+
     return this.tasksRepository.save(task);
   }
 
@@ -536,7 +568,11 @@ export class TasksService {
   }
 
   // Task Conversation Methods
-  async createQuestion(taskId: string, createDto: CreateTaskQuestionDto, userId: string): Promise<TaskQuestion> {
+  async createQuestion(
+    taskId: string,
+    createDto: CreateTaskQuestionDto,
+    userId: string,
+  ): Promise<TaskQuestion> {
     const task = await this.tasksRepository.findOne({
       where: { id: taskId },
       relations: ['project'],
@@ -545,9 +581,10 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    const mentionIdsFromBody = createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
-      ? createDto.mentionedUserIds
-      : [];
+    const mentionIdsFromBody =
+      createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
+        ? createDto.mentionedUserIds
+        : [];
     const mentionIdsFromText = this.extractMentionIdsFromText(createDto.text);
     const allMentionIds = [...new Set([...mentionIdsFromBody, ...mentionIdsFromText])];
 
@@ -574,7 +611,10 @@ export class TasksService {
             projectId: task.projectId,
           });
         } catch (error) {
-          console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
+          console.error(
+            `[TasksService] Failed to create mention notification for user ${mentionedUserId}:`,
+            error,
+          );
         }
       }
     }
@@ -604,7 +644,11 @@ export class TasksService {
     });
   }
 
-  async createComment(questionId: string, createDto: CreateTaskCommentDto, userId: string): Promise<TaskComment> {
+  async createComment(
+    questionId: string,
+    createDto: CreateTaskCommentDto,
+    userId: string,
+  ): Promise<TaskComment> {
     const question = await this.taskQuestionsRepository.findOne({
       where: { id: questionId },
       relations: ['task', 'task.project', 'user'],
@@ -613,9 +657,10 @@ export class TasksService {
       throw new NotFoundException('Question not found');
     }
 
-    const mentionIdsFromBody = createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
-      ? createDto.mentionedUserIds
-      : [];
+    const mentionIdsFromBody =
+      createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0
+        ? createDto.mentionedUserIds
+        : [];
     const mentionIdsFromText = this.extractMentionIdsFromText(createDto.text);
     const allMentionIds = [...new Set([...mentionIdsFromBody, ...mentionIdsFromText])];
 
@@ -654,7 +699,10 @@ export class TasksService {
           projectId: question.task.projectId,
         });
       } catch (error) {
-        console.error(`[TasksService] Failed to create mention notification for user ${mentionedUserId}:`, error);
+        console.error(
+          `[TasksService] Failed to create mention notification for user ${mentionedUserId}:`,
+          error,
+        );
       }
     }
 
@@ -701,7 +749,10 @@ export class TasksService {
       try {
         await this.notificationsService.create({ ...responseData, userId: participantId });
       } catch (error) {
-        console.error(`[TasksService] Failed to create conversation response notification for ${participantId}:`, error);
+        console.error(
+          `[TasksService] Failed to create conversation response notification for ${participantId}:`,
+          error,
+        );
       }
     }
 
@@ -720,7 +771,7 @@ export class TasksService {
     return await this.taskQuestionsRepository.find({
       where: { taskId },
       relations: ['user', 'comments', 'comments.user'],
-      order: { 
+      order: {
         createdAt: 'DESC',
         comments: { createdAt: 'ASC' },
       },
@@ -757,7 +808,9 @@ export class TasksService {
       id: q.id,
       text: q.text,
       createdAt: q.createdAt,
-      user: q.user ? { id: q.user.id, name: q.user.name, email: q.user.email, avatarUrl: q.user.avatarUrl } : null,
+      user: q.user
+        ? { id: q.user.id, name: q.user.name, email: q.user.email, avatarUrl: q.user.avatarUrl }
+        : null,
       comments: (q.comments || []).map((c) => ({
         id: c.id,
         text: c.text,
@@ -771,4 +824,3 @@ export class TasksService {
     }));
   }
 }
-

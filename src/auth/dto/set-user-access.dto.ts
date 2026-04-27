@@ -5,4 +5,3 @@ export class SetUserAccessDto {
   @IsBoolean()
   isActive: boolean;
 }
-

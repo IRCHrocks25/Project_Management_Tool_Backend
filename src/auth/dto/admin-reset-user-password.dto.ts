@@ -6,4 +6,3 @@ export class AdminResetUserPasswordDto {
   @MinLength(6)
   newPassword: string;
 }
-

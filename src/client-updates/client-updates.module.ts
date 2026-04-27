@@ -8,7 +8,7 @@ import { ClientUpdateFormSubmission } from './entities/client-update-form-submis
 import { ClientUpdateComment } from './entities/client-update-comment.entity';
 import { Project } from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
-import { CloudinaryService } from './cloudinary.service';
+import { SharedModule } from '../shared/shared.module';
 
 @Module({
   imports: [
@@ -20,10 +20,10 @@ import { CloudinaryService } from './cloudinary.service';
       Project,
       User,
     ]),
+    SharedModule,
   ],
   controllers: [ClientUpdatesController],
-  providers: [ClientUpdatesService, CloudinaryService],
+  providers: [ClientUpdatesService],
   exports: [ClientUpdatesService],
 })
 export class ClientUpdatesModule {}
-

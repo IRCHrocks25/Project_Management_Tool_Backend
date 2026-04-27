@@ -27,7 +27,15 @@ exports.ProjectsModule = ProjectsModule;
 exports.ProjectsModule = ProjectsModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([project_entity_1.Project, project_team_member_entity_1.ProjectTeamMember, task_entity_1.Task, deliverable_entity_1.Deliverable, deliverable_history_entity_1.DeliverableHistory, task_file_history_entity_1.TaskFileHistory, user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([
+                project_entity_1.Project,
+                project_team_member_entity_1.ProjectTeamMember,
+                task_entity_1.Task,
+                deliverable_entity_1.Deliverable,
+                deliverable_history_entity_1.DeliverableHistory,
+                task_file_history_entity_1.TaskFileHistory,
+                user_entity_1.User,
+            ]),
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
             auth_module_1.AuthModule,
         ],

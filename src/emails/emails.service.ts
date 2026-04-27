@@ -19,10 +19,9 @@ export class EmailsService {
   async create(createEmailDto: CreateEmailDto, userId: string) {
     // Handle body: use empty string if not provided (works even if DB column is NOT NULL)
     // Once migration is run, this can be changed to null
-    const bodyValue = createEmailDto.body && createEmailDto.body.trim() !== '' 
-      ? createEmailDto.body 
-      : '';
-    
+    const bodyValue =
+      createEmailDto.body && createEmailDto.body.trim() !== '' ? createEmailDto.body : '';
+
     const email = this.emailsRepository.create({
       subject: createEmailDto.subject,
       recipientEmail: createEmailDto.recipientEmail,
@@ -62,4 +61,3 @@ export class EmailsService {
     });
   }
 }
-

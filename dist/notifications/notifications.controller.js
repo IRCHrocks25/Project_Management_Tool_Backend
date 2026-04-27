@@ -31,7 +31,9 @@ let NotificationsController = class NotificationsController {
     async getUnreadCount(req) {
         const userId = req.user?.userId || req.user?.id;
         if (!userId) {
-            console.error('[NotificationsController] getUnreadCount: userId is undefined', { user: req.user });
+            console.error('[NotificationsController] getUnreadCount: userId is undefined', {
+                user: req.user,
+            });
             return { count: 0 };
         }
         const count = await this.notificationsService.findUnreadCount(userId);

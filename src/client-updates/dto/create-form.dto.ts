@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsUUID, IsArray, ValidateNested, IsEnum, IsOptional, IsString, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsUUID,
+  IsArray,
+  ValidateNested,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { FormBlockType } from '../entities/client-update-form.entity';
 
@@ -48,4 +57,3 @@ export class CreateFormDto {
   @Type(() => FormBlockDto)
   blocks: FormBlockDto[];
 }
-

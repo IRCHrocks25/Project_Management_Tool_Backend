@@ -38,7 +38,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
       const payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('JWT_SECRET', 'your-secret-key-change-in-production'),
+        secret: this.configService.get<string>(
+          'JWT_SECRET',
+          'your-secret-key-change-in-production',
+        ),
       });
       client.userId = payload.sub;
     } catch {
@@ -51,20 +54,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('join_room')
-  handleJoinRoom(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() roomId: string,
-  ) {
+  handleJoinRoom(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() roomId: string) {
     if (client.userId && roomId) {
       client.join(`room:${roomId}`);
     }
   }
 
   @SubscribeMessage('leave_room')
-  handleLeaveRoom(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() roomId: string,
-  ) {
+  handleLeaveRoom(@ConnectedSocket() client: AuthenticatedSocket, @MessageBody() roomId: string) {
     if (roomId) {
       client.leave(`room:${roomId}`);
     }

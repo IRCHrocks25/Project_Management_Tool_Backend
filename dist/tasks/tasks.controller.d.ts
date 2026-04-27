@@ -1,16 +1,53 @@
+import 'multer';
 import { TasksService } from './tasks.service';
+import { AttachmentsService } from './attachments.service';
+import { TransfersService, TransferTaskPayload } from './transfers.service';
 import { TaskStatus } from './entities/task.entity';
 import { CreateTaskQuestionDto } from './dto/create-task-question.dto';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 export declare class TasksController {
     private readonly tasksService;
-    constructor(tasksService: TasksService);
+    private readonly attachmentsService;
+    private readonly transfersService;
+    constructor(tasksService: TasksService, attachmentsService: AttachmentsService, transfersService: TransfersService);
     findAll(projectId?: string, assignedToId?: string, limit?: string, all?: string, taskType?: string): Promise<import("./entities/task.entity").Task[]>;
     getAllConversations(): Promise<any[]>;
     deleteQuestion(questionId: string): Promise<void>;
     getConversations(id: string): Promise<import("./entities/task-question.entity").TaskQuestion[]>;
     createQuestion(id: string, createDto: CreateTaskQuestionDto, req: any): Promise<import("./entities/task-question.entity").TaskQuestion>;
-    findOne(id: string): Promise<import("./entities/task.entity").Task>;
+    getAttachments(taskId: string): Promise<import("./entities/task-attachment.entity").TaskAttachment[]>;
+    addAttachmentLink(taskId: string, body: {
+        url: string;
+        label?: string;
+    }, req: any): Promise<import("./entities/task-attachment.entity").TaskAttachment>;
+    uploadAttachments(taskId: string, files: Express.Multer.File[], req: any): Promise<import("./entities/task-attachment.entity").TaskAttachment[]>;
+    deleteAttachment(attachmentId: string, req: any): Promise<{
+        success: boolean;
+    }>;
+    transferTask(id: string, body: TransferTaskPayload, req: any): Promise<import("./entities/task-transfer.entity").TaskTransfer>;
+    getTransfers(id: string): Promise<import("./entities/task-transfer.entity").TaskTransfer[]>;
+    findOne(id: string): Promise<{
+        attachments: import("./entities/task-attachment.entity").TaskAttachment[];
+        id: string;
+        title: string;
+        description: string;
+        project: import("../projects/entities/project.entity").Project;
+        projectId: string;
+        assignedTo: import("../users/entities/user.entity").User;
+        assignedToId: string;
+        assignees: import("./entities/task-assignee.entity").TaskAssignee[];
+        status: TaskStatus;
+        type: import("./entities/task.entity").TaskType;
+        dueDate: Date;
+        isCompleted: boolean;
+        fileUrl: string;
+        submissionData: string;
+        submissionType: string;
+        deliverableId: string;
+        isArchived: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     create(createTaskDto: any): Promise<import("./entities/task.entity").Task>;
     updateStatus(id: string, body: {
         status: TaskStatus;

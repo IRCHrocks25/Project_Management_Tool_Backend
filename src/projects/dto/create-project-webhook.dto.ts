@@ -1,4 +1,12 @@
-import { IsEnum, IsNotEmpty, IsString, IsOptional, IsUUID, IsArray, IsEmail } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsArray,
+  IsEmail,
+} from 'class-validator';
 import { ClientType, PackageType, Priority } from '../entities/project.entity';
 
 export class CreateProjectWebhookDto {
@@ -49,4 +57,3 @@ export class CreateProjectWebhookDto {
   @IsEnum(ClientType, { each: true })
   secondaryClientTypes?: ClientType[];
 }
-

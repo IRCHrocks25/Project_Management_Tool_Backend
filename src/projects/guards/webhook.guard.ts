@@ -26,12 +26,16 @@ export class WebhookGuard implements CanActivate {
     }
 
     if (!providedSecret) {
-      this.logger.warn(`Webhook request rejected: Missing secret from IP ${this.getClientIp(request)}`);
+      this.logger.warn(
+        `Webhook request rejected: Missing secret from IP ${this.getClientIp(request)}`,
+      );
       throw new UnauthorizedException('Webhook secret is required');
     }
 
     if (providedSecret !== expectedSecret) {
-      this.logger.warn(`Webhook request rejected: Invalid secret from IP ${this.getClientIp(request)}`);
+      this.logger.warn(
+        `Webhook request rejected: Invalid secret from IP ${this.getClientIp(request)}`,
+      );
       throw new UnauthorizedException('Invalid webhook secret');
     }
 
@@ -39,8 +43,11 @@ export class WebhookGuard implements CanActivate {
     const allowedIps = this.configService.get<string>('WEBHOOK_ALLOWED_IPS');
     if (allowedIps && allowedIps.trim() !== '') {
       const clientIp = this.getClientIp(request);
-      const ipList = allowedIps.split(',').map(ip => ip.trim()).filter(ip => ip !== '');
-      
+      const ipList = allowedIps
+        .split(',')
+        .map((ip) => ip.trim())
+        .filter((ip) => ip !== '');
+
       if (ipList.length > 0 && !ipList.includes(clientIp)) {
         this.logger.warn(`Webhook request rejected: IP ${clientIp} not in whitelist`);
         throw new ForbiddenException('IP address not allowed');
@@ -64,4 +71,3 @@ export class WebhookGuard implements CanActivate {
     );
   }
 }
-

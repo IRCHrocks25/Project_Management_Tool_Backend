@@ -26,6 +26,7 @@ var NotificationType;
     NotificationType["REVISION_REQUESTED"] = "revision";
     NotificationType["MENTION"] = "mention";
     NotificationType["TASK_UPDATE"] = "task_update";
+    NotificationType["TASK_TRANSFER"] = "TASK_TRANSFER";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 let Notification = class Notification {
 };

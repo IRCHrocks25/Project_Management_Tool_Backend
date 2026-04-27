@@ -96,7 +96,7 @@ let AuthService = class AuthService {
         });
         if (!user) {
             const allUsers = await this.usersRepository.find();
-            const foundUser = allUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+            const foundUser = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail);
             if (!foundUser) {
                 console.log(`Login attempt failed: User not found for email: ${normalizedEmail}`);
                 throw new common_1.UnauthorizedException('Invalid email or password');
@@ -147,7 +147,19 @@ let AuthService = class AuthService {
     }
     async getAllUsers() {
         const users = await this.usersRepository.find({
-            select: ['id', 'name', 'email', 'role', 'createdAt', 'isTeamLead', 'isHeadPM', 'isActive', 'avatarUrl', 'birthday', 'bio'],
+            select: [
+                'id',
+                'name',
+                'email',
+                'role',
+                'createdAt',
+                'isTeamLead',
+                'isHeadPM',
+                'isActive',
+                'avatarUrl',
+                'birthday',
+                'bio',
+            ],
             order: { name: 'ASC' },
         });
         return users;
@@ -309,8 +321,8 @@ let AuthService = class AuthService {
                 console.log('🔔 [FORGOT PASSWORD] Searching for normalized email:', normalizedEmail);
                 const allUsers = await this.usersRepository.find();
                 console.log('🔔 [FORGOT PASSWORD] Total users in database:', allUsers.length);
-                console.log('🔔 [FORGOT PASSWORD] Sample emails in DB:', allUsers.slice(0, 5).map(u => u.email));
-                user = allUsers.find(u => u.email.toLowerCase() === normalizedEmail) || null;
+                console.log('🔔 [FORGOT PASSWORD] Sample emails in DB:', allUsers.slice(0, 5).map((u) => u.email));
+                user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
                 if (user) {
                     console.log('🔔 [FORGOT PASSWORD] ✅ User found with case-insensitive search!');
                     console.log('🔔 [FORGOT PASSWORD] Found user email:', user.email);
@@ -412,7 +424,7 @@ let AuthService = class AuthService {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'Webhook-Token': this.configService.get('WEBHOOK_TOKEN', 'katalystPM2026'),
                     },
                     body: requestBody,
@@ -441,8 +453,7 @@ let AuthService = class AuthService {
                         error: responseText,
                     };
                 }
-                const emailSent = responseData?.response?.includes('Email sent') ||
-                    responseText.includes('Email sent to');
+                const emailSent = responseData?.response?.includes('Email sent') || responseText.includes('Email sent to');
                 console.log(`✅ [WEBHOOK] Successfully sent OTP email to ${email} via webhook`);
                 console.log(`✅ [WEBHOOK] Response status: ${response.status}`);
                 console.log(`✅ [WEBHOOK] Email sent confirmation: ${emailSent}`);
@@ -491,7 +502,7 @@ let AuthService = class AuthService {
         if (!user) {
             console.log('🔔 [VERIFY OTP] User not found with exact match, trying case-insensitive search...');
             const allUsers = await this.usersRepository.find();
-            user = allUsers.find(u => u.email.toLowerCase() === normalizedEmail) || null;
+            user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
             if (user) {
                 console.log('🔔 [VERIFY OTP] ✅ User found with case-insensitive search:', user.email);
             }
@@ -537,7 +548,7 @@ let AuthService = class AuthService {
         if (!user) {
             console.log('🔔 [RESET PASSWORD] User not found with exact match, trying case-insensitive search...');
             const allUsers = await this.usersRepository.find();
-            user = allUsers.find(u => u.email.toLowerCase() === normalizedEmail) || null;
+            user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
             if (user) {
                 console.log('🔔 [RESET PASSWORD] ✅ User found with case-insensitive search:', user.email);
             }

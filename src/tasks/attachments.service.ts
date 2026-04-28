@@ -33,8 +33,10 @@ export class AttachmentsService {
     taskId: string,
     files: Express.Multer.File[],
     uploadedById: string,
+    note?: string,
   ): Promise<TaskAttachment[]> {
     const now = new Date();
+    const trimmedNote = note?.trim() || null;
 
     const saved = await Promise.all(
       files.map(async (file) => {
@@ -53,6 +55,7 @@ export class AttachmentsService {
           cloudinaryResourceType: result.resourceType,
           uploadedById: uploadedById || null,
           uploadedAt: now,
+          note: trimmedNote,
         });
         return this.attachmentsRepo.save(attachment);
       }),
@@ -71,6 +74,7 @@ export class AttachmentsService {
     url: string,
     label: string | undefined,
     uploadedById: string,
+    note?: string,
   ): Promise<TaskAttachment> {
     try {
       new URL(url);
@@ -91,6 +95,7 @@ export class AttachmentsService {
       cloudinaryResourceType: null,
       uploadedById: uploadedById || null,
       uploadedAt: new Date(),
+      note: note?.trim() || null,
     });
 
     const saved = await this.attachmentsRepo.save(attachment);

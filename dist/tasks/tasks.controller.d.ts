@@ -19,8 +19,11 @@ export declare class TasksController {
     addAttachmentLink(taskId: string, body: {
         url: string;
         label?: string;
+        note?: string;
     }, req: any): Promise<import("./entities/task-attachment.entity").TaskAttachment>;
-    uploadAttachments(taskId: string, files: Express.Multer.File[], req: any): Promise<import("./entities/task-attachment.entity").TaskAttachment[]>;
+    uploadAttachments(taskId: string, files: Express.Multer.File[], body: {
+        note?: string;
+    }, req: any): Promise<import("./entities/task-attachment.entity").TaskAttachment[]>;
     deleteAttachment(attachmentId: string, req: any): Promise<{
         success: boolean;
     }>;

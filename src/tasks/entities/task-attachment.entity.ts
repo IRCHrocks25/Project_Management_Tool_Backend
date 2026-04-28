@@ -53,6 +53,9 @@ export class TaskAttachment {
   @JoinColumn({ name: 'uploadedById' })
   uploadedBy: User;
 
+  @Column('text', { nullable: true })
+  note: string;
+
   // Actual upload time; backfill rows use task.createdAt as best-effort approximation
   @Column({ type: 'timestamptz' })
   uploadedAt: Date;

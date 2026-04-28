@@ -59,7 +59,8 @@
     "migrate:monthly-reminders-month-status-link": "node scripts/alter-monthly-reminders-add-month-status-link.js",
     "migrate:task-attachments": "node scripts/add-task-attachments.js",
     "migrate:task-transfers": "node scripts/add-task-transfers.js",
-    "migrate:task-transfer-notification-type": "node scripts/add-task-transfer-notification-type.js"
+    "migrate:task-transfer-notification-type": "node scripts/add-task-transfer-notification-type.js",
+    "migrate:attachment-note": "node scripts/add-attachment-note.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

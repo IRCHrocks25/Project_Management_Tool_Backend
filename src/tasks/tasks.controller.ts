@@ -91,10 +91,10 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   async addAttachmentLink(
     @Param('id') taskId: string,
-    @Body() body: { url: string; label?: string },
+    @Body() body: { url: string; label?: string; note?: string },
     @Request() req: any,
   ) {
-    return this.attachmentsService.addLink(taskId, body.url, body.label, req.user.userId);
+    return this.attachmentsService.addLink(taskId, body.url, body.label, req.user.userId, body.note);
   }
 
   @Post(':id/attachments')
@@ -107,12 +107,13 @@ export class TasksController {
   async uploadAttachments(
     @Param('id') taskId: string,
     @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: { note?: string },
     @Request() req: any,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files provided');
     }
-    return this.attachmentsService.upload(taskId, files, req.user.userId);
+    return this.attachmentsService.upload(taskId, files, req.user.userId, body?.note);
   }
 
   @Delete(':id/attachments/:attachmentId')

@@ -48,13 +48,13 @@ let TasksController = class TasksController {
         return this.attachmentsService.findByTask(taskId);
     }
     async addAttachmentLink(taskId, body, req) {
-        return this.attachmentsService.addLink(taskId, body.url, body.label, req.user.userId);
+        return this.attachmentsService.addLink(taskId, body.url, body.label, req.user.userId, body.note);
     }
-    async uploadAttachments(taskId, files, req) {
+    async uploadAttachments(taskId, files, body, req) {
         if (!files || files.length === 0) {
             throw new common_1.BadRequestException('No files provided');
         }
-        return this.attachmentsService.upload(taskId, files, req.user.userId);
+        return this.attachmentsService.upload(taskId, files, req.user.userId, body?.note);
     }
     async deleteAttachment(attachmentId, req) {
         return this.attachmentsService.delete(attachmentId, req.user.userId);
@@ -173,9 +173,10 @@ __decorate([
     })),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.UploadedFiles)()),
-    __param(2, (0, common_1.Request)()),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Array, Object]),
+    __metadata("design:paramtypes", [String, Array, Object, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "uploadAttachments", null);
 __decorate([

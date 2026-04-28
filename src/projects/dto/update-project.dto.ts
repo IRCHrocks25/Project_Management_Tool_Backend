@@ -22,4 +22,8 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsString()
   associatedLink?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

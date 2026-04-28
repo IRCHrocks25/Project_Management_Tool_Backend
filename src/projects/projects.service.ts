@@ -697,6 +697,12 @@ export class ProjectsService {
       project.associatedLink = normalizedLink || undefined;
     }
 
+    // Update project notes if provided
+    if (updateProjectDto.notes !== undefined) {
+      const normalizedNotes = updateProjectDto.notes.trim();
+      project.notes = normalizedNotes || null;
+    }
+
     // Check if Katalyst is in client types (primary or secondary) and update stage to CRM if needed
     const allClientTypes = [project.clientType, ...(project.secondaryClientTypes || [])];
     const isKatalyst = allClientTypes.some(

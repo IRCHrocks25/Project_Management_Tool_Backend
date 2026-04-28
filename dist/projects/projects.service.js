@@ -531,6 +531,10 @@ let ProjectsService = class ProjectsService {
             const normalizedLink = updateProjectDto.associatedLink.trim();
             project.associatedLink = normalizedLink || undefined;
         }
+        if (updateProjectDto.notes !== undefined) {
+            const normalizedNotes = updateProjectDto.notes.trim();
+            project.notes = normalizedNotes || null;
+        }
         const allClientTypes = [project.clientType, ...(project.secondaryClientTypes || [])];
         const isKatalyst = allClientTypes.some((type) => type === project_entity_1.ClientType.KATALYST || String(type).toLowerCase() === 'katalyst');
         if (isKatalyst &&

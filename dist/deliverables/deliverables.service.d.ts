@@ -15,6 +15,7 @@ export declare class DeliverablesService {
     private usersRepository;
     private notificationsService;
     constructor(deliverablesRepository: Repository<Deliverable>, deliverableTeamMembersRepository: Repository<DeliverableTeamMember>, historyRepository: Repository<DeliverableHistory>, tasksRepository: Repository<Task>, projectsRepository: Repository<Project>, usersRepository: Repository<User>, notificationsService: NotificationsService);
+    private shouldSuppressSelfNotifications;
     create(projectId: string, type: DeliverableType, customType?: string): Promise<Deliverable>;
     findAll(projectId?: string): Promise<Deliverable[]>;
     findOne(id: string): Promise<Deliverable>;

@@ -36,6 +36,21 @@ export class TasksService {
     private notificationsService: NotificationsService,
   ) {}
 
+  private async shouldSuppressSelfNotifications(actorUserId?: string): Promise<boolean> {
+    if (!actorUserId) return false;
+    try {
+      const actor = await this.usersRepository.findOne({
+        where: { id: actorUserId },
+        select: ['id', 'isHeadPM', 'isTeamLead'],
+      });
+      // Heads/leads should still see activity notifications for oversight.
+      if (actor?.isHeadPM || actor?.isTeamLead) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async findAll(
     projectId?: string,
     assignedToId?: string,
@@ -177,8 +192,11 @@ export class TasksService {
     fileUrl?: string,
     deliverableType?: string,
     deliverableId?: string,
+    actorUserId?: string,
+    reviewIntent?: 'for_approval' | 'revision',
   ) {
     const task = await this.findOne(id);
+    const suppressSelfNotifications = await this.shouldSuppressSelfNotifications(actorUserId);
     const wasCompleted = task.isCompleted;
     const wasInReview = task.status === TaskStatus.IN_REVIEW; // Check BEFORE updating status
     const isChangingToInReview = status === TaskStatus.IN_REVIEW && !wasInReview;
@@ -196,10 +214,9 @@ export class TasksService {
     }
     const savedTask = await this.tasksRepository.save(task);
 
-    // When a task is sent for review, notify the PM and update deliverables if needed.
-    // Only notify if status changed TO "In Review" (not if it was already in review).
-    // Originally this was limited to Copy/Design; now it applies to all departments.
-    if (isChangingToInReview) {
+    // Notify PM when task moves to For Approval (In Review), but skip explicit
+    // revision moves where UI marks intent as revision.
+    if (isChangingToInReview && reviewIntent !== 'revision') {
       try {
         // Reuse project from task (already loaded in findOne) - no need to query again
         const projectWithPM = task.project;
@@ -208,7 +225,11 @@ export class TasksService {
         const promises: Promise<any>[] = [];
 
         // Notify PM that copy/design has been sent for review
-        if (projectWithPM && projectWithPM.pmId) {
+        if (
+          projectWithPM &&
+          projectWithPM.pmId &&
+          (!suppressSelfNotifications || projectWithPM.pmId !== actorUserId)
+        ) {
           promises.push(
             this.notificationsService
               .createTaskSentForReviewNotification(
@@ -309,7 +330,13 @@ export class TasksService {
     }
 
     // Create notification when task is completed
-    if (!wasCompleted && isCompleted && task.project && task.project.pmId) {
+    if (
+      !wasCompleted &&
+      isCompleted &&
+      task.project &&
+      task.project.pmId &&
+      (!suppressSelfNotifications || task.project.pmId !== actorUserId)
+    ) {
       try {
         await this.notificationsService.createTaskCompletedNotification(
           task.project.pmId, // userId (PM receives the notification)
@@ -415,9 +442,10 @@ export class TasksService {
     return await this.findOne(id);
   }
 
-  async create(createTaskDto: any) {
+  async create(createTaskDto: any, actorUserId?: string) {
     const task = this.tasksRepository.create(createTaskDto);
     const savedTaskResult = await this.tasksRepository.save(task);
+    const suppressSelfNotifications = await this.shouldSuppressSelfNotifications(actorUserId);
 
     // TypeORM save() can return Task | Task[], but we're saving a single entity
     // Ensure we have a single Task object
@@ -458,7 +486,9 @@ export class TasksService {
 
           // Create notifications for all department members
           // Use TASK_AVAILABLE type to distinguish from TASK_ASSIGNED (which requires assignedToId)
-          const notificationPromises = departmentUsers.map((user) =>
+          const notificationPromises = departmentUsers
+            .filter((user) => !suppressSelfNotifications || user.id !== actorUserId)
+            .map((user) =>
             this.notificationsService
               .create({
                 type: NotificationType.TASK_AVAILABLE, // New type for unassigned tasks
@@ -472,7 +502,7 @@ export class TasksService {
               .catch((err) => {
                 console.error(`Failed to create notification for user ${user.id}:`, err);
               }),
-          );
+            );
 
           await Promise.all(notificationPromises);
           console.log(
@@ -488,7 +518,9 @@ export class TasksService {
             taskId: savedTask.id,
             assignedToId: null,
           };
-          this.notificationsService.notifyHeadPMsAlso(headPMData, '').catch(() => {});
+          this.notificationsService
+            .notifyHeadPMsAlso(headPMData, suppressSelfNotifications ? actorUserId || '' : '')
+            .catch(() => {});
         }
       } catch (error) {
         console.error('Failed to create department notifications:', error);

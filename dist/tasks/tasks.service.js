@@ -35,6 +35,22 @@ let TasksService = class TasksService {
         this.usersRepository = usersRepository;
         this.notificationsService = notificationsService;
     }
+    async shouldSuppressSelfNotifications(actorUserId) {
+        if (!actorUserId)
+            return false;
+        try {
+            const actor = await this.usersRepository.findOne({
+                where: { id: actorUserId },
+                select: ['id', 'isHeadPM', 'isTeamLead'],
+            });
+            if (actor?.isHeadPM || actor?.isTeamLead)
+                return false;
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
     async findAll(projectId, assignedToId, limit, loadAll, taskType) {
         try {
             console.log(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}, taskType: ${taskType}`);
@@ -124,8 +140,9 @@ let TasksService = class TasksService {
         }
         return task;
     }
-    async updateStatus(id, status, isCompleted, fileUrl, deliverableType, deliverableId) {
+    async updateStatus(id, status, isCompleted, fileUrl, deliverableType, deliverableId, actorUserId, reviewIntent) {
         const task = await this.findOne(id);
+        const suppressSelfNotifications = await this.shouldSuppressSelfNotifications(actorUserId);
         const wasCompleted = task.isCompleted;
         const wasInReview = task.status === task_entity_1.TaskStatus.IN_REVIEW;
         const isChangingToInReview = status === task_entity_1.TaskStatus.IN_REVIEW && !wasInReview;
@@ -140,11 +157,13 @@ let TasksService = class TasksService {
             task.deliverableId = deliverableId;
         }
         const savedTask = await this.tasksRepository.save(task);
-        if (isChangingToInReview) {
+        if (isChangingToInReview && reviewIntent !== 'revision') {
             try {
                 const projectWithPM = task.project;
                 const promises = [];
-                if (projectWithPM && projectWithPM.pmId) {
+                if (projectWithPM &&
+                    projectWithPM.pmId &&
+                    (!suppressSelfNotifications || projectWithPM.pmId !== actorUserId)) {
                     promises.push(this.notificationsService
                         .createTaskSentForReviewNotification(projectWithPM.pmId, savedTask.id, task.projectId, task.title, projectWithPM.clientName, !!fileUrl, task.type)
                         .catch((err) => {
@@ -214,7 +233,11 @@ let TasksService = class TasksService {
                 console.error('Failed to update deliverables or create notification:', error);
             }
         }
-        if (!wasCompleted && isCompleted && task.project && task.project.pmId) {
+        if (!wasCompleted &&
+            isCompleted &&
+            task.project &&
+            task.project.pmId &&
+            (!suppressSelfNotifications || task.project.pmId !== actorUserId)) {
             try {
                 await this.notificationsService.createTaskCompletedNotification(task.project.pmId, task.id, task.projectId, task.title, task.project.clientName, task.assignedToId, task.type);
             }
@@ -275,9 +298,10 @@ let TasksService = class TasksService {
         }
         return await this.findOne(id);
     }
-    async create(createTaskDto) {
+    async create(createTaskDto, actorUserId) {
         const task = this.tasksRepository.create(createTaskDto);
         const savedTaskResult = await this.tasksRepository.save(task);
+        const suppressSelfNotifications = await this.shouldSuppressSelfNotifications(actorUserId);
         if (Array.isArray(savedTaskResult)) {
             throw new Error('Unexpected: save() returned an array when saving a single task');
         }
@@ -302,7 +326,9 @@ let TasksService = class TasksService {
                     const project = await this.tasksRepository.manager
                         .getRepository(project_entity_1.Project)
                         .findOne({ where: { id: savedTask.projectId }, select: ['id', 'clientName'] });
-                    const notificationPromises = departmentUsers.map((user) => this.notificationsService
+                    const notificationPromises = departmentUsers
+                        .filter((user) => !suppressSelfNotifications || user.id !== actorUserId)
+                        .map((user) => this.notificationsService
                         .create({
                         type: notification_entity_1.NotificationType.TASK_AVAILABLE,
                         title: 'New task available',
@@ -325,7 +351,9 @@ let TasksService = class TasksService {
                         taskId: savedTask.id,
                         assignedToId: null,
                     };
-                    this.notificationsService.notifyHeadPMsAlso(headPMData, '').catch(() => { });
+                    this.notificationsService
+                        .notifyHeadPMsAlso(headPMData, suppressSelfNotifications ? actorUserId || '' : '')
+                        .catch(() => { });
                 }
             }
             catch (error) {

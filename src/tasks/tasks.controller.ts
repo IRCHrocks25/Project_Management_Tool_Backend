@@ -148,8 +148,8 @@ export class TasksController {
   }
 
   @Post()
-  async create(@Body() createTaskDto: any) {
-    return this.tasksService.create(createTaskDto);
+  async create(@Body() createTaskDto: any, @Request() req: any) {
+    return this.tasksService.create(createTaskDto, req.user?.userId || req.user?.id);
   }
 
   @Patch(':id/status')
@@ -162,7 +162,9 @@ export class TasksController {
       fileUrl?: string;
       deliverableType?: string;
       deliverableId?: string;
+      reviewIntent?: 'for_approval' | 'revision';
     },
+    @Request() req: any,
   ) {
     return this.tasksService.updateStatus(
       id,
@@ -171,6 +173,8 @@ export class TasksController {
       body.fileUrl,
       body.deliverableType,
       body.deliverableId,
+      req.user?.userId || req.user?.id,
+      body.reviewIntent,
     );
   }
 

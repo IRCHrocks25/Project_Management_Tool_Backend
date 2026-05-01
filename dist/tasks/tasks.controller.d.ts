@@ -51,14 +51,15 @@ export declare class TasksController {
         createdAt: Date;
         updatedAt: Date;
     }>;
-    create(createTaskDto: any): Promise<import("./entities/task.entity").Task>;
+    create(createTaskDto: any, req: any): Promise<import("./entities/task.entity").Task>;
     updateStatus(id: string, body: {
         status: TaskStatus;
         isCompleted?: boolean;
         fileUrl?: string;
         deliverableType?: string;
         deliverableId?: string;
-    }): Promise<import("./entities/task.entity").Task>;
+        reviewIntent?: 'for_approval' | 'revision';
+    }, req: any): Promise<import("./entities/task.entity").Task>;
     assignTask(id: string, body: {
         assignedToId?: string;
         userIds?: string[];

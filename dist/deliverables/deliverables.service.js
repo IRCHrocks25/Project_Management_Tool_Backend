@@ -34,6 +34,22 @@ let DeliverablesService = class DeliverablesService {
         this.usersRepository = usersRepository;
         this.notificationsService = notificationsService;
     }
+    async shouldSuppressSelfNotifications(actorUserId) {
+        if (!actorUserId)
+            return false;
+        try {
+            const actor = await this.usersRepository.findOne({
+                where: { id: actorUserId },
+                select: ['id', 'isHeadPM', 'isTeamLead'],
+            });
+            if (actor?.isHeadPM || actor?.isTeamLead)
+                return false;
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
     async create(projectId, type, customType) {
         const project = await this.projectsRepository.findOne({
             where: { id: projectId },
@@ -92,6 +108,7 @@ let DeliverablesService = class DeliverablesService {
     }
     async updateStatus(id, status, notes, userId, fileUrl) {
         const deliverable = await this.findOne(id);
+        const suppressSelfNotifications = await this.shouldSuppressSelfNotifications(userId);
         const previousStatus = deliverable.status;
         if (fileUrl) {
             let action = deliverable_history_entity_1.DeliverableAction.STATUS_CHANGED;
@@ -112,7 +129,7 @@ let DeliverablesService = class DeliverablesService {
             });
             await this.historyRepository.save(history);
             if (status === deliverable_entity_1.DeliverableStatus.REVISION) {
-                await this.handleFileRevisionRequest(deliverable, fileUrl);
+                await this.handleFileRevisionRequest(deliverable, fileUrl, userId, suppressSelfNotifications);
             }
             if (status === deliverable_entity_1.DeliverableStatus.APPROVED &&
                 deliverable.type === deliverable_entity_1.DeliverableType.LANDING_PAGE) {
@@ -161,11 +178,11 @@ let DeliverablesService = class DeliverablesService {
         });
         await this.historyRepository.save(history);
         if (status === deliverable_entity_1.DeliverableStatus.REVISION && previousStatus !== deliverable_entity_1.DeliverableStatus.REVISION) {
-            await this.handleRevisionRequest(deliverable);
+            await this.handleRevisionRequest(deliverable, userId, suppressSelfNotifications);
         }
         return savedDeliverable;
     }
-    async handleFileRevisionRequest(deliverable, fileUrl) {
+    async handleFileRevisionRequest(deliverable, fileUrl, actorUserId, suppressSelfNotifications = false) {
         const relatedTasks = await this.tasksRepository.find({
             where: {
                 projectId: deliverable.projectId,
@@ -196,7 +213,8 @@ let DeliverablesService = class DeliverablesService {
             task.status = task_entity_1.TaskStatus.IN_PROGRESS;
             task.isCompleted = false;
             await this.tasksRepository.save(task);
-            if (task.assignedToId) {
+            if (task.assignedToId &&
+                (!suppressSelfNotifications || task.assignedToId !== actorUserId)) {
                 try {
                     const revData = {
                         type: notification_entity_1.NotificationType.REVISION_REQUESTED,
@@ -226,7 +244,7 @@ let DeliverablesService = class DeliverablesService {
         });
         return history;
     }
-    async handleRevisionRequest(deliverable) {
+    async handleRevisionRequest(deliverable, actorUserId, suppressSelfNotifications = false) {
         const copyDeliverableTypes = [
             deliverable_entity_1.DeliverableType.BRAND_BOOK,
             deliverable_entity_1.DeliverableType.COPY_OF_LANDING_PAGE,
@@ -269,7 +287,8 @@ let DeliverablesService = class DeliverablesService {
                 await this.projectsRepository.save(project);
             }
             for (const task of relatedCopyTasks) {
-                if (task.assignedToId) {
+                if (task.assignedToId &&
+                    (!suppressSelfNotifications || task.assignedToId !== actorUserId)) {
                     try {
                         const revData = {
                             type: notification_entity_1.NotificationType.REVISION_REQUESTED,

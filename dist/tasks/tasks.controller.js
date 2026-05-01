@@ -72,11 +72,11 @@ let TasksController = class TasksController {
         ]);
         return { ...task, attachments };
     }
-    async create(createTaskDto) {
-        return this.tasksService.create(createTaskDto);
+    async create(createTaskDto, req) {
+        return this.tasksService.create(createTaskDto, req.user?.userId || req.user?.id);
     }
-    async updateStatus(id, body) {
-        return this.tasksService.updateStatus(id, body.status, body.isCompleted, body.fileUrl, body.deliverableType, body.deliverableId);
+    async updateStatus(id, body, req) {
+        return this.tasksService.updateStatus(id, body.status, body.isCompleted, body.fileUrl, body.deliverableType, body.deliverableId, req.user?.userId || req.user?.id, body.reviewIntent);
     }
     async assignTask(id, body) {
         if (body.userIds && Array.isArray(body.userIds)) {
@@ -216,16 +216,18 @@ __decorate([
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "create", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "updateStatus", null);
 __decorate([

@@ -35,6 +35,21 @@ export class DeliverablesService {
     private notificationsService: NotificationsService,
   ) {}
 
+  private async shouldSuppressSelfNotifications(actorUserId?: string): Promise<boolean> {
+    if (!actorUserId) return false;
+    try {
+      const actor = await this.usersRepository.findOne({
+        where: { id: actorUserId },
+        select: ['id', 'isHeadPM', 'isTeamLead'],
+      });
+      // Heads/leads should still receive visibility notifications.
+      if (actor?.isHeadPM || actor?.isTeamLead) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async create(projectId: string, type: DeliverableType, customType?: string) {
     // Verify project exists
     const project = await this.projectsRepository.findOne({
@@ -120,6 +135,7 @@ export class DeliverablesService {
     fileUrl?: string,
   ) {
     const deliverable = await this.findOne(id);
+    const suppressSelfNotifications = await this.shouldSuppressSelfNotifications(userId);
     const previousStatus = deliverable.status;
 
     // If fileUrl is provided, this is a file-level approval/revision, not overall deliverable
@@ -147,7 +163,12 @@ export class DeliverablesService {
 
       // If revision requested for a file, handle it
       if (status === DeliverableStatus.REVISION) {
-        await this.handleFileRevisionRequest(deliverable, fileUrl);
+        await this.handleFileRevisionRequest(
+          deliverable,
+          fileUrl,
+          userId,
+          suppressSelfNotifications,
+        );
       }
 
       // If Home Page design is approved, automatically move project to Development
@@ -220,13 +241,18 @@ export class DeliverablesService {
 
     // If deliverable is marked as Revision and it's copy-related, update tasks and project stage
     if (status === DeliverableStatus.REVISION && previousStatus !== DeliverableStatus.REVISION) {
-      await this.handleRevisionRequest(deliverable);
+      await this.handleRevisionRequest(deliverable, userId, suppressSelfNotifications);
     }
 
     return savedDeliverable;
   }
 
-  private async handleFileRevisionRequest(deliverable: Deliverable, fileUrl: string) {
+  private async handleFileRevisionRequest(
+    deliverable: Deliverable,
+    fileUrl: string,
+    actorUserId?: string,
+    suppressSelfNotifications: boolean = false,
+  ) {
     // Find tasks associated with this file URL
     const relatedTasks = await this.tasksRepository.find({
       where: {
@@ -273,7 +299,10 @@ export class DeliverablesService {
       await this.tasksRepository.save(task);
 
       // Notify ONLY the assigned user for this specific task
-      if (task.assignedToId) {
+      if (
+        task.assignedToId &&
+        (!suppressSelfNotifications || task.assignedToId !== actorUserId)
+      ) {
         try {
           const revData = {
             type: NotificationType.REVISION_REQUESTED,
@@ -305,7 +334,11 @@ export class DeliverablesService {
     return history;
   }
 
-  private async handleRevisionRequest(deliverable: Deliverable) {
+  private async handleRevisionRequest(
+    deliverable: Deliverable,
+    actorUserId?: string,
+    suppressSelfNotifications: boolean = false,
+  ) {
     const copyDeliverableTypes = [
       DeliverableType.BRAND_BOOK,
       DeliverableType.COPY_OF_LANDING_PAGE,
@@ -366,7 +399,10 @@ export class DeliverablesService {
 
       // Notify ONLY copywriters assigned to tasks related to THIS deliverable
       for (const task of relatedCopyTasks) {
-        if (task.assignedToId) {
+        if (
+          task.assignedToId &&
+          (!suppressSelfNotifications || task.assignedToId !== actorUserId)
+        ) {
           try {
             const revData = {
               type: NotificationType.REVISION_REQUESTED,

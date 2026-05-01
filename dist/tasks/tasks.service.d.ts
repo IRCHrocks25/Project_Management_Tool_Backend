@@ -17,12 +17,13 @@ export declare class TasksService {
     private usersRepository;
     private notificationsService;
     constructor(tasksRepository: Repository<Task>, taskAssigneesRepository: Repository<TaskAssignee>, taskQuestionsRepository: Repository<TaskQuestion>, taskCommentsRepository: Repository<TaskComment>, deliverablesRepository: Repository<Deliverable>, usersRepository: Repository<User>, notificationsService: NotificationsService);
+    private shouldSuppressSelfNotifications;
     findAll(projectId?: string, assignedToId?: string, limit?: number, loadAll?: boolean, taskType?: string): Promise<Task[]>;
     findOne(id: string): Promise<Task>;
-    updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string): Promise<Task>;
+    updateStatus(id: string, status: TaskStatus, isCompleted?: boolean, fileUrl?: string, deliverableType?: string, deliverableId?: string, actorUserId?: string, reviewIntent?: 'for_approval' | 'revision'): Promise<Task>;
     assignTask(id: string, assignedToId: string): Promise<Task>;
     assignTaskToMultiple(id: string, userIds: string[]): Promise<Task>;
-    create(createTaskDto: any): Promise<Task>;
+    create(createTaskDto: any, actorUserId?: string): Promise<Task>;
     submitOnboardingData(id: string, submissionData: string, submissionType: 'url' | 'text'): Promise<Task>;
     update(id: string, updateTaskDto: {
         title?: string;

@@ -99,9 +99,11 @@ let NotificationsService = class NotificationsService {
             return;
         const user = await this.usersRepository.findOne({
             where: { id: userId },
-            select: ['email', 'name'],
+            select: ['email', 'name', 'emailNotificationsEnabled'],
         });
         if (!user?.email)
+            return;
+        if (user.emailNotificationsEnabled === false)
             return;
         const appName = this.configService.get('APP_NAME', 'Katalyst PM');
         const frontendUrl = this.normalizeFrontendUrl(this.configService.get('FRONTEND_URL', ''));

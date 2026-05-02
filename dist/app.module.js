@@ -25,6 +25,7 @@ const tickets_module_1 = require("./tickets/tickets.module");
 const daily_focus_module_1 = require("./daily-focus/daily-focus.module");
 const department_project_focus_module_1 = require("./department-project-focus/department-project-focus.module");
 const monthly_reminders_module_1 = require("./monthly-reminders/monthly-reminders.module");
+const board_view_module_1 = require("./board-view/board-view.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -50,6 +51,7 @@ exports.AppModule = AppModule = __decorate([
             daily_focus_module_1.DailyFocusModule,
             department_project_focus_module_1.DepartmentProjectFocusModule,
             monthly_reminders_module_1.MonthlyRemindersModule,
+            board_view_module_1.BoardViewModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

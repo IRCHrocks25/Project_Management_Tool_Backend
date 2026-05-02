@@ -18,6 +18,7 @@ export declare class User {
     role: UserRole;
     isTeamLead: boolean;
     isHeadPM: boolean;
+    emailNotificationsEnabled: boolean;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;

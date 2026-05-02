@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus, TaskType } from './entities/task.entity';
@@ -201,6 +201,36 @@ export class TasksService {
     const wasInReview = task.status === TaskStatus.IN_REVIEW; // Check BEFORE updating status
     const isChangingToInReview = status === TaskStatus.IN_REVIEW && !wasInReview;
 
+    // Pre-validate: if a fileUrl is being attached to a deliverable, the
+    // deliverable must already exist. The on-the-fly auto-creation that
+    // used to live in this method was removed (locked decision) — fail
+    // atomically here BEFORE saving the task, otherwise a partial save
+    // would leave the task with the new fileUrl while the deliverable
+    // never materialises.
+    let preLoadedDeliverables: Deliverable[] = [];
+    let preValidatedTargetDeliverable: Deliverable | null = null;
+    if (fileUrl && deliverableType && isChangingToInReview && reviewIntent !== 'revision') {
+      preLoadedDeliverables = await this.deliverablesRepository.find({
+        where: { projectId: task.projectId },
+      });
+      if (deliverableId) {
+        preValidatedTargetDeliverable =
+          preLoadedDeliverables.find((d) => d.id === deliverableId) ?? null;
+      } else {
+        preValidatedTargetDeliverable =
+          preLoadedDeliverables.find((d) => d.type === deliverableType) ?? null;
+        if (!preValidatedTargetDeliverable && deliverableType === 'Other') {
+          preValidatedTargetDeliverable =
+            preLoadedDeliverables.find((d) => d.type === 'Other' && d.customType) ?? null;
+        }
+      }
+      if (!preValidatedTargetDeliverable) {
+        throw new BadRequestException(
+          'No deliverable to attach this file to. Add the deliverable first.',
+        );
+      }
+    }
+
     task.status = status;
     if (isCompleted !== undefined) {
       task.isCompleted = isCompleted;
@@ -247,74 +277,50 @@ export class TasksService {
           );
         }
 
-        // Update deliverables if fileUrl is provided
-        if (fileUrl && deliverableType) {
+        // Update deliverables if fileUrl is provided. Existence was
+        // pre-validated above (BadRequestException thrown if missing), so
+        // preValidatedTargetDeliverable is guaranteed non-null here.
+        if (fileUrl && deliverableType && preValidatedTargetDeliverable) {
           promises.push(
             (async () => {
-              // Find deliverables for this project
-              const deliverables = await this.deliverablesRepository.find({
-                where: { projectId: task.projectId },
-              });
-
-              // Find the specific deliverable - prefer deliverableId if provided
-              let targetDeliverable: any = null;
-
-              if (deliverableId) {
-                targetDeliverable = deliverables.find((d) => d.id === deliverableId);
+              const targetDeliverable = preValidatedTargetDeliverable!;
+              targetDeliverable.fileUrl = fileUrl;
+              if (targetDeliverable.status === DeliverableStatus.REVISION) {
+                targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
+                targetDeliverable.notes = null;
               } else {
-                targetDeliverable = deliverables.find((d) => d.type === deliverableType);
-                if (!targetDeliverable && deliverableType === 'Other') {
-                  targetDeliverable = deliverables.find((d) => d.type === 'Other' && d.customType);
-                }
+                targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
               }
+              await this.deliverablesRepository.save(targetDeliverable);
 
-              if (targetDeliverable) {
-                // Update the selected deliverable
-                targetDeliverable.fileUrl = fileUrl;
-                if (targetDeliverable.status === DeliverableStatus.REVISION) {
-                  targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
-                  targetDeliverable.notes = null;
-                } else {
-                  targetDeliverable.status = DeliverableStatus.READY_FOR_REVIEW;
+              // Cleanup: if this is a design task and project is currently
+              // in Design Revision stage, drop it back to Design once no
+              // other design deliverables remain in revision. This is
+              // state-cleanup-on-revision (not progression) per locked
+              // decision §15 — kept.
+              if (
+                task.type === TaskType.DESIGN &&
+                projectWithPM &&
+                projectWithPM.stage === ProjectStage.DESIGN_REVISION
+              ) {
+                const designDeliverableTypes = [
+                  DeliverableType.LOGO,
+                  DeliverableType.SOCIAL_BANNERS,
+                  DeliverableType.SPEAKER_KIT,
+                  DeliverableType.LANDING_PAGE,
+                ];
+                const otherDesignDeliverables = preLoadedDeliverables.filter(
+                  (d) =>
+                    designDeliverableTypes.includes(d.type) &&
+                    d.id !== targetDeliverable.id &&
+                    d.status === DeliverableStatus.REVISION,
+                );
+
+                if (otherDesignDeliverables.length === 0) {
+                  const projectRepo = this.tasksRepository.manager.getRepository(Project);
+                  projectWithPM.stage = ProjectStage.DESIGN;
+                  await projectRepo.save(projectWithPM);
                 }
-                await this.deliverablesRepository.save(targetDeliverable);
-
-                // If this is a design task and project is in Design Revision stage, update it back to Design
-                // Reuse project from task instead of querying again
-                if (
-                  task.type === TaskType.DESIGN &&
-                  projectWithPM &&
-                  projectWithPM.stage === ProjectStage.DESIGN_REVISION
-                ) {
-                  const designDeliverableTypes = [
-                    DeliverableType.LOGO,
-                    DeliverableType.SOCIAL_BANNERS,
-                    DeliverableType.SPEAKER_KIT,
-                    DeliverableType.LANDING_PAGE,
-                  ];
-                  const otherDesignDeliverables = deliverables.filter(
-                    (d) =>
-                      designDeliverableTypes.includes(d.type) &&
-                      d.id !== targetDeliverable.id &&
-                      d.status === DeliverableStatus.REVISION,
-                  );
-
-                  // Only change back to Design if no other design deliverables are in revision
-                  if (otherDesignDeliverables.length === 0) {
-                    const projectRepo = this.tasksRepository.manager.getRepository(Project);
-                    projectWithPM.stage = ProjectStage.DESIGN;
-                    await projectRepo.save(projectWithPM);
-                  }
-                }
-              } else {
-                // If deliverable doesn't exist, create it
-                const newDeliverable = this.deliverablesRepository.create({
-                  projectId: task.projectId,
-                  type: deliverableType as DeliverableType,
-                  fileUrl: fileUrl,
-                  status: DeliverableStatus.READY_FOR_REVIEW,
-                });
-                await this.deliverablesRepository.save(newDeliverable);
               }
             })().catch((err) => {
               console.error('Failed to update deliverables:', err);

@@ -33,14 +33,11 @@ export declare class ProjectsService {
         role: import("../users/entities/user.entity").UserRole;
         message: string;
     }>;
-    private generateDeliverables;
     private generateIntakeTasks;
     findAll(userId: string, userRole: string, includeArchived?: boolean): Promise<Project[]>;
     findOne(id: string): Promise<Project>;
-    private checkAndMoveToDevelopment;
     updateStage(id: string, updateStageDto: UpdateProjectStageDto): Promise<Project>;
     update(id: string, updateProjectDto: UpdateProjectDto): Promise<Project>;
-    private generateCopyTasks;
     updateLastEmailed(id: string): Promise<Project>;
     generateOnboardingTasks(id: string): Promise<{
         message: string;

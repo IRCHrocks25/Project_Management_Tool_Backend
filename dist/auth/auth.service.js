@@ -155,6 +155,7 @@ let AuthService = class AuthService {
                 'createdAt',
                 'isTeamLead',
                 'isHeadPM',
+                'emailNotificationsEnabled',
                 'isActive',
                 'avatarUrl',
                 'birthday',
@@ -185,6 +186,8 @@ let AuthService = class AuthService {
             user.birthday = dto.birthday;
         if (dto.bio !== undefined)
             user.bio = dto.bio;
+        if (dto.emailNotificationsEnabled !== undefined)
+            user.emailNotificationsEnabled = dto.emailNotificationsEnabled;
         const saved = await this.usersRepository.save(user);
         const { password, ...userWithoutPassword } = saved;
         return userWithoutPassword;

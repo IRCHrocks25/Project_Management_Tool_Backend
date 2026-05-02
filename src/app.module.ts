@@ -16,6 +16,7 @@ import { TicketsModule } from './tickets/tickets.module';
 import { DailyFocusModule } from './daily-focus/daily-focus.module';
 import { DepartmentProjectFocusModule } from './department-project-focus/department-project-focus.module';
 import { MonthlyRemindersModule } from './monthly-reminders/monthly-reminders.module';
+import { BoardViewModule } from './board-view/board-view.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { MonthlyRemindersModule } from './monthly-reminders/monthly-reminders.mo
     DailyFocusModule,
     DepartmentProjectFocusModule,
     MonthlyRemindersModule,
+    BoardViewModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -131,27 +131,6 @@ let DeliverablesService = class DeliverablesService {
             if (status === deliverable_entity_1.DeliverableStatus.REVISION) {
                 await this.handleFileRevisionRequest(deliverable, fileUrl, userId, suppressSelfNotifications);
             }
-            if (status === deliverable_entity_1.DeliverableStatus.APPROVED &&
-                deliverable.type === deliverable_entity_1.DeliverableType.LANDING_PAGE) {
-                const project = await this.projectsRepository.findOne({
-                    where: { id: deliverable.projectId },
-                });
-                if (project) {
-                    const isDesignFile = fileUrl.includes('figma.com') || fileUrl.includes('figma');
-                    const designTasks = await this.tasksRepository.find({
-                        where: {
-                            projectId: deliverable.projectId,
-                            fileUrl: fileUrl,
-                            type: task_entity_1.TaskType.DESIGN,
-                        },
-                    });
-                    if ((isDesignFile || designTasks.length > 0) && project.stage !== project_entity_1.ProjectStage.DEV) {
-                        project.stage = project_entity_1.ProjectStage.DEV;
-                        await this.projectsRepository.save(project);
-                        console.log(`[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Home Page design approval`);
-                    }
-                }
-            }
             return deliverable;
         }
         deliverable.status = status;

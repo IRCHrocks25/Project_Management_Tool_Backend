@@ -1,0 +1,311 @@
+{
+  "projects": [
+    {
+      "id": "5e7549e3-0644-4a9e-9fb6-fc35608dc9a8",
+      "name": "<16-char-name>",
+      "priority": "Medium",
+      "pm": {
+        "id": "56bedc78-ffae-4428-9285-bbb0a5be3a0f",
+        "name": "Charmaine Lam",
+        "avatarUrl": null
+      },
+      "clientStartDate": null,
+      "targetCloseMonth": "2026-05",
+      "rollup": {
+        "total": 13,
+        "done": 9
+      },
+      "deliverables": [
+        {
+          "id": "4a77132b-6761-47c1-8365-e5504df486b8",
+          "name": "Logo",
+          "status": "Not Started",
+          "rollup": {
+            "total": 1,
+            "done": 0
+          },
+          "minDueDate": "2026-04-20T00:00:00.000Z",
+          "maxDueDate": "2026-04-20T00:00:00.000Z",
+          "tasks": [
+            {
+              "id": "e5dbac9f-74e7-4457-9ec4-7da1f483e75a",
+              "title": "Logo - Design",
+              "type": "Design",
+              "status": "In Review",
+              "kanbanColumnId": "qa_before_client",
+              "kanbanColumnLabel": "QA Before Sending to Client",
+              "isCompleted": false,
+              "dueDate": "2026-04-20T00:00:00.000Z",
+              "deliverableId": "4a77132b-6761-47c1-8365-e5504df486b8",
+              "description": "Create Logo Proposal\n\nRequest from Maksim: ALSO, could you provide a new logo.  We like the one we currently have but are open to seeing your creative design ideas, also it may help to see different color options that can help with the design of the other assets.  \n\n--- Status Change ---\nNew Column: For Approval\nBy: Kristine Dampog\nAt: 4/17/2026, 7:37:02 PM\nNotes: for approval dilay\nAttachments:\n- https://drive.google.com/drive/folders/1-GwwI-YwkNSJbapbC5VrWUWtWcN0qtsp?usp=drive_link\n\n--- Column: QA Review ---\n\n--- Status Change ---\nNew Column: QA Before Sending to Client\nBy: Dilay\nAt: 23.04.2026 11:20:30\nNotes: logo proposal to send client here https://drive.google.com/file/d/1bC5zvBGYXsjhDgO_PaUeyd7WA72kUCW8/view?usp=drive_link\nAttachments:\n- https://drive.google.com/file/d/1bC5zvBGYXsjhDgO_PaUeyd7WA72kUCW8/view?usp=drive_link",
+              "assignees": [
+                {
+                  "id": "6a7ef7e4-7782-4890-b593-e4e0986f598c",
+                  "name": "Kristine Dampog",
+                  "avatarUrl": null
+                },
+                {
+                  "id": "b4d4a46c-9acf-488d-b956-caef7fed0d5e",
+                  "name": "Kristine Dampog",
+                  "avatarUrl": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "8507a739-2993-4d4a-9524-01e7edcabed3",
+          "name": "Brand Book",
+          "status": "Not Started",
+          "rollup": {
+            "total": 0,
+            "done": 0
+          },
+          "minDueDate": null,
+          "maxDueDate": null,
+          "tasks": []
+        },
+        {
+          "id": "de73cf2a-32a6-4f88-a4b5-7c013e01c752",
+          "name": "Speaker Kit",
+          "status": "Not Started",
+          "rollup": {
+            "total": 1,
+            "done": 0
+          },
+          "minDueDate": "2026-04-27T00:00:00.000Z",
+          "maxDueDate": "2026-04-27T00:00:00.000Z",
+          "tasks": [
+            {
+              "id": "be346658-363c-4a47-bf20-0f4bc7b9c432",
+              "title": "Speaker Kit - Copy Writing",
+              "type": "Copy",
+              "status": "In Review",
+              "kanbanColumnId": "client_validation",
+              "kanbanColumnLabel": "Client Validation",
+              "isCompleted": false,
+              "dueDate": "2026-04-27T00:00:00.000Z",
+              "deliverableId": "de73cf2a-32a6-4f88-a4b5-7c013e01c752",
+              "description": "Create Speaker Kit Copy\n\nHello Sammhie/Nhel, \n\nPlease proceed to create Speaker Kit Copy for Maksim and Leticia. \n\nThanks! \n\n--- Status Change ---\nNew Column: For Approval\nBy: Nhel Rose Bravo\nAt: 4/23/2026, 11:01:30 PM\nNotes: Maksim & Leticia’s Speaker Kit Copy V1 has been completed. Please refer to the “SPEAKER KIT COPY V1” tab in the document. This version is awaiting Elliot’s validation. Thank you.\nAttachments:\n- https://docs.google.com/document/d/18RQTnfGpVNdn-wLiQICiv7rtaDl0Hm137Txard7xgBI/edit?tab=t.0\n\n--- Column: Client Validation ---\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Charmaine Lam\nAt: 4/29/2026, 6:45:14 PM\nNotes: sent fo review",
+              "assignees": [
+                {
+                  "id": "94e8ebb1-38ed-4df3-86ac-0b2ca043fa6d",
+                  "name": "Sammie Uy",
+                  "avatarUrl": "https://res.cloudinary.com/dcuswyfur/image/upload/v1774002740/PM_tool/uploads/hgwii8po6n1yj9ddds6g.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "216472aa-9319-4b79-b53d-74ee820c7db6",
+          "name": "Social Banners",
+          "status": "Not Started",
+          "rollup": {
+            "total": 0,
+            "done": 0
+          },
+          "minDueDate": null,
+          "maxDueDate": null,
+          "tasks": []
+        },
+        {
+          "id": "da6b95f2-6a6c-413c-a1ca-9befce5c9966",
+          "name": "Homepage",
+          "status": "Not Started",
+          "rollup": {
+            "total": 3,
+            "done": 1
+          },
+          "minDueDate": "2026-04-22T00:00:00.000Z",
+          "maxDueDate": "2026-04-24T00:00:00.000Z",
+          "tasks": [
+            {
+              "id": "2b0b9341-d3f1-4d79-a5a3-694d4acaa234",
+              "title": "Homepage - Copy Writing",
+              "type": "Copy",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": "da6b95f2-6a6c-413c-a1ca-9befce5c9966",
+              "description": "Ready for Copywriting\nAll files uploaded to NLM\n\n--- Status Change ---\nNew Column: Owned/In Progress\nBy: Sammie Uy\nAt: 3/10/2026, 4:14:14 PM\nAttachments:\n- https://docs.google.com/document/d/1GjfsUQ63DWgo05lKEUOLHRi4ofHQrQvfwd_WCxvHqJc/edit?tab=t.0\n\n--- Status Change ---\nNew Column: Approved/Completed\nBy: Sammie Uy\nAt: 3/10/2026, 4:14:22 PM\nAttachments:\n- https://docs.google.com/document/d/1GjfsUQ63DWgo05lKEUOLHRi4ofHQrQvfwd_WCxvHqJc/edit?tab=t.0\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Sammie Uy\nAt: 3/23/2026, 8:03:05 PM\nNotes: This is for Client validation\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Sammie Uy\nAt: 3/23/2026, 8:03:41 PM\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Sammie Uy\nAt: 3/24/2026, 9:37:48 PM\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Sammie Uy\nAt: 3/25/2026, 8:54:16 PM\nNotes: This is for validation\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Sammie Uy\nAt: 3/25/2026, 8:57:43 PM\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Sammie Uy\nAt: 3/31/2026, 9:33:10 PM\n\n--- Status Change ---\nNew Column: Revision\nBy: Nhel Rose Bravo\nAt: 4/7/2026, 2:32:36 PM\nNotes: Homepage Copy Revision\nAttachments:\n- https://docs.google.com/document/d/1GjfsUQ63DWgo05lKEUOLHRi4ofHQrQvfwd_WCxvHqJc/edit?tab=t.0\n\n--- Status Change ---\nNew Column: Revision\nBy: Nhel Rose Bravo\nAt: 4/7/2026, 8:44:38 PM\nNotes: All client feedback from Maksim Cruz has been reviewed and applied to (Page 1 – Main Homepage) of Maksim & Leticia homepage copy. The copy has been updated to reflect his strategic positioning and target audience refinements. Please refer to the “HOMEPAGE COPY V1 (Page 1 – Main Homepage) Revised” tab in the document; all changes are marked in red.\nAttachments:\n- https://docs.google.com/document/d/1GjfsUQ63DWgo05lKEUOLHRi4ofHQrQvfwd_WCxvHqJc/edit?tab=t.0\n\n--- Status Change ---\nNew Column: Revision\nBy: Charmaine Lam\nAt: 4/8/2026, 4:41:29 PM\nNotes: Hi Copy team, Maksim confirmed he is done reviewing the copy and added all his comments. Please proceed to revise. Thanks!\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Nhel Rose Bravo\nAt: 4/9/2026, 4:17:36 PM\nNotes: All client feedback from Maksim Cruz has been reviewed and applied to (Page 1 – Main Homepage) of Maksim & Leticia homepage copy. The copy has been updated to reflect his strategic positioning and target audience refinements. Please refer to the “HOMEPAGE COPY V1 (Page 1 – Main Homepage) Revised” tab in the document; all changes are marked in red.\nAttachments:\n- https://docs.google.com/document/d/1GjfsUQ63DWgo05lKEUOLHRi4ofHQrQvfwd_WCxvHqJc/edit?tab=t.0",
+              "assignees": [
+                {
+                  "id": "d4baaa8d-16ad-475c-ab41-8acd7a8054b6",
+                  "name": "Nhel Rose Bravo",
+                  "avatarUrl": null
+                },
+                {
+                  "id": "94e8ebb1-38ed-4df3-86ac-0b2ca043fa6d",
+                  "name": "Sammie Uy",
+                  "avatarUrl": "https://res.cloudinary.com/dcuswyfur/image/upload/v1774002740/PM_tool/uploads/hgwii8po6n1yj9ddds6g.jpg"
+                }
+              ]
+            },
+            {
+              "id": "9a225184-c706-46fc-ae40-ef326eb24ce2",
+              "title": "Homepage - Design",
+              "type": "Design",
+              "status": "In Review",
+              "kanbanColumnId": "client_validation",
+              "kanbanColumnLabel": "Client Validation",
+              "isCompleted": false,
+              "dueDate": "2026-04-22T00:00:00.000Z",
+              "deliverableId": "da6b95f2-6a6c-413c-a1ca-9befce5c9966",
+              "description": "Design Homepage \n\nFinal copy attached below\n\n--- Attachments ---\nhttps://docs.google.com/document/d/1GjfsUQ63DWgo05lKEUOLHRi4ofHQrQvfwd_WCxvHqJc/edit?usp=sharing\n\n--- Status Change ---\nNew Column: QA Before Sending to Client\nBy: Dilay\nAt: 23.04.2026 17:21:00\nNotes: DEPLOY FIRST PLS https://drive.google.com/file/d/11Dbf78Jq418WAWyeCBlIHI0TrYnIUWHq/view?usp=drive_link\nAttachments:\n- https://drive.google.com/file/d/11Dbf78Jq418WAWyeCBlIHI0TrYnIUWHq/view?usp=drive_link\n\n--- Column: Client Validation ---\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Charmaine Lam\nAt: 4/24/2026, 7:55:20 PM\nNotes: sent for review",
+              "assignees": [
+                {
+                  "id": "1e27fa49-48c0-4b1d-87d5-ef668c242975",
+                  "name": "Dilay",
+                  "avatarUrl": "https://res.cloudinary.com/dcuswyfur/image/upload/v1776632885/PM_tool/uploads/zncfmkfyyrmkdcyqntza.jpg"
+                }
+              ]
+            },
+            {
+              "id": "384e6eda-3c19-4ac2-9a07-bd19b3fce62a",
+              "title": "Homepage - AI Team",
+              "type": "AI",
+              "status": "In Review",
+              "kanbanColumnId": "client_validation",
+              "kanbanColumnLabel": "Client Validation",
+              "isCompleted": false,
+              "dueDate": "2026-04-24T00:00:00.000Z",
+              "deliverableId": "da6b95f2-6a6c-413c-a1ca-9befce5c9966",
+              "description": "Deploy HP Design \n\n--- Attachments ---\nhttps://res.cloudinary.com/dcuswyfur/raw/upload/v1776959448/PM_tool/Maksim_Leticia/lemec-advisors_8_.html\n\n--- Status Change ---\nNew Column: For Approval\nBy: Anne Clemence Ocampo\nAt: 4/24/2026, 1:52:45 AM\nAttachments:\n- https://lemec-advisorsv8.pages.dev/\n\n--- Column: Client Validation ---\n\n--- Status Change ---\nNew Column: Client Validation\nBy: Charmaine Lam\nAt: 4/24/2026, 5:57:25 PM\nNotes: Sent to client for review",
+              "assignees": [
+                {
+                  "id": "1bbd17a9-0879-453d-9b22-5f96e64f0889",
+                  "name": "Anne Clemence Ocampo",
+                  "avatarUrl": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "__unassigned__",
+          "name": "Unassigned",
+          "status": null,
+          "rollup": {
+            "total": 8,
+            "done": 8
+          },
+          "minDueDate": null,
+          "maxDueDate": null,
+          "tasks": [
+            {
+              "id": "9a0e4be6-f4e8-4d29-8fae-9fd5cbda6985",
+              "title": "Laundry List",
+              "type": "Onboarding",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Submit laundry list (URL or text)",
+              "assignees": []
+            },
+            {
+              "id": "a3b0b6ff-2ea4-4382-bcc4-86d1ac7b3602",
+              "title": "CMD",
+              "type": "Onboarding",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Submit CMD information (URL or text)",
+              "assignees": []
+            },
+            {
+              "id": "fa9824b9-c01a-4a45-b594-fb5b46b8e40e",
+              "title": "Branding Questionnaire",
+              "type": "Onboarding",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Submit branding questionnaire (URL or text)",
+              "assignees": []
+            },
+            {
+              "id": "05d4fc1a-32ab-4b95-b6a7-b717fcfa0c0f",
+              "title": "Hosting Credentials & Domain",
+              "type": "Onboarding",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Submit hosting credentials and domain information (URL or text)",
+              "assignees": []
+            },
+            {
+              "id": "cb9bd41a-b41b-4bd7-a77d-0d04b0005ea6",
+              "title": "Privacy Policy, Terms and Conditions, Cookiebot",
+              "type": "Onboarding",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Submit privacy policy, terms and conditions, and Cookiebot information (URL or text)",
+              "assignees": []
+            },
+            {
+              "id": "f59b85a8-d93b-4853-a17c-eb4b9855fbe1",
+              "title": "Branding Agreement",
+              "type": "Onboarding",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Submit branding agreement (URL or text)",
+              "assignees": []
+            },
+            {
+              "id": "33239d28-220c-4206-8815-f80a60713f0b",
+              "title": "Write Copy",
+              "type": "Copy",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Create all copy content for the project",
+              "assignees": []
+            },
+            {
+              "id": "a2a13113-9b88-4145-b81f-07f848a28feb",
+              "title": "Review Copy",
+              "type": "Copy",
+              "status": "Completed",
+              "kanbanColumnId": "approved_completed",
+              "kanbanColumnLabel": "Approved/Completed",
+              "isCompleted": true,
+              "dueDate": null,
+              "deliverableId": null,
+              "description": "Review and refine copy content",
+              "assignees": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "totalCount": 1,
+  "page": 1,
+  "pageSize": 50,
+  "totalPages": 1
+}

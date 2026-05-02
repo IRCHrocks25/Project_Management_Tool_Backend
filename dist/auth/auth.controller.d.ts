@@ -21,6 +21,7 @@ export declare class AuthController {
             role: import("../users/entities/user.entity").UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            emailNotificationsEnabled: boolean;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
@@ -42,6 +43,7 @@ export declare class AuthController {
             role: import("../users/entities/user.entity").UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            emailNotificationsEnabled: boolean;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
@@ -65,6 +67,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -85,6 +88,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -107,6 +111,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -129,6 +134,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -169,6 +175,7 @@ export declare class AuthController {
         role: import("../users/entities/user.entity").UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;

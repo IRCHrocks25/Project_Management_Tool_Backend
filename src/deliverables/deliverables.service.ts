@@ -171,38 +171,8 @@ export class DeliverablesService {
         );
       }
 
-      // If Home Page design is approved, automatically move project to Development
-      if (
-        status === DeliverableStatus.APPROVED &&
-        deliverable.type === DeliverableType.LANDING_PAGE
-      ) {
-        const project = await this.projectsRepository.findOne({
-          where: { id: deliverable.projectId },
-        });
-
-        if (project) {
-          // Check if this is a design file (Figma link) or associated with a design task
-          const isDesignFile = fileUrl.includes('figma.com') || fileUrl.includes('figma');
-
-          // Also check if this file is associated with a design task
-          const designTasks = await this.tasksRepository.find({
-            where: {
-              projectId: deliverable.projectId,
-              fileUrl: fileUrl,
-              type: TaskType.DESIGN,
-            },
-          });
-
-          // If this is a design file (Figma link) or associated with a design task, move to Development
-          if ((isDesignFile || designTasks.length > 0) && project.stage !== ProjectStage.DEV) {
-            project.stage = ProjectStage.DEV;
-            await this.projectsRepository.save(project);
-            console.log(
-              `[DeliverablesService] Moved project ${project.id} (${project.clientName}) to Development stage after Home Page design approval`,
-            );
-          }
-        }
-      }
+      // Auto-stage-advance to Dev on Home Page approval removed — PMs
+      // advance project stages manually. See CLAUDE.md "Behavior changes".
 
       return deliverable; // Return deliverable without changing its overall status
     }

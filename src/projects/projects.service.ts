@@ -11,7 +11,6 @@ import {
   Project,
   ProjectStage,
   ClientType,
-  PackageType,
   OnboardingPhase,
   OnboardingPhaseStatus,
 } from './entities/project.entity';
@@ -20,7 +19,6 @@ import { Task, TaskType, TaskStatus } from '../tasks/entities/task.entity';
 import {
   Deliverable,
   DeliverableType,
-  DeliverableStatus,
 } from '../deliverables/entities/deliverable.entity';
 import { DeliverableHistory } from '../deliverables/entities/deliverable-history.entity';
 import { TaskFileHistory } from '../tasks/entities/task-file-history.entity';
@@ -94,16 +92,11 @@ export class ProjectsService {
 
     const savedProject = await this.projectsRepository.save(project);
 
-    // Auto-generate deliverables based on package and client type
-    const deliverables = this.generateDeliverables(
-      savedProject.id,
-      createProjectDto.package,
-      createProjectDto.clientType,
-      createProjectDto.customDeliverables,
-    );
-    await this.deliverablesRepository.save(deliverables);
+    // Deliverable auto-generation removed — PMs add deliverables manually.
+    // See CLAUDE.md "Behavior changes" for rationale.
 
-    // Auto-generate intake tasks
+    // Auto-generate intake tasks (locked decision: KEEP — load-bearing for
+    // the client onboarding submission flow).
     const intakeTasks = this.generateIntakeTasks(savedProject.id);
     await this.tasksRepository.save(intakeTasks);
 
@@ -165,85 +158,6 @@ export class ProjectsService {
       message:
         'Use this pmId in your webhook requests, or omit pmId to use this account automatically',
     };
-  }
-
-  private generateDeliverables(
-    projectId: string,
-    packageType: PackageType,
-    clientType: ClientType,
-    customDeliverables?: string[],
-  ): Deliverable[] {
-    const deliverables: Deliverable[] = [];
-
-    // If Custom package, use the provided custom deliverables list
-    if (packageType === PackageType.CUSTOM && customDeliverables && customDeliverables.length > 0) {
-      const deliverableTypeMap: Record<string, DeliverableType> = {
-        Logo: DeliverableType.LOGO,
-        'Brand Book': DeliverableType.BRAND_BOOK,
-        'Home Page': DeliverableType.LANDING_PAGE,
-        'Copy of Home Page': DeliverableType.COPY_OF_LANDING_PAGE,
-        'Speaker Kit': DeliverableType.SPEAKER_KIT,
-        'Social Banners': DeliverableType.SOCIAL_BANNERS,
-        Other: DeliverableType.OTHER,
-      };
-
-      for (const deliverableName of customDeliverables) {
-        const deliverableType = deliverableTypeMap[deliverableName];
-        if (deliverableType) {
-          deliverables.push({
-            projectId,
-            type: deliverableType,
-            status: DeliverableStatus.NOT_STARTED,
-          } as Deliverable);
-        }
-      }
-
-      return deliverables;
-    }
-
-    // Standard package logic for non-custom packages
-    // All packages include Logo
-    deliverables.push({
-      projectId,
-      type: DeliverableType.LOGO,
-      status: DeliverableStatus.NOT_STARTED,
-    } as Deliverable);
-
-    // All packages include Brand Book
-    deliverables.push({
-      projectId,
-      type: DeliverableType.BRAND_BOOK,
-      status: DeliverableStatus.NOT_STARTED,
-    } as Deliverable);
-
-    // ICON clients always get Speaker Kit
-    if (clientType === ClientType.ICON) {
-      deliverables.push({
-        projectId,
-        type: DeliverableType.SPEAKER_KIT,
-        status: DeliverableStatus.NOT_STARTED,
-      } as Deliverable);
-    }
-
-    // Premium packages include Home Page
-    if (packageType === PackageType.PREMIUM || packageType === PackageType.ICON_PACKAGE) {
-      deliverables.push({
-        projectId,
-        type: DeliverableType.LANDING_PAGE,
-        status: DeliverableStatus.NOT_STARTED,
-      } as Deliverable);
-    }
-
-    // Standard and above include Social Banners
-    if (packageType !== PackageType.STARTER) {
-      deliverables.push({
-        projectId,
-        type: DeliverableType.SOCIAL_BANNERS,
-        status: DeliverableStatus.NOT_STARTED,
-      } as Deliverable);
-    }
-
-    return deliverables;
   }
 
   private generateIntakeTasks(projectId: string): Partial<Task>[] {
@@ -372,8 +286,8 @@ export class ProjectsService {
           project.tasks = [];
         }
 
-        // Check if Home Page design files are approved and move to Dev if needed
-        await this.checkAndMoveToDevelopment(project);
+        // Auto-stage-advance to Dev removed — PMs advance project stages
+        // manually. See CLAUDE.md "Behavior changes".
       }
 
       return projects;
@@ -536,82 +450,13 @@ export class ProjectsService {
         project.tasks = [];
       }
 
-      // Check if Home Page design files are approved and move to Dev if needed
-      await this.checkAndMoveToDevelopment(project);
+      // Auto-stage-advance to Dev removed — PMs advance project stages
+      // manually. See CLAUDE.md "Behavior changes".
 
       return project;
     } catch (error) {
       console.error('Error in findOne:', error);
       throw error;
-    }
-  }
-
-  private async checkAndMoveToDevelopment(project: Project) {
-    try {
-      // Only check if project is in Design or Design Revision stage
-      if (project.stage !== ProjectStage.DESIGN && project.stage !== ProjectStage.DESIGN_REVISION) {
-        return;
-      }
-
-      // Find Home Page deliverable
-      const landingPageDeliverable = project.deliverables?.find(
-        (d: any) => d.type === DeliverableType.LANDING_PAGE,
-      );
-
-      if (!landingPageDeliverable) {
-        return;
-      }
-
-      // Get all tasks for this project
-      const allTasks = await this.tasksRepository.find({
-        where: { projectId: project.id },
-      });
-
-      // Find design tasks with fileUrls (Figma links)
-      const designTasks = allTasks.filter(
-        (t: any) =>
-          t.type === TaskType.DESIGN &&
-          t.fileUrl &&
-          (t.fileUrl.includes('figma.com') || t.fileUrl.includes('figma')),
-      );
-
-      if (designTasks.length === 0) {
-        return;
-      }
-
-      // Check deliverable history to see if all design files are approved
-      const { DeliverableHistory } =
-        await import('../deliverables/entities/deliverable-history.entity');
-      const historyRepository = this.projectsRepository.manager.getRepository(DeliverableHistory);
-
-      let allDesignFilesApproved = true;
-      for (const task of designTasks) {
-        const fileHistory = await historyRepository.find({
-          where: {
-            deliverableId: landingPageDeliverable.id,
-            fileUrl: task.fileUrl,
-          },
-          order: { createdAt: 'DESC' },
-          take: 1,
-        });
-
-        const isApproved = fileHistory.length > 0 && fileHistory[0].action === 'Approved';
-        if (!isApproved) {
-          allDesignFilesApproved = false;
-          break;
-        }
-      }
-
-      // If all design files are approved, move project to Development
-      if (allDesignFilesApproved) {
-        project.stage = ProjectStage.DEV;
-        await this.projectsRepository.save(project);
-        console.log(
-          `[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Home Page design files are approved`,
-        );
-      }
-    } catch (error) {
-      console.error('[ProjectsService] Error checking Home Page design approval:', error);
     }
   }
 
@@ -629,12 +474,6 @@ export class ProjectsService {
 
     project.stage = updateStageDto.stage;
     const savedProject = await this.projectsRepository.save(project);
-
-    // Auto-create Copy tasks when moving to Copy stage
-    if (updateStageDto.stage === ProjectStage.COPY && previousStage !== ProjectStage.COPY) {
-      const copyTasks = this.generateCopyTasks(savedProject.id);
-      await this.tasksRepository.save(copyTasks);
-    }
 
     // Create notification for PM
     try {
@@ -720,27 +559,6 @@ export class ProjectsService {
     }
 
     return await this.projectsRepository.save(project);
-  }
-
-  private generateCopyTasks(projectId: string): Task[] {
-    return [
-      {
-        projectId,
-        title: 'Write Copy',
-        description: 'Create all copy content for the project',
-        type: TaskType.COPY,
-        status: TaskStatus.TODO,
-        isCompleted: false,
-      },
-      {
-        projectId,
-        title: 'Review Copy',
-        description: 'Review and refine copy content',
-        type: TaskType.COPY,
-        status: TaskStatus.TODO,
-        isCompleted: false,
-      },
-    ] as Task[];
   }
 
   async updateLastEmailed(id: string) {

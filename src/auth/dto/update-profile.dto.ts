@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, IsDateString, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsDateString, MaxLength, IsBoolean } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -22,4 +22,8 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(1000)
   bio?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  emailNotificationsEnabled?: boolean;
 }

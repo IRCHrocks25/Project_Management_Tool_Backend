@@ -1,43 +1,10 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -99,8 +66,6 @@ let ProjectsService = class ProjectsService {
             stage: initialStage,
         });
         const savedProject = await this.projectsRepository.save(project);
-        const deliverables = this.generateDeliverables(savedProject.id, createProjectDto.package, createProjectDto.clientType, createProjectDto.customDeliverables);
-        await this.deliverablesRepository.save(deliverables);
         const intakeTasks = this.generateIntakeTasks(savedProject.id);
         await this.tasksRepository.save(intakeTasks);
         const projectWithRelations = await this.projectsRepository.findOne({
@@ -145,63 +110,6 @@ let ProjectsService = class ProjectsService {
             role: webhookPM.role,
             message: 'Use this pmId in your webhook requests, or omit pmId to use this account automatically',
         };
-    }
-    generateDeliverables(projectId, packageType, clientType, customDeliverables) {
-        const deliverables = [];
-        if (packageType === project_entity_1.PackageType.CUSTOM && customDeliverables && customDeliverables.length > 0) {
-            const deliverableTypeMap = {
-                Logo: deliverable_entity_1.DeliverableType.LOGO,
-                'Brand Book': deliverable_entity_1.DeliverableType.BRAND_BOOK,
-                'Home Page': deliverable_entity_1.DeliverableType.LANDING_PAGE,
-                'Copy of Home Page': deliverable_entity_1.DeliverableType.COPY_OF_LANDING_PAGE,
-                'Speaker Kit': deliverable_entity_1.DeliverableType.SPEAKER_KIT,
-                'Social Banners': deliverable_entity_1.DeliverableType.SOCIAL_BANNERS,
-                Other: deliverable_entity_1.DeliverableType.OTHER,
-            };
-            for (const deliverableName of customDeliverables) {
-                const deliverableType = deliverableTypeMap[deliverableName];
-                if (deliverableType) {
-                    deliverables.push({
-                        projectId,
-                        type: deliverableType,
-                        status: deliverable_entity_1.DeliverableStatus.NOT_STARTED,
-                    });
-                }
-            }
-            return deliverables;
-        }
-        deliverables.push({
-            projectId,
-            type: deliverable_entity_1.DeliverableType.LOGO,
-            status: deliverable_entity_1.DeliverableStatus.NOT_STARTED,
-        });
-        deliverables.push({
-            projectId,
-            type: deliverable_entity_1.DeliverableType.BRAND_BOOK,
-            status: deliverable_entity_1.DeliverableStatus.NOT_STARTED,
-        });
-        if (clientType === project_entity_1.ClientType.ICON) {
-            deliverables.push({
-                projectId,
-                type: deliverable_entity_1.DeliverableType.SPEAKER_KIT,
-                status: deliverable_entity_1.DeliverableStatus.NOT_STARTED,
-            });
-        }
-        if (packageType === project_entity_1.PackageType.PREMIUM || packageType === project_entity_1.PackageType.ICON_PACKAGE) {
-            deliverables.push({
-                projectId,
-                type: deliverable_entity_1.DeliverableType.LANDING_PAGE,
-                status: deliverable_entity_1.DeliverableStatus.NOT_STARTED,
-            });
-        }
-        if (packageType !== project_entity_1.PackageType.STARTER) {
-            deliverables.push({
-                projectId,
-                type: deliverable_entity_1.DeliverableType.SOCIAL_BANNERS,
-                status: deliverable_entity_1.DeliverableStatus.NOT_STARTED,
-            });
-        }
-        return deliverables;
     }
     generateIntakeTasks(projectId) {
         return [
@@ -310,7 +218,6 @@ let ProjectsService = class ProjectsService {
                     console.error(`Error loading tasks for project ${project.id}:`, error);
                     project.tasks = [];
                 }
-                await this.checkAndMoveToDevelopment(project);
             }
             return projects;
         }
@@ -423,58 +330,11 @@ let ProjectsService = class ProjectsService {
                 console.error(`[ProjectsService] Error loading tasks for project ${id}:`, error);
                 project.tasks = [];
             }
-            await this.checkAndMoveToDevelopment(project);
             return project;
         }
         catch (error) {
             console.error('Error in findOne:', error);
             throw error;
-        }
-    }
-    async checkAndMoveToDevelopment(project) {
-        try {
-            if (project.stage !== project_entity_1.ProjectStage.DESIGN && project.stage !== project_entity_1.ProjectStage.DESIGN_REVISION) {
-                return;
-            }
-            const landingPageDeliverable = project.deliverables?.find((d) => d.type === deliverable_entity_1.DeliverableType.LANDING_PAGE);
-            if (!landingPageDeliverable) {
-                return;
-            }
-            const allTasks = await this.tasksRepository.find({
-                where: { projectId: project.id },
-            });
-            const designTasks = allTasks.filter((t) => t.type === task_entity_1.TaskType.DESIGN &&
-                t.fileUrl &&
-                (t.fileUrl.includes('figma.com') || t.fileUrl.includes('figma')));
-            if (designTasks.length === 0) {
-                return;
-            }
-            const { DeliverableHistory } = await Promise.resolve().then(() => __importStar(require('../deliverables/entities/deliverable-history.entity')));
-            const historyRepository = this.projectsRepository.manager.getRepository(DeliverableHistory);
-            let allDesignFilesApproved = true;
-            for (const task of designTasks) {
-                const fileHistory = await historyRepository.find({
-                    where: {
-                        deliverableId: landingPageDeliverable.id,
-                        fileUrl: task.fileUrl,
-                    },
-                    order: { createdAt: 'DESC' },
-                    take: 1,
-                });
-                const isApproved = fileHistory.length > 0 && fileHistory[0].action === 'Approved';
-                if (!isApproved) {
-                    allDesignFilesApproved = false;
-                    break;
-                }
-            }
-            if (allDesignFilesApproved) {
-                project.stage = project_entity_1.ProjectStage.DEV;
-                await this.projectsRepository.save(project);
-                console.log(`[ProjectsService] Moved project ${project.id} (${project.clientName}) to Development stage - all Home Page design files are approved`);
-            }
-        }
-        catch (error) {
-            console.error('[ProjectsService] Error checking Home Page design approval:', error);
         }
     }
     async updateStage(id, updateStageDto) {
@@ -488,10 +348,6 @@ let ProjectsService = class ProjectsService {
         }
         project.stage = updateStageDto.stage;
         const savedProject = await this.projectsRepository.save(project);
-        if (updateStageDto.stage === project_entity_1.ProjectStage.COPY && previousStage !== project_entity_1.ProjectStage.COPY) {
-            const copyTasks = this.generateCopyTasks(savedProject.id);
-            await this.tasksRepository.save(copyTasks);
-        }
         try {
             await this.notificationsService.createProjectStageChangedNotification(project.pmId, project.id, project.clientName, updateStageDto.stage);
         }
@@ -544,26 +400,6 @@ let ProjectsService = class ProjectsService {
             project.stage = project_entity_1.ProjectStage.CRM;
         }
         return await this.projectsRepository.save(project);
-    }
-    generateCopyTasks(projectId) {
-        return [
-            {
-                projectId,
-                title: 'Write Copy',
-                description: 'Create all copy content for the project',
-                type: task_entity_1.TaskType.COPY,
-                status: task_entity_1.TaskStatus.TODO,
-                isCompleted: false,
-            },
-            {
-                projectId,
-                title: 'Review Copy',
-                description: 'Review and refine copy content',
-                type: task_entity_1.TaskType.COPY,
-                status: task_entity_1.TaskStatus.TODO,
-                isCompleted: false,
-            },
-        ];
     }
     async updateLastEmailed(id) {
         const project = await this.findOne(id);

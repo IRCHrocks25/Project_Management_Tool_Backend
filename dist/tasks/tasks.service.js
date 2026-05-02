@@ -146,6 +146,28 @@ let TasksService = class TasksService {
         const wasCompleted = task.isCompleted;
         const wasInReview = task.status === task_entity_1.TaskStatus.IN_REVIEW;
         const isChangingToInReview = status === task_entity_1.TaskStatus.IN_REVIEW && !wasInReview;
+        let preLoadedDeliverables = [];
+        let preValidatedTargetDeliverable = null;
+        if (fileUrl && deliverableType && isChangingToInReview && reviewIntent !== 'revision') {
+            preLoadedDeliverables = await this.deliverablesRepository.find({
+                where: { projectId: task.projectId },
+            });
+            if (deliverableId) {
+                preValidatedTargetDeliverable =
+                    preLoadedDeliverables.find((d) => d.id === deliverableId) ?? null;
+            }
+            else {
+                preValidatedTargetDeliverable =
+                    preLoadedDeliverables.find((d) => d.type === deliverableType) ?? null;
+                if (!preValidatedTargetDeliverable && deliverableType === 'Other') {
+                    preValidatedTargetDeliverable =
+                        preLoadedDeliverables.find((d) => d.type === 'Other' && d.customType) ?? null;
+                }
+            }
+            if (!preValidatedTargetDeliverable) {
+                throw new common_1.BadRequestException('No deliverable to attach this file to. Add the deliverable first.');
+            }
+        }
         task.status = status;
         if (isCompleted !== undefined) {
             task.isCompleted = isCompleted;
@@ -170,58 +192,35 @@ let TasksService = class TasksService {
                         console.error('Failed to create notification:', err);
                     }));
                 }
-                if (fileUrl && deliverableType) {
+                if (fileUrl && deliverableType && preValidatedTargetDeliverable) {
                     promises.push((async () => {
-                        const deliverables = await this.deliverablesRepository.find({
-                            where: { projectId: task.projectId },
-                        });
-                        let targetDeliverable = null;
-                        if (deliverableId) {
-                            targetDeliverable = deliverables.find((d) => d.id === deliverableId);
+                        const targetDeliverable = preValidatedTargetDeliverable;
+                        targetDeliverable.fileUrl = fileUrl;
+                        if (targetDeliverable.status === deliverable_entity_1.DeliverableStatus.REVISION) {
+                            targetDeliverable.status = deliverable_entity_1.DeliverableStatus.READY_FOR_REVIEW;
+                            targetDeliverable.notes = null;
                         }
                         else {
-                            targetDeliverable = deliverables.find((d) => d.type === deliverableType);
-                            if (!targetDeliverable && deliverableType === 'Other') {
-                                targetDeliverable = deliverables.find((d) => d.type === 'Other' && d.customType);
-                            }
+                            targetDeliverable.status = deliverable_entity_1.DeliverableStatus.READY_FOR_REVIEW;
                         }
-                        if (targetDeliverable) {
-                            targetDeliverable.fileUrl = fileUrl;
-                            if (targetDeliverable.status === deliverable_entity_1.DeliverableStatus.REVISION) {
-                                targetDeliverable.status = deliverable_entity_1.DeliverableStatus.READY_FOR_REVIEW;
-                                targetDeliverable.notes = null;
+                        await this.deliverablesRepository.save(targetDeliverable);
+                        if (task.type === task_entity_1.TaskType.DESIGN &&
+                            projectWithPM &&
+                            projectWithPM.stage === project_entity_1.ProjectStage.DESIGN_REVISION) {
+                            const designDeliverableTypes = [
+                                deliverable_entity_1.DeliverableType.LOGO,
+                                deliverable_entity_1.DeliverableType.SOCIAL_BANNERS,
+                                deliverable_entity_1.DeliverableType.SPEAKER_KIT,
+                                deliverable_entity_1.DeliverableType.LANDING_PAGE,
+                            ];
+                            const otherDesignDeliverables = preLoadedDeliverables.filter((d) => designDeliverableTypes.includes(d.type) &&
+                                d.id !== targetDeliverable.id &&
+                                d.status === deliverable_entity_1.DeliverableStatus.REVISION);
+                            if (otherDesignDeliverables.length === 0) {
+                                const projectRepo = this.tasksRepository.manager.getRepository(project_entity_1.Project);
+                                projectWithPM.stage = project_entity_1.ProjectStage.DESIGN;
+                                await projectRepo.save(projectWithPM);
                             }
-                            else {
-                                targetDeliverable.status = deliverable_entity_1.DeliverableStatus.READY_FOR_REVIEW;
-                            }
-                            await this.deliverablesRepository.save(targetDeliverable);
-                            if (task.type === task_entity_1.TaskType.DESIGN &&
-                                projectWithPM &&
-                                projectWithPM.stage === project_entity_1.ProjectStage.DESIGN_REVISION) {
-                                const designDeliverableTypes = [
-                                    deliverable_entity_1.DeliverableType.LOGO,
-                                    deliverable_entity_1.DeliverableType.SOCIAL_BANNERS,
-                                    deliverable_entity_1.DeliverableType.SPEAKER_KIT,
-                                    deliverable_entity_1.DeliverableType.LANDING_PAGE,
-                                ];
-                                const otherDesignDeliverables = deliverables.filter((d) => designDeliverableTypes.includes(d.type) &&
-                                    d.id !== targetDeliverable.id &&
-                                    d.status === deliverable_entity_1.DeliverableStatus.REVISION);
-                                if (otherDesignDeliverables.length === 0) {
-                                    const projectRepo = this.tasksRepository.manager.getRepository(project_entity_1.Project);
-                                    projectWithPM.stage = project_entity_1.ProjectStage.DESIGN;
-                                    await projectRepo.save(projectWithPM);
-                                }
-                            }
-                        }
-                        else {
-                            const newDeliverable = this.deliverablesRepository.create({
-                                projectId: task.projectId,
-                                type: deliverableType,
-                                fileUrl: fileUrl,
-                                status: deliverable_entity_1.DeliverableStatus.READY_FOR_REVIEW,
-                            });
-                            await this.deliverablesRepository.save(newDeliverable);
                         }
                     })().catch((err) => {
                         console.error('Failed to update deliverables:', err);

@@ -26,6 +26,7 @@ export declare class AuthService {
             role: UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            emailNotificationsEnabled: boolean;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
@@ -47,6 +48,7 @@ export declare class AuthService {
             role: UserRole;
             isTeamLead: boolean;
             isHeadPM: boolean;
+            emailNotificationsEnabled: boolean;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
@@ -69,6 +71,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -90,6 +93,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -108,6 +112,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -127,6 +132,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -145,6 +151,7 @@ export declare class AuthService {
         role: UserRole;
         isTeamLead: boolean;
         isHeadPM: boolean;
+        emailNotificationsEnabled: boolean;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;

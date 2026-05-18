@@ -209,6 +209,16 @@ export class TasksController {
     return this.tasksService.update(id, updateTaskDto);
   }
 
+  @Patch(':id/moved-due-date')
+  @UseGuards(JwtAuthGuard)
+  async updateMovedDueDate(
+    @Param('id') id: string,
+    @Body() body: { movedDate: Date | string; comment?: string },
+    @Request() req: any,
+  ) {
+    return this.tasksService.updateMovedDueDate(id, body, req.user?.userId || req.user?.id);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return this.tasksService.remove(id);

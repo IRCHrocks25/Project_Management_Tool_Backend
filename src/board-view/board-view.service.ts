@@ -40,6 +40,7 @@ export interface ProjectNode {
   id: string;
   name: string;
   priority: string;
+  clientType: string | null;
   pm: { id: string; name: string; avatarUrl: string | null } | null;
   clientStartDate: string | null;
   targetCloseMonth: string;
@@ -157,15 +158,15 @@ export class BoardViewService {
       qb.andWhere('project.priority IN (:...priorities)', { priorities: opts.priority });
     }
 
-    // Search (task title substring) — EXISTS subquery
+    // Search (project name OR task title substring)
     if (opts.search && opts.search.trim()) {
       qb.andWhere(
-        `EXISTS (
-           SELECT 1 FROM tasks t
-           WHERE t."projectId" = project.id
-             AND t."isArchived" = false
-             AND t.title ILIKE :searchPattern
-         )`,
+        `(project."clientName" ILIKE :searchPattern OR EXISTS (
+          SELECT 1 FROM tasks t
+          WHERE t."projectId" = project.id
+            AND t."isArchived" = false
+            AND t.title ILIKE :searchPattern
+        ))`,
         { searchPattern: `%${opts.search.trim()}%` },
       );
     }
@@ -335,6 +336,7 @@ export class BoardViewService {
       id: project.id,
       name: project.clientName,
       priority: project.priority,
+      clientType: project.clientType ?? null,
       pm: project.pm
         ? { id: project.pm.id, name: project.pm.name, avatarUrl: project.pm.avatarUrl ?? null }
         : null,

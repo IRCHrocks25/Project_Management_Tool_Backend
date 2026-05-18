@@ -11,6 +11,7 @@ import {
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
 import { TaskAssignee } from './task-assignee.entity';
+import { TaskDueDateMove } from './task-due-date-move.entity';
 
 export enum TaskStatus {
   TODO = 'Todo',
@@ -76,6 +77,22 @@ export class Task {
   @Column({ type: 'date', nullable: true })
   dueDate: Date;
 
+  @Column({ type: 'date', nullable: true })
+  movedDueDate: Date;
+
+  @Column('text', { nullable: true })
+  movedDueDateComment: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  movedDueDateUpdatedAt: Date;
+
+  @Column('uuid', { nullable: true })
+  movedDueDateUpdatedById: string;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'movedDueDateUpdatedById' })
+  movedDueDateUpdatedBy: User;
+
   @Column({ default: false })
   isCompleted: boolean;
 
@@ -95,6 +112,9 @@ export class Task {
 
   @Column({ default: false })
   isArchived: boolean;
+
+  @OneToMany(() => TaskDueDateMove, (move) => move.task)
+  dueDateMoves: TaskDueDateMove[];
 
   @CreateDateColumn()
   createdAt: Date;

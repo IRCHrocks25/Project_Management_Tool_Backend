@@ -95,6 +95,9 @@ let TasksController = class TasksController {
     async update(id, updateTaskDto) {
         return this.tasksService.update(id, updateTaskDto);
     }
+    async updateMovedDueDate(id, body, req) {
+        return this.tasksService.updateMovedDueDate(id, body, req.user?.userId || req.user?.id);
+    }
     async remove(id) {
         return this.tasksService.remove(id);
     }
@@ -254,6 +257,16 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "update", null);
+__decorate([
+    (0, common_1.Patch)(':id/moved-due-date'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "updateMovedDueDate", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),

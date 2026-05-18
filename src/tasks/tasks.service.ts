@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus, TaskType } from './entities/task.entity';
 import { TaskAssignee } from './entities/task-assignee.entity';
 import { TaskQuestion } from './entities/task-question.entity';
 import { TaskComment } from './entities/task-comment.entity';
+import { TaskDueDateMove } from './entities/task-due-date-move.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   Deliverable,
@@ -28,6 +36,8 @@ export class TasksService {
     private taskQuestionsRepository: Repository<TaskQuestion>,
     @InjectRepository(TaskComment)
     private taskCommentsRepository: Repository<TaskComment>,
+    @InjectRepository(TaskDueDateMove)
+    private taskDueDateMovesRepository: Repository<TaskDueDateMove>,
     @InjectRepository(Deliverable)
     private deliverablesRepository: Repository<Deliverable>,
     @InjectRepository(User)
@@ -175,14 +185,27 @@ export class TasksService {
   async findOne(id: string) {
     const task = await this.tasksRepository.findOne({
       where: { id },
-      relations: ['project', 'project.pm', 'assignedTo', 'assignees', 'assignees.user'],
+      relations: [
+        'project',
+        'project.pm',
+        'assignedTo',
+        'assignees',
+        'assignees.user',
+        'movedDueDateUpdatedBy',
+      ],
     });
 
     if (!task) {
       throw new NotFoundException('Task not found');
     }
 
-    return task;
+    const dueDateMoves = await this.taskDueDateMovesRepository.find({
+      where: { taskId: id },
+      relations: ['movedBy'],
+      order: { movedAt: 'DESC', createdAt: 'DESC' },
+    });
+
+    return { ...task, dueDateMoves };
   }
 
   async updateStatus(
@@ -573,6 +596,54 @@ export class TasksService {
     }
 
     return this.tasksRepository.save(task);
+  }
+
+  async updateMovedDueDate(
+    taskId: string,
+    payload: { movedDate: Date | string; comment?: string | null },
+    actorUserId: string,
+  ) {
+    const actor = await this.usersRepository.findOne({
+      where: { id: actorUserId },
+      select: ['id', 'role', 'isTeamLead'],
+    });
+    if (!actor) {
+      throw new NotFoundException('Actor user not found');
+    }
+    if (actor.role !== UserRole.PROJECT_MANAGER && !actor.isTeamLead) {
+      throw new ForbiddenException('Only PM or Team Lead can update moved due date');
+    }
+
+    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const movedDateValue = new Date(payload.movedDate);
+    if (Number.isNaN(movedDateValue.getTime())) {
+      throw new BadRequestException('Invalid movedDate');
+    }
+
+    const comment = payload.comment?.trim() || null;
+
+    await this.tasksRepository.manager.transaction(async (em) => {
+      await em.update(Task, taskId, {
+        movedDueDate: movedDateValue,
+        movedDueDateComment: comment,
+        movedDueDateUpdatedById: actorUserId,
+        movedDueDateUpdatedAt: new Date(),
+      });
+
+      const move = em.create(TaskDueDateMove, {
+        taskId,
+        movedDate: movedDateValue,
+        comment,
+        movedById: actorUserId,
+      });
+      await em.save(TaskDueDateMove, move);
+    });
+
+    return this.findOne(taskId);
   }
 
   async remove(id: string) {

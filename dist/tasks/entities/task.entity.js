@@ -14,6 +14,7 @@ const typeorm_1 = require("typeorm");
 const project_entity_1 = require("../../projects/entities/project.entity");
 const user_entity_1 = require("../../users/entities/user.entity");
 const task_assignee_entity_1 = require("./task-assignee.entity");
+const task_due_date_move_entity_1 = require("./task-due-date-move.entity");
 var TaskStatus;
 (function (TaskStatus) {
     TaskStatus["TODO"] = "Todo";
@@ -91,6 +92,27 @@ __decorate([
     __metadata("design:type", Date)
 ], Task.prototype, "dueDate", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'date', nullable: true }),
+    __metadata("design:type", Date)
+], Task.prototype, "movedDueDate", void 0);
+__decorate([
+    (0, typeorm_1.Column)('text', { nullable: true }),
+    __metadata("design:type", String)
+], Task.prototype, "movedDueDateComment", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamptz', nullable: true }),
+    __metadata("design:type", Date)
+], Task.prototype, "movedDueDateUpdatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)('uuid', { nullable: true }),
+    __metadata("design:type", String)
+], Task.prototype, "movedDueDateUpdatedById", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true, onDelete: 'SET NULL' }),
+    (0, typeorm_1.JoinColumn)({ name: 'movedDueDateUpdatedById' }),
+    __metadata("design:type", user_entity_1.User)
+], Task.prototype, "movedDueDateUpdatedBy", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Task.prototype, "isCompleted", void 0);
@@ -114,6 +136,10 @@ __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Task.prototype, "isArchived", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => task_due_date_move_entity_1.TaskDueDateMove, (move) => move.task),
+    __metadata("design:type", Array)
+], Task.prototype, "dueDateMoves", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

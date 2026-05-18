@@ -20,6 +20,7 @@ const task_file_history_entity_1 = require("./entities/task-file-history.entity"
 const task_question_entity_1 = require("./entities/task-question.entity");
 const task_comment_entity_1 = require("./entities/task-comment.entity");
 const task_transfer_entity_1 = require("./entities/task-transfer.entity");
+const task_due_date_move_entity_1 = require("./entities/task-due-date-move.entity");
 const deliverable_entity_1 = require("../deliverables/entities/deliverable.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const notifications_module_1 = require("../notifications/notifications.module");
@@ -38,6 +39,7 @@ exports.TasksModule = TasksModule = __decorate([
                 task_question_entity_1.TaskQuestion,
                 task_comment_entity_1.TaskComment,
                 task_transfer_entity_1.TaskTransfer,
+                task_due_date_move_entity_1.TaskDueDateMove,
                 deliverable_entity_1.Deliverable,
                 user_entity_1.User,
             ]),

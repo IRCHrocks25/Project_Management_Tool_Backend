@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { CloudinaryService } from './cloudinary.service';
+import { IcebergService } from './iceberg.service';
 
 @Module({
-  providers: [CloudinaryService],
-  exports: [CloudinaryService],
+  providers: [IcebergService],
+  exports: [IcebergService],
 })
 export class SharedModule {}

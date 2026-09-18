@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { TaskAttachment } from './entities/task-attachment.entity';
 import { User } from '../users/entities/user.entity';
-import { CloudinaryService } from '../shared/cloudinary.service';
+import { IcebergService } from '../shared/iceberg.service';
 
 @Injectable()
 export class AttachmentsService {
@@ -18,7 +18,7 @@ export class AttachmentsService {
     private attachmentsRepo: Repository<TaskAttachment>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
-    private cloudinaryService: CloudinaryService,
+    private icebergService: IcebergService,
   ) {}
 
   async findByTask(taskId: string): Promise<TaskAttachment[]> {
@@ -40,10 +40,7 @@ export class AttachmentsService {
 
     const saved = await Promise.all(
       files.map(async (file) => {
-        const result = await this.cloudinaryService.uploadForAttachment(
-          file,
-          'PM_tool/task-attachments',
-        );
+        const result = await this.icebergService.upload(file, 'PM_tool/task-attachments');
         const attachment = this.attachmentsRepo.create({
           taskId,
           kind: 'file',
@@ -51,8 +48,8 @@ export class AttachmentsService {
           filename: file.originalname || null,
           mimeType: file.mimetype || null,
           sizeBytes: result.sizeBytes,
-          cloudinaryPublicId: result.publicId,
-          cloudinaryResourceType: result.resourceType,
+          icebergAssetId: result.assetId,
+          icebergKey: result.key,
           uploadedById: uploadedById || null,
           uploadedAt: now,
           note: trimmedNote,
@@ -91,8 +88,8 @@ export class AttachmentsService {
       filename,
       mimeType: null,
       sizeBytes: null,
-      cloudinaryPublicId: null,
-      cloudinaryResourceType: null,
+      icebergAssetId: null,
+      icebergKey: null,
       uploadedById: uploadedById || null,
       uploadedAt: new Date(),
       note: note?.trim() || null,
@@ -129,21 +126,18 @@ export class AttachmentsService {
       throw new ForbiddenException('You do not have permission to delete this attachment');
     }
 
-    // For link attachments cloudinaryPublicId is always null, so this block is skipped.
-    // For file attachments that somehow lost their publicId, also skipped.
-    // In both cases we go straight to the DB delete — no Cloudinary call, no orphan risk.
-    if (attachment.cloudinaryPublicId) {
-      await this.cloudinaryService.deleteImage(
-        attachment.cloudinaryPublicId,
-        attachment.cloudinaryResourceType || 'image',
-      );
+    // Link attachments have no icebergKey, and neither do rows predating the
+    // Iceberg migration (their Cloudinary assets are unreachable anyway). Both
+    // go straight to the DB delete — no storage call, no orphan risk.
+    if (attachment.icebergKey) {
+      await this.icebergService.deleteAsset(attachment.icebergKey);
     }
 
     try {
       await this.attachmentsRepo.delete(attachmentId);
     } catch (dbError) {
       console.error(
-        `[AttachmentsService] CRITICAL: Cloudinary asset deleted (publicId: ${attachment.cloudinaryPublicId}) ` +
+        `[AttachmentsService] CRITICAL: Iceberg asset deleted (key: ${attachment.icebergKey}) ` +
           `but DB row ${attachmentId} could not be removed — row is now orphaned.`,
         dbError,
       );

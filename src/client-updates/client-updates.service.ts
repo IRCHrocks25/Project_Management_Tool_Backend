@@ -18,7 +18,7 @@ import { CreateClientUpdateDto } from './dto/create-client-update.dto';
 import { CreateFormDto } from './dto/create-form.dto';
 import { SubmitFormDto } from './dto/submit-form.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
-import { CloudinaryService } from './cloudinary.service';
+import { IcebergService } from '../shared/iceberg.service';
 import { randomBytes } from 'crypto';
 import { debugLog } from '../shared/debug-log';
 
@@ -37,7 +37,7 @@ export class ClientUpdatesService {
     private projectsRepository: Repository<Project>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-    private cloudinaryService: CloudinaryService,
+    private icebergService: IcebergService,
   ) {}
 
   async create(createDto: CreateClientUpdateDto, pmId: string): Promise<ClientUpdate> {
@@ -266,7 +266,7 @@ export class ClientUpdatesService {
       }
     }
 
-    return await this.cloudinaryService.uploadImage(file, folder);
+    return await this.icebergService.uploadImage(file, folder);
   }
 
   async createComment(

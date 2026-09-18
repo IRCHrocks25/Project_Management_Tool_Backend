@@ -26,7 +26,7 @@ export class TaskAttachment {
   @Column('text')
   url: string;
 
-  // 'file' = direct Cloudinary upload; 'link' = external URL (Google Drive, Figma, Loom, etc.)
+  // 'file' = direct upload to Iceberg; 'link' = external URL (Google Drive, Figma, Loom, etc.)
   @Column({ type: 'varchar', length: 16, default: 'file' })
   kind: TaskAttachmentKind;
 
@@ -39,10 +39,19 @@ export class TaskAttachment {
   @Column('bigint', { nullable: true })
   sizeBytes: number;
 
+  // Opaque Iceberg asset id; the delivery URL is <cdn>/a/<id>
+  @Column('text', { nullable: true })
+  icebergAssetId: string;
+
+  // Tenant-relative key — the only identifier Iceberg's delete accepts
+  @Column('text', { nullable: true })
+  icebergKey: string;
+
+  // Retained for rows uploaded before the Iceberg migration. The Cloudinary
+  // account is disabled, so these are dead references kept only for audit.
   @Column('text', { nullable: true })
   cloudinaryPublicId: string;
 
-  // 'image' | 'video' | 'raw' — stored so deleteImage can pass the correct resource_type
   @Column('text', { nullable: true })
   cloudinaryResourceType: string;
 

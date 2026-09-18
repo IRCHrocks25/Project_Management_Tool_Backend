@@ -14,6 +14,7 @@ import { DeliverablesService } from './deliverables.service';
 import { UpdateDeliverableStatusDto } from './dto/update-deliverable-status.dto';
 import { UpdateDeliverableDto } from './dto/update-deliverable.dto';
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
+import { debugLog } from '../shared/debug-log';
 
 @Controller('deliverables')
 export class DeliverablesController {
@@ -50,7 +51,7 @@ export class DeliverablesController {
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateDto: UpdateDeliverableDto) {
-    console.log(`[DeliverablesController] PATCH /deliverables/${id} called with:`, updateDto);
+    debugLog(`[DeliverablesController] PATCH /deliverables/${id} called with:`, updateDto);
     return this.deliverablesService.update(id, updateDto);
   }
 

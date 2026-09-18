@@ -6,7 +6,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   Project,
   ProjectStage,
@@ -30,6 +30,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { UpdateOnboardingPhaseDto } from './dto/update-onboarding-phase.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
+import { debugLog } from '../shared/debug-log';
 
 const ONBOARDING_PHASE_ORDER: OnboardingPhase[] = [
   OnboardingPhase.PAYMENT_CONFIRMED,
@@ -115,11 +116,11 @@ export class ProjectsService {
     if (!pmId) {
       const webhookPM = await this.authService.getOrCreateWebhookPM();
       pmId = webhookPM.id;
-      console.log(`[Webhook] Using webhook PM account: ${pmId} (${webhookPM.name})`);
+      debugLog(`[Webhook] Using webhook PM account: ${pmId} (${webhookPM.name})`);
     }
 
     // Log webhook project creation for audit purposes
-    console.log(
+    debugLog(
       `[Webhook] Creating project: ${webhookDto.clientName} (${webhookDto.clientType}) - Package: ${webhookDto.package}, PM: ${pmId}, Source: ${webhookDto.sourceEmail || 'unknown'}`,
     );
 
@@ -143,7 +144,7 @@ export class ProjectsService {
     // Use the existing create method with the webhook's pmId
     const project = await this.create(createProjectDto, pmId);
 
-    console.log(`[Webhook] Project created successfully: ${project.id} - ${project.clientName}`);
+    debugLog(`[Webhook] Project created successfully: ${project.id} - ${project.clientName}`);
 
     return project;
   }
@@ -242,48 +243,65 @@ export class ProjectsService {
 
       const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
 
-      // Load tasks separately to handle enum mismatch gracefully
-      for (const project of projects) {
+      // Tasks are loaded separately to handle enum mismatch gracefully, in one
+      // batched query rather than one round trip per project.
+      const tasksByProject = new Map<string, Task[]>();
+
+      if (projects.length > 0) {
         try {
-          project.tasks = await this.tasksRepository.find({
-            where: { projectId: project.id, isArchived: false },
+          const tasks = await this.tasksRepository.find({
+            where: {
+              projectId: In(projects.map((project) => project.id)),
+              isArchived: false,
+            },
             relations: ['assignedTo'],
           });
-          // Fix any tasks with old "Intake" enum value
-          for (const task of project.tasks) {
+
+          for (const task of tasks) {
+            // Fix any tasks with old "Intake" enum value
             if (task.type === ('Intake' as any)) {
               task.type = TaskType.INTAKE;
               await this.tasksRepository.save(task);
             }
-          }
 
-          // If project is in Onboarding stage and has no onboarding tasks, create them
-          if (project.stage === ProjectStage.INTAKE) {
-            const onboardingTasks = project.tasks.filter(
-              (t: any) => t.type === TaskType.INTAKE || t.type === 'Onboarding',
-            );
-            if (onboardingTasks.length === 0) {
-              console.log(
-                `[ProjectsService] No onboarding tasks found for project ${project.id} (${project.clientName}) in findAll, creating them...`,
-              );
-              try {
-                const newTasks = this.generateIntakeTasks(project.id);
-                const savedTasks = await this.tasksRepository.save(newTasks);
-                project.tasks = [...project.tasks, ...savedTasks];
-                console.log(
-                  `[ProjectsService] Created ${savedTasks.length} onboarding tasks for project ${project.id}`,
-                );
-              } catch (createError) {
-                console.error(
-                  `[ProjectsService] Error creating onboarding tasks for project ${project.id}:`,
-                  createError,
-                );
-              }
+            const existing = tasksByProject.get(task.projectId);
+            if (existing) {
+              existing.push(task);
+            } else {
+              tasksByProject.set(task.projectId, [task]);
             }
           }
         } catch (error) {
-          console.error(`Error loading tasks for project ${project.id}:`, error);
-          project.tasks = [];
+          console.error('Error loading tasks for projects:', error);
+        }
+      }
+
+      for (const project of projects) {
+        project.tasks = tasksByProject.get(project.id) || [];
+
+        // If project is in Onboarding stage and has no onboarding tasks, create them
+        if (project.stage === ProjectStage.INTAKE) {
+          const onboardingTasks = project.tasks.filter(
+            (t: any) => t.type === TaskType.INTAKE || t.type === 'Onboarding',
+          );
+          if (onboardingTasks.length === 0) {
+            debugLog(
+              `[ProjectsService] No onboarding tasks found for project ${project.id} (${project.clientName}) in findAll, creating them...`,
+            );
+            try {
+              const newTasks = this.generateIntakeTasks(project.id);
+              const savedTasks = await this.tasksRepository.save(newTasks);
+              project.tasks = [...project.tasks, ...savedTasks];
+              debugLog(
+                `[ProjectsService] Created ${savedTasks.length} onboarding tasks for project ${project.id}`,
+              );
+            } catch (createError) {
+              console.error(
+                `[ProjectsService] Error creating onboarding tasks for project ${project.id}:`,
+                createError,
+              );
+            }
+          }
         }
 
         // Auto-stage-advance to Dev removed — PMs advance project stages
@@ -299,7 +317,7 @@ export class ProjectsService {
 
   async findOne(id: string) {
     try {
-      console.log(`[ProjectsService] Finding project with ID: ${id}`);
+      debugLog(`[ProjectsService] Finding project with ID: ${id}`);
       const project = await this.projectsRepository.findOne({
         where: { id },
         relations: [
@@ -312,13 +330,13 @@ export class ProjectsService {
         ],
       });
 
-      console.log(
+      debugLog(
         `[ProjectsService] Project found:`,
         project ? `Yes (${project.clientName})` : 'No',
       );
 
       if (!project) {
-        console.log(`[ProjectsService] Project not found for ID: ${id}`);
+        debugLog(`[ProjectsService] Project not found for ID: ${id}`);
         throw new NotFoundException(`Project not found with ID: ${id}`);
       }
 
@@ -329,7 +347,7 @@ export class ProjectsService {
           where: { projectId: id, isArchived: false },
           relations: ['assignedTo'],
         });
-        console.log(`[ProjectsService] Loaded ${project.tasks.length} tasks for project ${id}`);
+        debugLog(`[ProjectsService] Loaded ${project.tasks.length} tasks for project ${id}`);
 
         // Fix any tasks with old "Intake" enum value
         for (const task of project.tasks) {
@@ -346,7 +364,7 @@ export class ProjectsService {
               t.type === TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake',
           );
           if (onboardingTasks.length === 0) {
-            console.log(
+            debugLog(
               `[ProjectsService] No onboarding tasks found for project ${id}, creating them automatically...`,
             );
             try {
@@ -361,13 +379,13 @@ export class ProjectsService {
                 );
                 const hasOnboarding = enumCheck.some((e: any) => e.enum_value === 'Onboarding');
                 if (!hasOnboarding) {
-                  console.log(
+                  debugLog(
                     `[ProjectsService] 'Onboarding' not in enum, will use 'Intake' and update`,
                   );
                   enumValue = 'Intake';
                 }
               } catch (enumError) {
-                console.log(`[ProjectsService] Could not check enum, defaulting to 'Onboarding'`);
+                debugLog(`[ProjectsService] Could not check enum, defaulting to 'Onboarding'`);
               }
 
               // Save all tasks using raw SQL for reliability
@@ -390,7 +408,7 @@ export class ProjectsService {
                         );
                       } catch (updateError) {
                         // If update fails, that's okay - 'Intake' will work too
-                        console.log(
+                        debugLog(
                           `[ProjectsService] Could not update task ${result[0].id} to 'Onboarding', keeping 'Intake'`,
                         );
                       }
@@ -402,7 +420,7 @@ export class ProjectsService {
                     });
                     if (savedTask) {
                       savedTasks.push(savedTask);
-                      console.log(
+                      debugLog(
                         `[ProjectsService] Auto-created task: ${savedTask.title} (${savedTask.type})`,
                       );
                     }
@@ -430,7 +448,7 @@ export class ProjectsService {
               }
 
               project.tasks = allTasks;
-              console.log(
+              debugLog(
                 `[ProjectsService] Auto-created ${savedTasks.length} onboarding tasks. Total tasks now: ${project.tasks.length}`,
               );
             } catch (createError: any) {
@@ -440,7 +458,7 @@ export class ProjectsService {
               );
             }
           } else {
-            console.log(
+            debugLog(
               `[ProjectsService] Project ${id} already has ${onboardingTasks.length} onboarding tasks`,
             );
           }
@@ -525,7 +543,7 @@ export class ProjectsService {
       }
       project.pmId = updateProjectDto.pmId;
       project.pm = pmUser; // Sync relation so TypeORM save() doesn't overwrite with stale pm
-      console.log(
+      debugLog(
         `[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`,
       );
     }
@@ -569,14 +587,14 @@ export class ProjectsService {
 
   async generateOnboardingTasks(id: string) {
     try {
-      console.log(`[ProjectsService] generateOnboardingTasks called for project ${id}`);
+      debugLog(`[ProjectsService] generateOnboardingTasks called for project ${id}`);
       const project = await this.projectsRepository.findOne({ where: { id } });
       if (!project) {
-        console.log(`[ProjectsService] Project not found: ${id}`);
+        debugLog(`[ProjectsService] Project not found: ${id}`);
         throw new NotFoundException('Project not found');
       }
 
-      console.log(
+      debugLog(
         `[ProjectsService] Project found: ${project.clientName}, stage: ${project.stage}`,
       );
 
@@ -589,19 +607,19 @@ export class ProjectsService {
         (t: any) => t.type === TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake',
       );
 
-      console.log(
+      debugLog(
         `[ProjectsService] Found ${onboardingTasks.length} existing onboarding tasks out of ${existingTasks.length} total tasks`,
       );
 
       if (onboardingTasks.length > 0) {
-        console.log(`[ProjectsService] Onboarding tasks already exist, returning them`);
+        debugLog(`[ProjectsService] Onboarding tasks already exist, returning them`);
         return { message: 'Onboarding tasks already exist', tasks: onboardingTasks };
       }
 
       // Generate and save onboarding tasks
-      console.log(`[ProjectsService] Generating ${6} onboarding tasks...`);
+      debugLog(`[ProjectsService] Generating ${6} onboarding tasks...`);
       const intakeTasks = this.generateIntakeTasks(id);
-      console.log(
+      debugLog(
         `[ProjectsService] Generated tasks:`,
         intakeTasks.map((t: any) => ({ title: t.title, type: t.type })),
       );
@@ -615,10 +633,10 @@ export class ProjectsService {
             const task = this.tasksRepository.create(taskData);
             const saved = await this.tasksRepository.save(task);
             savedTasks.push(saved);
-            console.log(`[ProjectsService] Saved task via TypeORM: ${saved.title} (${saved.id})`);
+            debugLog(`[ProjectsService] Saved task via TypeORM: ${saved.title} (${saved.id})`);
           } catch (typeormError: any) {
             // If TypeORM fails (likely enum issue), use raw SQL
-            console.log(
+            debugLog(
               `[ProjectsService] TypeORM save failed, trying raw SQL for ${taskData.title}:`,
               typeormError.message,
             );
@@ -629,7 +647,7 @@ export class ProjectsService {
               const enumCheck = await this.tasksRepository.manager.query(
                 `SELECT unnest(enum_range(NULL::tasks_type_enum))::text as enum_value`,
               );
-              console.log(
+              debugLog(
                 `[ProjectsService] Available enum values:`,
                 enumCheck.map((e: any) => e.enum_value),
               );
@@ -638,7 +656,7 @@ export class ProjectsService {
               let enumValue = 'Onboarding';
               const hasOnboarding = enumCheck.some((e: any) => e.enum_value === 'Onboarding');
               if (!hasOnboarding) {
-                console.log(`[ProjectsService] 'Onboarding' not in enum, using 'Intake' instead`);
+                debugLog(`[ProjectsService] 'Onboarding' not in enum, using 'Intake' instead`);
                 enumValue = 'Intake';
               }
 
@@ -665,7 +683,7 @@ export class ProjectsService {
                       [result[0].id],
                     );
                   } catch (updateError) {
-                    console.log(
+                    debugLog(
                       `[ProjectsService] Could not update to 'Onboarding', keeping 'Intake'`,
                     );
                   }
@@ -678,7 +696,7 @@ export class ProjectsService {
                 });
                 if (savedTask) {
                   savedTasks.push(savedTask);
-                  console.log(
+                  debugLog(
                     `[ProjectsService] Saved task via raw SQL: ${savedTask.title} (${savedTask.id})`,
                   );
                 }
@@ -703,7 +721,7 @@ export class ProjectsService {
         }
       }
 
-      console.log(`[ProjectsService] Successfully created ${savedTasks.length} onboarding tasks`);
+      debugLog(`[ProjectsService] Successfully created ${savedTasks.length} onboarding tasks`);
       return { message: 'Onboarding tasks created successfully', tasks: savedTasks };
     } catch (error: any) {
       console.error(
@@ -785,7 +803,7 @@ export class ProjectsService {
           // Save project
           await transactionalEntityManager.save(Project, project);
 
-          console.log(`[ProjectsService] Project ${id} marked as complete by user ${userId}`);
+          debugLog(`[ProjectsService] Project ${id} marked as complete by user ${userId}`);
           return project;
         },
       );
@@ -1045,7 +1063,7 @@ export class ProjectsService {
 
   async getActivity(projectId: string) {
     try {
-      console.log(`[ProjectsService] Getting activity for project: ${projectId}`);
+      debugLog(`[ProjectsService] Getting activity for project: ${projectId}`);
       const project = await this.findOne(projectId);
       if (!project) {
         console.error(`[ProjectsService] Project not found: ${projectId}`);
@@ -1288,7 +1306,7 @@ export class ProjectsService {
       // Sort by date (oldest first - newest at bottom)
       activities.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-      console.log(
+      debugLog(
         `[ProjectsService] Returning ${activities.length} activities for project ${projectId}`,
       );
       return activities;

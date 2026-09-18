@@ -62,7 +62,8 @@
     "migrate:task-transfer-notification-type": "node scripts/add-task-transfer-notification-type.js",
     "migrate:attachment-note": "node scripts/add-attachment-note.js",
     "migrate:user-email-notifications-enabled": "node scripts/add-user-email-notifications-enabled.js",
-    "migrate:task-due-date-moves": "node scripts/add-task-due-date-moves.js"
+    "migrate:task-due-date-moves": "node scripts/add-task-due-date-moves.js",
+    "migrate:performance-indexes": "node scripts/add-performance-indexes.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

@@ -26,6 +26,7 @@ const deliverable_entity_1 = require("../deliverables/entities/deliverable.entit
 const project_entity_1 = require("../projects/entities/project.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const notification_entity_1 = require("../notifications/entities/notification.entity");
+const debug_log_1 = require("../shared/debug-log");
 let TasksService = class TasksService {
     constructor(tasksRepository, taskAssigneesRepository, taskQuestionsRepository, taskCommentsRepository, taskDueDateMovesRepository, deliverablesRepository, usersRepository, notificationsService) {
         this.tasksRepository = tasksRepository;
@@ -55,7 +56,7 @@ let TasksService = class TasksService {
     }
     async findAll(projectId, assignedToId, limit, loadAll, taskType) {
         try {
-            console.log(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}, taskType: ${taskType}`);
+            (0, debug_log_1.debugLog)(`[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}, taskType: ${taskType}`);
             const queryBuilder = this.tasksRepository
                 .createQueryBuilder('task')
                 .leftJoinAndSelect('task.project', 'project')
@@ -81,14 +82,14 @@ let TasksService = class TasksService {
                 const defaultLimit = limit || 200;
                 if (!projectId && !assignedToId) {
                     queryBuilder.limit(defaultLimit);
-                    console.log(`[TasksService] No filters provided - limiting to ${defaultLimit} most recent tasks for performance`);
+                    (0, debug_log_1.debugLog)(`[TasksService] No filters provided - limiting to ${defaultLimit} most recent tasks for performance`);
                 }
                 else if (limit) {
                     queryBuilder.limit(limit);
                 }
             }
             else {
-                console.log('[TasksService] Loading all tasks (loadAll=true)');
+                (0, debug_log_1.debugLog)('[TasksService] Loading all tasks (loadAll=true)');
             }
             const tasks = await queryBuilder.orderBy('task.createdAt', 'DESC').getMany();
             tasks.forEach((task) => {
@@ -96,7 +97,7 @@ let TasksService = class TasksService {
                     task.type = task_entity_1.TaskType.INTAKE;
                 }
             });
-            console.log(`[TasksService] Found ${tasks.length} tasks`);
+            (0, debug_log_1.debugLog)(`[TasksService] Found ${tasks.length} tasks`);
             return tasks;
         }
         catch (error) {
@@ -107,7 +108,7 @@ let TasksService = class TasksService {
                 name: error.name,
             });
             if (error.message && error.message.includes('enum')) {
-                console.log('[TasksService] Enum error detected, attempting to fix...');
+                (0, debug_log_1.debugLog)('[TasksService] Enum error detected, attempting to fix...');
                 try {
                     await this.tasksRepository.manager.query(`UPDATE tasks SET type = 'Onboarding' WHERE type = 'Intake'`);
                     const queryBuilder = this.tasksRepository
@@ -355,7 +356,7 @@ let TasksService = class TasksService {
                         console.error(`Failed to create notification for user ${user.id}:`, err);
                     }));
                     await Promise.all(notificationPromises);
-                    console.log(`[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`);
+                    (0, debug_log_1.debugLog)(`[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`);
                     const headPMData = {
                         type: notification_entity_1.NotificationType.TASK_AVAILABLE,
                         title: 'New task available',

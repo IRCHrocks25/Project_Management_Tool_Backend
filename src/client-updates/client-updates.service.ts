@@ -20,6 +20,7 @@ import { SubmitFormDto } from './dto/submit-form.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CloudinaryService } from './cloudinary.service';
 import { randomBytes } from 'crypto';
+import { debugLog } from '../shared/debug-log';
 
 @Injectable()
 export class ClientUpdatesService {
@@ -296,7 +297,7 @@ export class ClientUpdatesService {
     // TODO: Send notifications to mentioned users
     if (createDto.mentionedUserIds && createDto.mentionedUserIds.length > 0) {
       // Notification logic can be added here
-      console.log('Mentioned users:', createDto.mentionedUserIds);
+      debugLog('Mentioned users:', createDto.mentionedUserIds);
     }
 
     return await this.commentsRepository.findOne({

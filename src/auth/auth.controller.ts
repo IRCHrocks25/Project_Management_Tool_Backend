@@ -23,6 +23,7 @@ import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { SetUserAccessDto } from './dto/set-user-access.dto';
 import { AdminResetUserPasswordDto } from './dto/admin-reset-user-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { debugLog } from '../shared/debug-log';
 
 @Controller('auth')
 export class AuthController {
@@ -96,13 +97,13 @@ export class AuthController {
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
-    console.log('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
-    console.log('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
-    console.log('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
+    debugLog('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
+    debugLog('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
+    debugLog('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
 
     try {
       const result = await this.authService.forgotPassword(forgotPasswordDto);
-      console.log('🚀 [CONTROLLER] forgotPassword completed successfully');
+      debugLog('🚀 [CONTROLLER] forgotPassword completed successfully');
       return result;
     } catch (error) {
       console.error('🚀 [CONTROLLER] Error in forgotPassword:', error);

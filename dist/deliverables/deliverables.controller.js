@@ -18,6 +18,7 @@ const deliverables_service_1 = require("./deliverables.service");
 const update_deliverable_status_dto_1 = require("./dto/update-deliverable-status.dto");
 const update_deliverable_dto_1 = require("./dto/update-deliverable.dto");
 const create_deliverable_dto_1 = require("./dto/create-deliverable.dto");
+const debug_log_1 = require("../shared/debug-log");
 let DeliverablesController = class DeliverablesController {
     constructor(deliverablesService) {
         this.deliverablesService = deliverablesService;
@@ -32,7 +33,7 @@ let DeliverablesController = class DeliverablesController {
         return this.deliverablesService.updateStatus(id, updateDto.status, updateDto.notes, req.user?.userId || req.user?.id, updateDto.fileUrl);
     }
     async update(id, updateDto) {
-        console.log(`[DeliverablesController] PATCH /deliverables/${id} called with:`, updateDto);
+        (0, debug_log_1.debugLog)(`[DeliverablesController] PATCH /deliverables/${id} called with:`, updateDto);
         return this.deliverablesService.update(id, updateDto);
     }
     async findOne(id) {

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { debugLog } from '../shared/debug-log';
 
 @Injectable()
 export class EmailService {
@@ -154,7 +155,7 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`[EmailService] Password reset email sent to ${email}`);
+      debugLog(`[EmailService] Password reset email sent to ${email}`);
     } catch (error: any) {
       console.error(`[EmailService] Failed to send password reset email to ${email}:`, error);
       // Log detailed error for debugging

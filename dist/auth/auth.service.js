@@ -55,6 +55,7 @@ const crypto = __importStar(require("crypto"));
 const user_entity_1 = require("../users/entities/user.entity");
 const email_service_1 = require("../email/email.service");
 const config_1 = require("@nestjs/config");
+const debug_log_1 = require("../shared/debug-log");
 let AuthService = class AuthService {
     constructor(usersRepository, jwtService, emailService, configService) {
         this.usersRepository = usersRepository;
@@ -98,7 +99,7 @@ let AuthService = class AuthService {
             const allUsers = await this.usersRepository.find();
             const foundUser = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail);
             if (!foundUser) {
-                console.log(`Login attempt failed: User not found for email: ${normalizedEmail}`);
+                (0, debug_log_1.debugLog)(`Login attempt failed: User not found for email: ${normalizedEmail}`);
                 throw new common_1.UnauthorizedException('Invalid email or password');
             }
             if (foundUser.isActive === false) {
@@ -106,7 +107,7 @@ let AuthService = class AuthService {
             }
             const isPasswordValid = await bcrypt.compare(password, foundUser.password);
             if (!isPasswordValid) {
-                console.log(`Login attempt failed: Invalid password for email: ${normalizedEmail}`);
+                (0, debug_log_1.debugLog)(`Login attempt failed: Invalid password for email: ${normalizedEmail}`);
                 throw new common_1.UnauthorizedException('Invalid email or password');
             }
             const payload = { sub: foundUser.id, email: foundUser.email, role: foundUser.role };
@@ -122,7 +123,7 @@ let AuthService = class AuthService {
         }
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            console.log(`Login attempt failed: Invalid password for email: ${normalizedEmail}`);
+            (0, debug_log_1.debugLog)(`Login attempt failed: Invalid password for email: ${normalizedEmail}`);
             throw new common_1.UnauthorizedException('Invalid email or password');
         }
         const payload = { sub: user.id, email: user.email, role: user.role };
@@ -303,7 +304,7 @@ let AuthService = class AuthService {
                 role: user_entity_1.UserRole.PROJECT_MANAGER,
             });
             webhookPM = await this.usersRepository.save(webhookPM);
-            console.log(`[AuthService] Created webhook PM account: ${webhookPM.id}`);
+            (0, debug_log_1.debugLog)(`[AuthService] Created webhook PM account: ${webhookPM.id}`);
         }
         return webhookPM;
     }
@@ -311,36 +312,36 @@ let AuthService = class AuthService {
         const { email } = forgotPasswordDto;
         const normalizedEmail = email.toLowerCase().trim();
         process.stdout.write('\n');
-        console.log('🔔 [FORGOT PASSWORD] ==========================================');
-        console.log('🔔 [FORGOT PASSWORD] Request received for email:', normalizedEmail);
-        console.log('🔔 [FORGOT PASSWORD] Flow: Email submit → Generate OTP → Save to DB → Send via Webhook');
-        console.log('🔔 [FORGOT PASSWORD] ==========================================\n');
+        (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] ==========================================');
+        (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Request received for email:', normalizedEmail);
+        (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Flow: Email submit → Generate OTP → Save to DB → Send via Webhook');
+        (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] ==========================================\n');
         try {
             let user = await this.usersRepository.findOne({
                 where: { email: normalizedEmail },
             });
             if (!user) {
-                console.log('🔔 [FORGOT PASSWORD] User not found with exact match, trying case-insensitive search...');
-                console.log('🔔 [FORGOT PASSWORD] Searching for normalized email:', normalizedEmail);
+                (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] User not found with exact match, trying case-insensitive search...');
+                (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Searching for normalized email:', normalizedEmail);
                 const allUsers = await this.usersRepository.find();
-                console.log('🔔 [FORGOT PASSWORD] Total users in database:', allUsers.length);
-                console.log('🔔 [FORGOT PASSWORD] Sample emails in DB:', allUsers.slice(0, 5).map((u) => u.email));
+                (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Total users in database:', allUsers.length);
+                (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Sample emails in DB:', allUsers.slice(0, 5).map((u) => u.email));
                 user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
                 if (user) {
-                    console.log('🔔 [FORGOT PASSWORD] ✅ User found with case-insensitive search!');
-                    console.log('🔔 [FORGOT PASSWORD] Found user email:', user.email);
-                    console.log('🔔 [FORGOT PASSWORD] Found user ID:', user.id);
+                    (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] ✅ User found with case-insensitive search!');
+                    (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Found user email:', user.email);
+                    (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Found user ID:', user.id);
                 }
                 else {
-                    console.log('🔔 [FORGOT PASSWORD] ❌ User not found even with case-insensitive search');
-                    console.log('🔔 [FORGOT PASSWORD] Searched email:', normalizedEmail);
+                    (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] ❌ User not found even with case-insensitive search');
+                    (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Searched email:', normalizedEmail);
                 }
             }
             else {
-                console.log('🔔 [FORGOT PASSWORD] ✅ User found with exact match:', user.email);
+                (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] ✅ User found with exact match:', user.email);
             }
             if (!user) {
-                console.log('🔔 [FORGOT PASSWORD] ❌ User not found in database');
+                (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] ❌ User not found in database');
                 return {
                     message: 'If an account with that email exists, an OTP has been sent to your email.',
                     webhookStatus: { success: false, message: 'User not found' },
@@ -349,13 +350,13 @@ let AuthService = class AuthService {
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
             const otpExpiry = new Date();
             otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
-            console.log('🔔 [FORGOT PASSWORD] Generated OTP:', otpCode);
-            console.log('🔔 [FORGOT PASSWORD] OTP expires at:', otpExpiry.toISOString());
+            (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Generated OTP:', otpCode);
+            (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] OTP expires at:', otpExpiry.toISOString());
             try {
                 user.otpCode = otpCode;
                 user.otpExpires = otpExpiry;
                 await this.usersRepository.save(user);
-                console.log('🔔 [FORGOT PASSWORD] OTP saved to database');
+                (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] OTP saved to database');
             }
             catch (dbError) {
                 console.error(`[OTP Password Reset] Database error saving OTP:`, dbError);
@@ -364,16 +365,16 @@ let AuthService = class AuthService {
                 }
                 throw dbError;
             }
-            console.log('🔔 [FORGOT PASSWORD] Sending OTP via webhook...');
+            (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Sending OTP via webhook...');
             let webhookStatus = null;
             try {
                 webhookStatus = await this.sendOtpViaWebhook(normalizedEmail, otpCode, user.name);
                 if (webhookStatus.success && webhookStatus.message?.includes('Email sent')) {
                     webhookStatus.emailSent = true;
-                    console.log(`✅ [FORGOT PASSWORD] Email sent successfully via webhook!`);
+                    (0, debug_log_1.debugLog)(`✅ [FORGOT PASSWORD] Email sent successfully via webhook!`);
                 }
                 else if (webhookStatus.success) {
-                    console.log(`✅ [FORGOT PASSWORD] Webhook triggered successfully!`);
+                    (0, debug_log_1.debugLog)(`✅ [FORGOT PASSWORD] Webhook triggered successfully!`);
                 }
                 else {
                     console.error(`❌ [FORGOT PASSWORD] Webhook returned error:`, webhookStatus);
@@ -390,8 +391,8 @@ let AuthService = class AuthService {
                 message: 'If an account with that email exists, an OTP has been sent to your email.',
             };
             response.webhookStatus = webhookStatus;
-            console.log('🔔 [FORGOT PASSWORD] Returning response with webhook status');
-            console.log('🔔 [FORGOT PASSWORD] ==========================================\n');
+            (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] Returning response with webhook status');
+            (0, debug_log_1.debugLog)('🔔 [FORGOT PASSWORD] ==========================================\n');
             return response;
         }
         catch (error) {
@@ -413,15 +414,15 @@ let AuthService = class AuthService {
             };
             if (userName)
                 payload.userName = userName;
-            console.log('\n📤 [WEBHOOK] ==========================================');
-            console.log(`📤 [WEBHOOK] Preparing to send OTP email to: ${email}`);
-            console.log(`📤 [WEBHOOK] Webhook URL: ${this.WEBHOOK_URL}`);
-            console.log(`📤 [WEBHOOK] Method: POST`);
-            console.log(`📤 [WEBHOOK] Payload Summary:`, payload);
-            console.log(`📤 [WEBHOOK] Full Payload JSON:`, JSON.stringify(payload, null, 2));
+            (0, debug_log_1.debugLog)('\n📤 [WEBHOOK] ==========================================');
+            (0, debug_log_1.debugLog)(`📤 [WEBHOOK] Preparing to send OTP email to: ${email}`);
+            (0, debug_log_1.debugLog)(`📤 [WEBHOOK] Webhook URL: ${this.WEBHOOK_URL}`);
+            (0, debug_log_1.debugLog)(`📤 [WEBHOOK] Method: POST`);
+            (0, debug_log_1.debugLog)(`📤 [WEBHOOK] Payload Summary:`, payload);
+            (0, debug_log_1.debugLog)(`📤 [WEBHOOK] Full Payload JSON:`, JSON.stringify(payload, null, 2));
             const requestBody = JSON.stringify(payload);
-            console.log(`📤 [WEBHOOK] Request body length: ${requestBody.length} bytes`);
-            console.log(`📤 [WEBHOOK] Sending POST request now...\n`);
+            (0, debug_log_1.debugLog)(`📤 [WEBHOOK] Request body length: ${requestBody.length} bytes`);
+            (0, debug_log_1.debugLog)(`📤 [WEBHOOK] Sending POST request now...\n`);
             try {
                 const response = await fetch(this.WEBHOOK_URL, {
                     method: 'POST',
@@ -432,18 +433,18 @@ let AuthService = class AuthService {
                     },
                     body: requestBody,
                 });
-                console.log(`📥 [WEBHOOK] Response received!`);
-                console.log(`📥 [WEBHOOK] Response status: ${response.status} ${response.statusText}`);
-                console.log(`📥 [WEBHOOK] Response headers:`, Object.fromEntries(response.headers.entries()));
+                (0, debug_log_1.debugLog)(`📥 [WEBHOOK] Response received!`);
+                (0, debug_log_1.debugLog)(`📥 [WEBHOOK] Response status: ${response.status} ${response.statusText}`);
+                (0, debug_log_1.debugLog)(`📥 [WEBHOOK] Response headers:`, Object.fromEntries(response.headers.entries()));
                 const responseText = await response.text();
-                console.log(`📥 [WEBHOOK] Response body:`, responseText);
+                (0, debug_log_1.debugLog)(`📥 [WEBHOOK] Response body:`, responseText);
                 let responseData = null;
                 try {
                     responseData = JSON.parse(responseText);
-                    console.log(`📥 [WEBHOOK] Parsed response:`, responseData);
+                    (0, debug_log_1.debugLog)(`📥 [WEBHOOK] Parsed response:`, responseData);
                 }
                 catch (e) {
-                    console.log(`📥 [WEBHOOK] Response is not JSON, treating as text`);
+                    (0, debug_log_1.debugLog)(`📥 [WEBHOOK] Response is not JSON, treating as text`);
                 }
                 if (!response.ok) {
                     console.error(`❌ [WEBHOOK] Error: Webhook returned status ${response.status}`);
@@ -457,10 +458,10 @@ let AuthService = class AuthService {
                     };
                 }
                 const emailSent = responseData?.response?.includes('Email sent') || responseText.includes('Email sent to');
-                console.log(`✅ [WEBHOOK] Successfully sent OTP email to ${email} via webhook`);
-                console.log(`✅ [WEBHOOK] Response status: ${response.status}`);
-                console.log(`✅ [WEBHOOK] Email sent confirmation: ${emailSent}`);
-                console.log(`📤 [WEBHOOK] ==========================================\n`);
+                (0, debug_log_1.debugLog)(`✅ [WEBHOOK] Successfully sent OTP email to ${email} via webhook`);
+                (0, debug_log_1.debugLog)(`✅ [WEBHOOK] Response status: ${response.status}`);
+                (0, debug_log_1.debugLog)(`✅ [WEBHOOK] Email sent confirmation: ${emailSent}`);
+                (0, debug_log_1.debugLog)(`📤 [WEBHOOK] ==========================================\n`);
                 return {
                     success: true,
                     status: response.status,
@@ -497,39 +498,39 @@ let AuthService = class AuthService {
     async verifyOtp(verifyOtpDto) {
         const { email, otp } = verifyOtpDto;
         const normalizedEmail = email.toLowerCase().trim();
-        console.log('🔔 [VERIFY OTP] Verifying OTP for email:', normalizedEmail);
-        console.log('🔔 [VERIFY OTP] OTP received:', otp);
+        (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] Verifying OTP for email:', normalizedEmail);
+        (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] OTP received:', otp);
         let user = await this.usersRepository.findOne({
             where: { email: normalizedEmail },
         });
         if (!user) {
-            console.log('🔔 [VERIFY OTP] User not found with exact match, trying case-insensitive search...');
+            (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] User not found with exact match, trying case-insensitive search...');
             const allUsers = await this.usersRepository.find();
             user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
             if (user) {
-                console.log('🔔 [VERIFY OTP] ✅ User found with case-insensitive search:', user.email);
+                (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] ✅ User found with case-insensitive search:', user.email);
             }
         }
         else {
-            console.log('🔔 [VERIFY OTP] ✅ User found with exact match:', user.email);
+            (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] ✅ User found with exact match:', user.email);
         }
         if (!user) {
-            console.log('🔔 [VERIFY OTP] ❌ User not found');
+            (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] ❌ User not found');
             throw new common_1.BadRequestException('Invalid email or OTP');
         }
-        console.log('🔔 [VERIFY OTP] User OTP in database:', user.otpCode);
-        console.log('🔔 [VERIFY OTP] OTP expires at:', user.otpExpires);
+        (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] User OTP in database:', user.otpCode);
+        (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] OTP expires at:', user.otpExpires);
         if (!user.otpCode) {
-            console.log('🔔 [VERIFY OTP] ❌ No OTP code found for user');
+            (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] ❌ No OTP code found for user');
             throw new common_1.BadRequestException('Invalid OTP code');
         }
         if (user.otpCode !== otp) {
-            console.log('🔔 [VERIFY OTP] ❌ OTP mismatch!');
-            console.log('🔔 [VERIFY OTP] Expected:', user.otpCode);
-            console.log('🔔 [VERIFY OTP] Received:', otp);
+            (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] ❌ OTP mismatch!');
+            (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] Expected:', user.otpCode);
+            (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] Received:', otp);
             throw new common_1.BadRequestException('Invalid OTP code');
         }
-        console.log('🔔 [VERIFY OTP] ✅ OTP matches!');
+        (0, debug_log_1.debugLog)('🔔 [VERIFY OTP] ✅ OTP matches!');
         if (!user.otpExpires || user.otpExpires < new Date()) {
             user.otpCode = null;
             user.otpExpires = null;
@@ -544,40 +545,40 @@ let AuthService = class AuthService {
     async resetPasswordWithOtp(resetPasswordOtpDto) {
         const { email, password } = resetPasswordOtpDto;
         const normalizedEmail = email.toLowerCase().trim();
-        console.log('🔔 [RESET PASSWORD] Resetting password for email:', normalizedEmail);
+        (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] Resetting password for email:', normalizedEmail);
         let user = await this.usersRepository.findOne({
             where: { email: normalizedEmail },
         });
         if (!user) {
-            console.log('🔔 [RESET PASSWORD] User not found with exact match, trying case-insensitive search...');
+            (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] User not found with exact match, trying case-insensitive search...');
             const allUsers = await this.usersRepository.find();
             user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail) || null;
             if (user) {
-                console.log('🔔 [RESET PASSWORD] ✅ User found with case-insensitive search:', user.email);
+                (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] ✅ User found with case-insensitive search:', user.email);
             }
             else {
-                console.log('🔔 [RESET PASSWORD] ❌ User not found even with case-insensitive search');
+                (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] ❌ User not found even with case-insensitive search');
             }
         }
         else {
-            console.log('🔔 [RESET PASSWORD] ✅ User found with exact match:', user.email);
+            (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] ✅ User found with exact match:', user.email);
         }
         if (!user) {
-            console.log('🔔 [RESET PASSWORD] ❌ User not found');
+            (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] ❌ User not found');
             throw new common_1.BadRequestException('Invalid email');
         }
-        console.log('🔔 [RESET PASSWORD] Checking OTP validity...');
-        console.log('🔔 [RESET PASSWORD] User OTP in database:', user.otpCode);
-        console.log('🔔 [RESET PASSWORD] OTP expires at:', user.otpExpires);
+        (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] Checking OTP validity...');
+        (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] User OTP in database:', user.otpCode);
+        (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] OTP expires at:', user.otpExpires);
         if (!user.otpCode) {
-            console.log('🔔 [RESET PASSWORD] ❌ No OTP code found');
+            (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] ❌ No OTP code found');
             throw new common_1.BadRequestException('OTP has expired or is invalid. Please request a new OTP.');
         }
         if (!user.otpExpires || user.otpExpires < new Date()) {
-            console.log('🔔 [RESET PASSWORD] ❌ OTP has expired');
+            (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] ❌ OTP has expired');
             throw new common_1.BadRequestException('OTP has expired or is invalid. Please request a new OTP.');
         }
-        console.log('🔔 [RESET PASSWORD] ✅ OTP is valid');
+        (0, debug_log_1.debugLog)('🔔 [RESET PASSWORD] ✅ OTP is valid');
         const hashedPassword = await bcrypt.hash(password, 10);
         user.password = hashedPassword;
         user.otpCode = null;

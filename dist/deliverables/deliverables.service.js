@@ -24,6 +24,7 @@ const project_entity_1 = require("../projects/entities/project.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 const notification_entity_1 = require("../notifications/entities/notification.entity");
+const debug_log_1 = require("../shared/debug-log");
 let DeliverablesService = class DeliverablesService {
     constructor(deliverablesRepository, deliverableTeamMembersRepository, historyRepository, tasksRepository, projectsRepository, usersRepository, notificationsService) {
         this.deliverablesRepository = deliverablesRepository;
@@ -329,7 +330,7 @@ let DeliverablesService = class DeliverablesService {
         }));
     }
     async update(id, updateDto) {
-        console.log(`[DeliverablesService] update called for id: ${id}, data:`, updateDto);
+        (0, debug_log_1.debugLog)(`[DeliverablesService] update called for id: ${id}, data:`, updateDto);
         const deliverable = await this.findOne(id);
         const isCustom = deliverable.type === deliverable_entity_1.DeliverableType.OTHER || !!deliverable.customType;
         if (!isCustom) {
@@ -339,7 +340,7 @@ let DeliverablesService = class DeliverablesService {
             deliverable.customType = updateDto.customType || null;
         }
         const updated = await this.deliverablesRepository.save(deliverable);
-        console.log(`[DeliverablesService] update completed for id: ${id}, new customType: ${updated.customType}`);
+        (0, debug_log_1.debugLog)(`[DeliverablesService] update completed for id: ${id}, new customType: ${updated.customType}`);
         return updated;
     }
 };

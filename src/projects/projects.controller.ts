@@ -22,6 +22,7 @@ import { UpdateOnboardingPhaseDto } from './dto/update-onboarding-phase.dto';
 import { WebhookGuard } from './guards/webhook.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { debugLog } from '../shared/debug-log';
 
 @Controller('projects')
 export class ProjectsController {
@@ -136,7 +137,7 @@ export class ProjectsController {
         );
       }
 
-      console.log(`[ProjectsController] Completing project ${id} for user ${req.user?.userId}`);
+      debugLog(`[ProjectsController] Completing project ${id} for user ${req.user?.userId}`);
       return await this.projectsService.completeProject(id, req.user?.userId);
     } catch (error: any) {
       console.error(`[ProjectsController] Error in completeProject:`, error);

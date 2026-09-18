@@ -12,6 +12,7 @@ import { DailyFocusItem } from '../daily-focus/entities/daily-focus-item.entity'
 import { User, UserRole } from '../users/entities/user.entity';
 import { UpsertDepartmentProjectFocusDto } from './dto/upsert-department-project-focus.dto';
 import { Task, TaskType } from '../tasks/entities/task.entity';
+import { debugLog } from '../shared/debug-log';
 
 const ALLOWED_DEPT_KEYS = new Set(Object.values(TaskType) as string[]);
 const MAX_PROJECTS_PM = 30;
@@ -196,7 +197,7 @@ export class DepartmentProjectFocusService {
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
 
-    console.log(
+    debugLog(
       `[DeptFocus:GET] date=${dateStr} dept=${departmentKey} → pmRows=${pmRows.length} ovRows=${ovRows.length}` +
         (pmRows.length > 0
           ? ` pmFocusDates=[${pmRows.map((r) => r.focusDate).join(',')}]`
@@ -209,7 +210,7 @@ export class DepartmentProjectFocusService {
         : await this.buildPmRowsFromDailyFocusFallback(dateStr, departmentKey);
 
     if (pmRows.length === 0) {
-      console.log(
+      debugLog(
         `[DeptFocus:GET] dailyFocus fallback returned ${pmMapped.length} derived PM rows`,
       );
     }

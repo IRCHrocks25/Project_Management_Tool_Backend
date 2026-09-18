@@ -27,6 +27,7 @@ const update_user_role_dto_1 = require("./dto/update-user-role.dto");
 const set_user_access_dto_1 = require("./dto/set-user-access.dto");
 const admin_reset_user_password_dto_1 = require("./dto/admin-reset-user-password.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
+const debug_log_1 = require("../shared/debug-log");
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -56,12 +57,12 @@ let AuthController = class AuthController {
         return this.authService.adminResetUserPassword(id, dto.newPassword, req.user.userId);
     }
     async forgotPassword(forgotPasswordDto) {
-        console.log('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
-        console.log('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
-        console.log('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
+        (0, debug_log_1.debugLog)('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
+        (0, debug_log_1.debugLog)('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
+        (0, debug_log_1.debugLog)('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
         try {
             const result = await this.authService.forgotPassword(forgotPasswordDto);
-            console.log('🚀 [CONTROLLER] forgotPassword completed successfully');
+            (0, debug_log_1.debugLog)('🚀 [CONTROLLER] forgotPassword completed successfully');
             return result;
         }
         catch (error) {

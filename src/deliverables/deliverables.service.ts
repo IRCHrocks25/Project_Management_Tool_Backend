@@ -15,6 +15,7 @@ import { Project, ProjectStage } from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { debugLog } from '../shared/debug-log';
 
 @Injectable()
 export class DeliverablesService {
@@ -444,7 +445,7 @@ export class DeliverablesService {
   }
 
   async update(id: string, updateDto: { customType?: string }) {
-    console.log(`[DeliverablesService] update called for id: ${id}, data:`, updateDto);
+    debugLog(`[DeliverablesService] update called for id: ${id}, data:`, updateDto);
     const deliverable = await this.findOne(id);
 
     // Only allow updating custom deliverables (type OTHER or has customType)
@@ -458,7 +459,7 @@ export class DeliverablesService {
     }
 
     const updated = await this.deliverablesRepository.save(deliverable);
-    console.log(
+    debugLog(
       `[DeliverablesService] update completed for id: ${id}, new customType: ${updated.customType}`,
     );
     return updated;

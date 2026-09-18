@@ -311,33 +311,26 @@ export class NotificationsService {
   }
 
   async findAll(userId: string, userRole?: string) {
-    console.log('[NotificationsService] findAll called with:', { userId, userRole });
-
-    // Debug: Check all notifications to see their userId values
-    const allNotifications = await this.notificationsRepository.find({
-      take: 5,
-      order: { createdAt: 'DESC' },
-    });
-    console.log('[NotificationsService] Sample notifications in DB:', {
-      totalSample: allNotifications.length,
-      userIds: allNotifications.map((n) => ({ id: n.id, userId: n.userId, type: n.type })),
-    });
-
-    // Check what notifications exist for this specific user
-    const userNotifications = await this.notificationsRepository.find({
-      where: { userId },
-      take: 5,
-    });
-    console.log('[NotificationsService] Notifications for current user:', {
-      userId,
-      count: userNotifications.length,
-      sample: userNotifications[0],
-    });
-
+    // Only the columns the client actually renders are selected. Selecting the
+    // full project/task entities instead pushed this response to ~7MB for a PM
+    // with a few thousand notifications, almost all of it unread task bodies.
     const queryBuilder = this.notificationsRepository
       .createQueryBuilder('notification')
-      .leftJoinAndSelect('notification.project', 'project')
-      .leftJoinAndSelect('notification.task', 'task')
+      .leftJoin('notification.task', 'task')
+      .select([
+        'notification.id',
+        'notification.type',
+        'notification.title',
+        'notification.message',
+        'notification.projectId',
+        'notification.taskId',
+        'notification.userId',
+        'notification.assignedToId',
+        'notification.isRead',
+        'notification.createdAt',
+        'task.id',
+        'task.type',
+      ])
       .where('notification.userId = :userId', { userId });
 
     // Filter by role/department - only show notifications relevant to user's department
@@ -376,13 +369,7 @@ export class NotificationsService {
       }
     }
 
-    const result = await queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
-    console.log('[NotificationsService] Query result:', {
-      userId,
-      count: result.length,
-      sample: result[0],
-    });
-    return result;
+    return queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
   }
 
   async findUnreadCount(userId: string) {

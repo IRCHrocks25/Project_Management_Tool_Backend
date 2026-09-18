@@ -229,28 +229,23 @@ let NotificationsService = class NotificationsService {
         }
     }
     async findAll(userId, userRole) {
-        console.log('[NotificationsService] findAll called with:', { userId, userRole });
-        const allNotifications = await this.notificationsRepository.find({
-            take: 5,
-            order: { createdAt: 'DESC' },
-        });
-        console.log('[NotificationsService] Sample notifications in DB:', {
-            totalSample: allNotifications.length,
-            userIds: allNotifications.map((n) => ({ id: n.id, userId: n.userId, type: n.type })),
-        });
-        const userNotifications = await this.notificationsRepository.find({
-            where: { userId },
-            take: 5,
-        });
-        console.log('[NotificationsService] Notifications for current user:', {
-            userId,
-            count: userNotifications.length,
-            sample: userNotifications[0],
-        });
         const queryBuilder = this.notificationsRepository
             .createQueryBuilder('notification')
-            .leftJoinAndSelect('notification.project', 'project')
-            .leftJoinAndSelect('notification.task', 'task')
+            .leftJoin('notification.task', 'task')
+            .select([
+            'notification.id',
+            'notification.type',
+            'notification.title',
+            'notification.message',
+            'notification.projectId',
+            'notification.taskId',
+            'notification.userId',
+            'notification.assignedToId',
+            'notification.isRead',
+            'notification.createdAt',
+            'task.id',
+            'task.type',
+        ])
             .where('notification.userId = :userId', { userId });
         if (userRole && userRole !== 'FOUNDER/CEO' && userRole !== 'Project Manager') {
             const roleToTaskTypeMap = {
@@ -276,13 +271,7 @@ let NotificationsService = class NotificationsService {
                 });
             }
         }
-        const result = await queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
-        console.log('[NotificationsService] Query result:', {
-            userId,
-            count: result.length,
-            sample: result[0],
-        });
-        return result;
+        return queryBuilder.orderBy('notification.createdAt', 'DESC').getMany();
     }
     async findUnreadCount(userId) {
         return this.notificationsRepository.count({

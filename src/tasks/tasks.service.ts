@@ -24,6 +24,7 @@ import { User, UserRole } from '../users/entities/user.entity';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { CreateTaskQuestionDto } from './dto/create-task-question.dto';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
+import { debugLog } from '../shared/debug-log';
 
 @Injectable()
 export class TasksService {
@@ -69,7 +70,7 @@ export class TasksService {
     taskType?: string,
   ) {
     try {
-      console.log(
+      debugLog(
         `[TasksService] Finding tasks - projectId: ${projectId}, assignedToId: ${assignedToId}, limit: ${limit}, loadAll: ${loadAll}, taskType: ${taskType}`,
       );
 
@@ -115,14 +116,14 @@ export class TasksService {
         const defaultLimit = limit || 200; // Increased default limit to 200
         if (!projectId && !assignedToId) {
           queryBuilder.limit(defaultLimit);
-          console.log(
+          debugLog(
             `[TasksService] No filters provided - limiting to ${defaultLimit} most recent tasks for performance`,
           );
         } else if (limit) {
           queryBuilder.limit(limit);
         }
       } else {
-        console.log('[TasksService] Loading all tasks (loadAll=true)');
+        debugLog('[TasksService] Loading all tasks (loadAll=true)');
       }
 
       const tasks = await queryBuilder.orderBy('task.createdAt', 'DESC').getMany();
@@ -135,7 +136,7 @@ export class TasksService {
         }
       });
 
-      console.log(`[TasksService] Found ${tasks.length} tasks`);
+      debugLog(`[TasksService] Found ${tasks.length} tasks`);
       return tasks;
     } catch (error: any) {
       console.error('[TasksService] Error in findAll:', error);
@@ -147,7 +148,7 @@ export class TasksService {
 
       // If the error is related to enum, try to fix it and retry
       if (error.message && error.message.includes('enum')) {
-        console.log('[TasksService] Enum error detected, attempting to fix...');
+        debugLog('[TasksService] Enum error detected, attempting to fix...');
         try {
           // Use raw query to update enum values
           await this.tasksRepository.manager.query(
@@ -534,7 +535,7 @@ export class TasksService {
             );
 
           await Promise.all(notificationPromises);
-          console.log(
+          debugLog(
             `[TasksService] Created notifications for ${departmentUsers.length} department members for unassigned task ${savedTask.id}`,
           );
 

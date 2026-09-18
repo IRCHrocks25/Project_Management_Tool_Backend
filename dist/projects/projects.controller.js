@@ -23,6 +23,7 @@ const update_onboarding_phase_dto_1 = require("./dto/update-onboarding-phase.dto
 const webhook_guard_1 = require("./guards/webhook.guard");
 const user_entity_1 = require("../users/entities/user.entity");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const debug_log_1 = require("../shared/debug-log");
 let ProjectsController = class ProjectsController {
     constructor(projectsService) {
         this.projectsService = projectsService;
@@ -90,7 +91,7 @@ let ProjectsController = class ProjectsController {
             if (!isProjectManager && !isFounder) {
                 throw new common_1.ForbiddenException(`Only Project Managers and Admins can mark projects as complete. Your role: "${userRole || 'undefined'}"`);
             }
-            console.log(`[ProjectsController] Completing project ${id} for user ${req.user?.userId}`);
+            (0, debug_log_1.debugLog)(`[ProjectsController] Completing project ${id} for user ${req.user?.userId}`);
             return await this.projectsService.completeProject(id, req.user?.userId);
         }
         catch (error) {

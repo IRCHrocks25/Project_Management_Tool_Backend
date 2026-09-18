@@ -15,6 +15,7 @@ import { Task, TaskStatus, TaskType } from '../tasks/entities/task.entity';
 import { TaskQuestion } from '../tasks/entities/task-question.entity';
 import { UserRole } from '../users/entities/user.entity';
 import { UpdateDailyFocusDto } from './dto/update-daily-focus.dto';
+import { debugLog } from '../shared/debug-log';
 
 /** Task types that can appear on the daily focus board (excludes General if desired — include all enum values) */
 export const DAILY_FOCUS_DEPARTMENT_KEYS = Object.values(TaskType) as string[];
@@ -154,7 +155,7 @@ export class DailyFocusService {
 
       // Keep department dashboards synced with PM daily huddle priorities.
       // Persist task-level ordering so department dashboards reflect exact discussed tasks.
-      console.log(
+      debugLog(
         `[DailyFocus→DeptSync] date=${dto.date} items=${items.length} — deleting old DepartmentProjectFocusItem rows`,
       );
       await em.delete(DepartmentProjectFocusItem, { focusDate: dto.date });
@@ -180,7 +181,7 @@ export class DailyFocusService {
           return true;
         });
 
-        console.log(
+        debugLog(
           `[DailyFocus→DeptSync] dept=${departmentKey} uniqueTasks=${uniqueRankedTasks.length} (from ${ranked.length} ranked tasks)`,
         );
         let sortOrder = 0;
@@ -195,7 +196,7 @@ export class DailyFocusService {
           });
           await em.save(pin);
         }
-        console.log(
+        debugLog(
           `[DailyFocus→DeptSync] dept=${departmentKey} — saved ${sortOrder} DepartmentProjectFocusItem rows for date=${dto.date}`,
         );
       }

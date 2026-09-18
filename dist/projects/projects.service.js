@@ -25,6 +25,7 @@ const task_file_history_entity_1 = require("../tasks/entities/task-file-history.
 const user_entity_1 = require("../users/entities/user.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 const auth_service_1 = require("../auth/auth.service");
+const debug_log_1 = require("../shared/debug-log");
 const ONBOARDING_PHASE_ORDER = [
     project_entity_1.OnboardingPhase.PAYMENT_CONFIRMED,
     project_entity_1.OnboardingPhase.WELCOME_AND_CALL_BOOKING,
@@ -79,9 +80,9 @@ let ProjectsService = class ProjectsService {
         if (!pmId) {
             const webhookPM = await this.authService.getOrCreateWebhookPM();
             pmId = webhookPM.id;
-            console.log(`[Webhook] Using webhook PM account: ${pmId} (${webhookPM.name})`);
+            (0, debug_log_1.debugLog)(`[Webhook] Using webhook PM account: ${pmId} (${webhookPM.name})`);
         }
-        console.log(`[Webhook] Creating project: ${webhookDto.clientName} (${webhookDto.clientType}) - Package: ${webhookDto.package}, PM: ${pmId}, Source: ${webhookDto.sourceEmail || 'unknown'}`);
+        (0, debug_log_1.debugLog)(`[Webhook] Creating project: ${webhookDto.clientName} (${webhookDto.clientType}) - Package: ${webhookDto.package}, PM: ${pmId}, Source: ${webhookDto.sourceEmail || 'unknown'}`);
         const createProjectDto = {
             clientName: webhookDto.clientName,
             clientType: webhookDto.clientType,
@@ -98,7 +99,7 @@ let ProjectsService = class ProjectsService {
                     : 'Created via webhook',
         };
         const project = await this.create(createProjectDto, pmId);
-        console.log(`[Webhook] Project created successfully: ${project.id} - ${project.clientName}`);
+        (0, debug_log_1.debugLog)(`[Webhook] Project created successfully: ${project.id} - ${project.clientName}`);
         return project;
     }
     async getWebhookPM() {
@@ -186,37 +187,50 @@ let ProjectsService = class ProjectsService {
                 }
             }
             const projects = await queryBuilder.orderBy('project.createdAt', 'DESC').getMany();
-            for (const project of projects) {
+            const tasksByProject = new Map();
+            if (projects.length > 0) {
                 try {
-                    project.tasks = await this.tasksRepository.find({
-                        where: { projectId: project.id, isArchived: false },
+                    const tasks = await this.tasksRepository.find({
+                        where: {
+                            projectId: (0, typeorm_2.In)(projects.map((project) => project.id)),
+                            isArchived: false,
+                        },
                         relations: ['assignedTo'],
                     });
-                    for (const task of project.tasks) {
+                    for (const task of tasks) {
                         if (task.type === 'Intake') {
                             task.type = task_entity_1.TaskType.INTAKE;
                             await this.tasksRepository.save(task);
                         }
-                    }
-                    if (project.stage === project_entity_1.ProjectStage.INTAKE) {
-                        const onboardingTasks = project.tasks.filter((t) => t.type === task_entity_1.TaskType.INTAKE || t.type === 'Onboarding');
-                        if (onboardingTasks.length === 0) {
-                            console.log(`[ProjectsService] No onboarding tasks found for project ${project.id} (${project.clientName}) in findAll, creating them...`);
-                            try {
-                                const newTasks = this.generateIntakeTasks(project.id);
-                                const savedTasks = await this.tasksRepository.save(newTasks);
-                                project.tasks = [...project.tasks, ...savedTasks];
-                                console.log(`[ProjectsService] Created ${savedTasks.length} onboarding tasks for project ${project.id}`);
-                            }
-                            catch (createError) {
-                                console.error(`[ProjectsService] Error creating onboarding tasks for project ${project.id}:`, createError);
-                            }
+                        const existing = tasksByProject.get(task.projectId);
+                        if (existing) {
+                            existing.push(task);
+                        }
+                        else {
+                            tasksByProject.set(task.projectId, [task]);
                         }
                     }
                 }
                 catch (error) {
-                    console.error(`Error loading tasks for project ${project.id}:`, error);
-                    project.tasks = [];
+                    console.error('Error loading tasks for projects:', error);
+                }
+            }
+            for (const project of projects) {
+                project.tasks = tasksByProject.get(project.id) || [];
+                if (project.stage === project_entity_1.ProjectStage.INTAKE) {
+                    const onboardingTasks = project.tasks.filter((t) => t.type === task_entity_1.TaskType.INTAKE || t.type === 'Onboarding');
+                    if (onboardingTasks.length === 0) {
+                        (0, debug_log_1.debugLog)(`[ProjectsService] No onboarding tasks found for project ${project.id} (${project.clientName}) in findAll, creating them...`);
+                        try {
+                            const newTasks = this.generateIntakeTasks(project.id);
+                            const savedTasks = await this.tasksRepository.save(newTasks);
+                            project.tasks = [...project.tasks, ...savedTasks];
+                            (0, debug_log_1.debugLog)(`[ProjectsService] Created ${savedTasks.length} onboarding tasks for project ${project.id}`);
+                        }
+                        catch (createError) {
+                            console.error(`[ProjectsService] Error creating onboarding tasks for project ${project.id}:`, createError);
+                        }
+                    }
                 }
             }
             return projects;
@@ -228,7 +242,7 @@ let ProjectsService = class ProjectsService {
     }
     async findOne(id) {
         try {
-            console.log(`[ProjectsService] Finding project with ID: ${id}`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Finding project with ID: ${id}`);
             const project = await this.projectsRepository.findOne({
                 where: { id },
                 relations: [
@@ -240,9 +254,9 @@ let ProjectsService = class ProjectsService {
                     'teamMembers.user',
                 ],
             });
-            console.log(`[ProjectsService] Project found:`, project ? `Yes (${project.clientName})` : 'No');
+            (0, debug_log_1.debugLog)(`[ProjectsService] Project found:`, project ? `Yes (${project.clientName})` : 'No');
             if (!project) {
-                console.log(`[ProjectsService] Project not found for ID: ${id}`);
+                (0, debug_log_1.debugLog)(`[ProjectsService] Project not found for ID: ${id}`);
                 throw new common_1.NotFoundException(`Project not found with ID: ${id}`);
             }
             try {
@@ -250,7 +264,7 @@ let ProjectsService = class ProjectsService {
                     where: { projectId: id, isArchived: false },
                     relations: ['assignedTo'],
                 });
-                console.log(`[ProjectsService] Loaded ${project.tasks.length} tasks for project ${id}`);
+                (0, debug_log_1.debugLog)(`[ProjectsService] Loaded ${project.tasks.length} tasks for project ${id}`);
                 for (const task of project.tasks) {
                     if (task.type === 'Intake') {
                         task.type = task_entity_1.TaskType.INTAKE;
@@ -260,7 +274,7 @@ let ProjectsService = class ProjectsService {
                 if (project.stage === project_entity_1.ProjectStage.INTAKE) {
                     const onboardingTasks = project.tasks.filter((t) => t.type === task_entity_1.TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake');
                     if (onboardingTasks.length === 0) {
-                        console.log(`[ProjectsService] No onboarding tasks found for project ${id}, creating them automatically...`);
+                        (0, debug_log_1.debugLog)(`[ProjectsService] No onboarding tasks found for project ${id}, creating them automatically...`);
                         try {
                             const intakeTasks = this.generateIntakeTasks(id);
                             const savedTasks = [];
@@ -269,12 +283,12 @@ let ProjectsService = class ProjectsService {
                                 const enumCheck = await this.tasksRepository.manager.query(`SELECT unnest(enum_range(NULL::tasks_type_enum))::text as enum_value`);
                                 const hasOnboarding = enumCheck.some((e) => e.enum_value === 'Onboarding');
                                 if (!hasOnboarding) {
-                                    console.log(`[ProjectsService] 'Onboarding' not in enum, will use 'Intake' and update`);
+                                    (0, debug_log_1.debugLog)(`[ProjectsService] 'Onboarding' not in enum, will use 'Intake' and update`);
                                     enumValue = 'Intake';
                                 }
                             }
                             catch (enumError) {
-                                console.log(`[ProjectsService] Could not check enum, defaulting to 'Onboarding'`);
+                                (0, debug_log_1.debugLog)(`[ProjectsService] Could not check enum, defaulting to 'Onboarding'`);
                             }
                             for (const taskData of intakeTasks) {
                                 try {
@@ -287,7 +301,7 @@ let ProjectsService = class ProjectsService {
                                                 await this.tasksRepository.manager.query(`UPDATE tasks SET type = 'Onboarding' WHERE id = $1 AND type = 'Intake'`, [result[0].id]);
                                             }
                                             catch (updateError) {
-                                                console.log(`[ProjectsService] Could not update task ${result[0].id} to 'Onboarding', keeping 'Intake'`);
+                                                (0, debug_log_1.debugLog)(`[ProjectsService] Could not update task ${result[0].id} to 'Onboarding', keeping 'Intake'`);
                                             }
                                         }
                                         const savedTask = await this.tasksRepository.findOne({
@@ -296,7 +310,7 @@ let ProjectsService = class ProjectsService {
                                         });
                                         if (savedTask) {
                                             savedTasks.push(savedTask);
-                                            console.log(`[ProjectsService] Auto-created task: ${savedTask.title} (${savedTask.type})`);
+                                            (0, debug_log_1.debugLog)(`[ProjectsService] Auto-created task: ${savedTask.title} (${savedTask.type})`);
                                         }
                                     }
                                 }
@@ -315,14 +329,14 @@ let ProjectsService = class ProjectsService {
                                 }
                             }
                             project.tasks = allTasks;
-                            console.log(`[ProjectsService] Auto-created ${savedTasks.length} onboarding tasks. Total tasks now: ${project.tasks.length}`);
+                            (0, debug_log_1.debugLog)(`[ProjectsService] Auto-created ${savedTasks.length} onboarding tasks. Total tasks now: ${project.tasks.length}`);
                         }
                         catch (createError) {
                             console.error(`[ProjectsService] Error auto-creating onboarding tasks:`, createError.message);
                         }
                     }
                     else {
-                        console.log(`[ProjectsService] Project ${id} already has ${onboardingTasks.length} onboarding tasks`);
+                        (0, debug_log_1.debugLog)(`[ProjectsService] Project ${id} already has ${onboardingTasks.length} onboarding tasks`);
                     }
                 }
             }
@@ -381,7 +395,7 @@ let ProjectsService = class ProjectsService {
             }
             project.pmId = updateProjectDto.pmId;
             project.pm = pmUser;
-            console.log(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Updated project ${id} pmId to ${updateProjectDto.pmId} (${pmUser.name})`);
         }
         if (updateProjectDto.associatedLink !== undefined) {
             const normalizedLink = updateProjectDto.associatedLink.trim();
@@ -408,25 +422,25 @@ let ProjectsService = class ProjectsService {
     }
     async generateOnboardingTasks(id) {
         try {
-            console.log(`[ProjectsService] generateOnboardingTasks called for project ${id}`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] generateOnboardingTasks called for project ${id}`);
             const project = await this.projectsRepository.findOne({ where: { id } });
             if (!project) {
-                console.log(`[ProjectsService] Project not found: ${id}`);
+                (0, debug_log_1.debugLog)(`[ProjectsService] Project not found: ${id}`);
                 throw new common_1.NotFoundException('Project not found');
             }
-            console.log(`[ProjectsService] Project found: ${project.clientName}, stage: ${project.stage}`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Project found: ${project.clientName}, stage: ${project.stage}`);
             const existingTasks = await this.tasksRepository.find({
                 where: { projectId: id },
             });
             const onboardingTasks = existingTasks.filter((t) => t.type === task_entity_1.TaskType.INTAKE || t.type === 'Onboarding' || t.type === 'Intake');
-            console.log(`[ProjectsService] Found ${onboardingTasks.length} existing onboarding tasks out of ${existingTasks.length} total tasks`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Found ${onboardingTasks.length} existing onboarding tasks out of ${existingTasks.length} total tasks`);
             if (onboardingTasks.length > 0) {
-                console.log(`[ProjectsService] Onboarding tasks already exist, returning them`);
+                (0, debug_log_1.debugLog)(`[ProjectsService] Onboarding tasks already exist, returning them`);
                 return { message: 'Onboarding tasks already exist', tasks: onboardingTasks };
             }
-            console.log(`[ProjectsService] Generating ${6} onboarding tasks...`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Generating ${6} onboarding tasks...`);
             const intakeTasks = this.generateIntakeTasks(id);
-            console.log(`[ProjectsService] Generated tasks:`, intakeTasks.map((t) => ({ title: t.title, type: t.type })));
+            (0, debug_log_1.debugLog)(`[ProjectsService] Generated tasks:`, intakeTasks.map((t) => ({ title: t.title, type: t.type })));
             const savedTasks = [];
             for (const taskData of intakeTasks) {
                 try {
@@ -434,17 +448,17 @@ let ProjectsService = class ProjectsService {
                         const task = this.tasksRepository.create(taskData);
                         const saved = await this.tasksRepository.save(task);
                         savedTasks.push(saved);
-                        console.log(`[ProjectsService] Saved task via TypeORM: ${saved.title} (${saved.id})`);
+                        (0, debug_log_1.debugLog)(`[ProjectsService] Saved task via TypeORM: ${saved.title} (${saved.id})`);
                     }
                     catch (typeormError) {
-                        console.log(`[ProjectsService] TypeORM save failed, trying raw SQL for ${taskData.title}:`, typeormError.message);
+                        (0, debug_log_1.debugLog)(`[ProjectsService] TypeORM save failed, trying raw SQL for ${taskData.title}:`, typeormError.message);
                         try {
                             const enumCheck = await this.tasksRepository.manager.query(`SELECT unnest(enum_range(NULL::tasks_type_enum))::text as enum_value`);
-                            console.log(`[ProjectsService] Available enum values:`, enumCheck.map((e) => e.enum_value));
+                            (0, debug_log_1.debugLog)(`[ProjectsService] Available enum values:`, enumCheck.map((e) => e.enum_value));
                             let enumValue = 'Onboarding';
                             const hasOnboarding = enumCheck.some((e) => e.enum_value === 'Onboarding');
                             if (!hasOnboarding) {
-                                console.log(`[ProjectsService] 'Onboarding' not in enum, using 'Intake' instead`);
+                                (0, debug_log_1.debugLog)(`[ProjectsService] 'Onboarding' not in enum, using 'Intake' instead`);
                                 enumValue = 'Intake';
                             }
                             const result = await this.tasksRepository.manager.query(`INSERT INTO tasks (id, "projectId", title, description, type, status, "isCompleted", "createdAt", "updatedAt")
@@ -463,7 +477,7 @@ let ProjectsService = class ProjectsService {
                                         await this.tasksRepository.manager.query(`UPDATE tasks SET type = 'Onboarding' WHERE id = $1`, [result[0].id]);
                                     }
                                     catch (updateError) {
-                                        console.log(`[ProjectsService] Could not update to 'Onboarding', keeping 'Intake'`);
+                                        (0, debug_log_1.debugLog)(`[ProjectsService] Could not update to 'Onboarding', keeping 'Intake'`);
                                     }
                                 }
                                 const savedTask = await this.tasksRepository.findOne({
@@ -472,7 +486,7 @@ let ProjectsService = class ProjectsService {
                                 });
                                 if (savedTask) {
                                     savedTasks.push(savedTask);
-                                    console.log(`[ProjectsService] Saved task via raw SQL: ${savedTask.title} (${savedTask.id})`);
+                                    (0, debug_log_1.debugLog)(`[ProjectsService] Saved task via raw SQL: ${savedTask.title} (${savedTask.id})`);
                                 }
                             }
                         }
@@ -488,7 +502,7 @@ let ProjectsService = class ProjectsService {
                     console.error(`[ProjectsService] Task error details:`, taskError.message, taskError.stack);
                 }
             }
-            console.log(`[ProjectsService] Successfully created ${savedTasks.length} onboarding tasks`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Successfully created ${savedTasks.length} onboarding tasks`);
             return { message: 'Onboarding tasks created successfully', tasks: savedTasks };
         }
         catch (error) {
@@ -542,7 +556,7 @@ let ProjectsService = class ProjectsService {
                     project.completedByUserId = userId;
                 }
                 await transactionalEntityManager.save(project_entity_1.Project, project);
-                console.log(`[ProjectsService] Project ${id} marked as complete by user ${userId}`);
+                (0, debug_log_1.debugLog)(`[ProjectsService] Project ${id} marked as complete by user ${userId}`);
                 return project;
             });
         }
@@ -756,7 +770,7 @@ let ProjectsService = class ProjectsService {
     }
     async getActivity(projectId) {
         try {
-            console.log(`[ProjectsService] Getting activity for project: ${projectId}`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Getting activity for project: ${projectId}`);
             const project = await this.findOne(projectId);
             if (!project) {
                 console.error(`[ProjectsService] Project not found: ${projectId}`);
@@ -963,7 +977,7 @@ let ProjectsService = class ProjectsService {
                 }
             }
             activities.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-            console.log(`[ProjectsService] Returning ${activities.length} activities for project ${projectId}`);
+            (0, debug_log_1.debugLog)(`[ProjectsService] Returning ${activities.length} activities for project ${projectId}`);
             return activities;
         }
         catch (error) {

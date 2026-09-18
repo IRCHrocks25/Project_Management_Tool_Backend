@@ -12,7 +12,7 @@ export interface SubmissionResponse {
   blockId: string;
   type: string;
   text?: string;
-  imageUrls?: string[]; // Array of Cloudinary URLs
+  imageUrls?: string[]; // Array of Iceberg delivery URLs
 }
 
 @Entity('client_update_form_submissions')

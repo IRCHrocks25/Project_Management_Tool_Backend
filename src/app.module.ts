@@ -17,6 +17,11 @@ import { DailyFocusModule } from './daily-focus/daily-focus.module';
 import { DepartmentProjectFocusModule } from './department-project-focus/department-project-focus.module';
 import { MonthlyRemindersModule } from './monthly-reminders/monthly-reminders.module';
 import { BoardViewModule } from './board-view/board-view.module';
+import { ProductsModule } from './products/products.module';
+import { ProductTicketsModule } from './product-tickets/product-tickets.module';
+import { ProductSopsModule } from './product-sops/product-sops.module';
+import { ProductSearchModule } from './product-search/product-search.module';
+import { ProductVaultModule } from './product-vault/product-vault.module';
 
 @Module({
   imports: [
@@ -40,6 +45,11 @@ import { BoardViewModule } from './board-view/board-view.module';
     DepartmentProjectFocusModule,
     MonthlyRemindersModule,
     BoardViewModule,
+    ProductsModule,
+    ProductTicketsModule,
+    ProductSopsModule,
+    ProductSearchModule,
+    ProductVaultModule,
   ],
   controllers: [AppController],
   providers: [AppService],

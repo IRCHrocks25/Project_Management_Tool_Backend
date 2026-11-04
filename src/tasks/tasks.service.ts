@@ -6,6 +6,7 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
+import { extractMentionIds } from '../shared/mentions';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus, TaskType } from './entities/task.entity';
@@ -667,14 +668,7 @@ export class TasksService {
 
   /** Extract user IDs from text that contains @name[[USER_ID:uuid]] patterns (frontend format). */
   private extractMentionIdsFromText(text: string | null | undefined): string[] {
-    if (!text || typeof text !== 'string') return [];
-    const regex = /\[\[USER_ID:([a-fA-F0-9-]{36})\]\]/g;
-    const ids: string[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = regex.exec(text)) !== null) {
-      if (m[1] && !ids.includes(m[1])) ids.push(m[1]);
-    }
-    return ids;
+    return extractMentionIds(text);
   }
 
   // Task Conversation Methods

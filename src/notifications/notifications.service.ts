@@ -70,6 +70,8 @@ export class NotificationsService {
     projectId?: string;
     taskId?: string;
     assignedToId?: string;
+    productId?: string;
+    link?: string;
   }) {
     const notification = this.notificationsRepository.create(data);
     const saved = await this.notificationsRepository.save(notification);
@@ -81,6 +83,7 @@ export class NotificationsService {
       data.projectId,
       data.taskId,
       data.type,
+      data.link,
     ).catch((err) =>
       console.error('[NotificationsService] Failed to send notification email:', err),
     );
@@ -95,6 +98,8 @@ export class NotificationsService {
         taskId: saved.taskId ?? undefined,
         userId: saved.userId,
         assignedToId: saved.assignedToId ?? undefined,
+        productId: saved.productId ?? undefined,
+        link: saved.link ?? undefined,
         isRead: saved.isRead,
         createdAt:
           saved.createdAt instanceof Date
@@ -119,6 +124,7 @@ export class NotificationsService {
     projectId?: string,
     taskId?: string,
     notificationType?: NotificationType,
+    link?: string,
   ): Promise<void> {
     const webhookUrl =
       this.configService.get<string>('NOTIFICATION_WEBHOOK_URL') ||
@@ -138,9 +144,11 @@ export class NotificationsService {
     );
     let viewLink = '';
     if (frontendUrl) {
-      viewLink = projectId
-        ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}&tab=details` : ''}`
-        : frontendUrl;
+      viewLink = link
+        ? `${frontendUrl}${link.startsWith('/') ? '' : '/'}${link}`
+        : projectId
+          ? `${frontendUrl}/project/${projectId}${taskId ? `?task=${taskId}&tab=details` : ''}`
+          : frontendUrl;
     }
 
     await this.sendNotificationViaWebhook({
@@ -326,6 +334,8 @@ export class NotificationsService {
         'notification.taskId',
         'notification.userId',
         'notification.assignedToId',
+        'notification.productId',
+        'notification.link',
         'notification.isRead',
         'notification.createdAt',
         'task.id',

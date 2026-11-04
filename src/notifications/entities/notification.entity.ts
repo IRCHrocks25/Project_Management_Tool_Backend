@@ -22,6 +22,9 @@ export enum NotificationType {
   MENTION = 'mention', // User was mentioned in a task conversation
   TASK_UPDATE = 'task_update', // Task-related update (e.g., question answered)
   TASK_TRANSFER = 'TASK_TRANSFER', // Task transferred between departments
+  PRODUCT_MENTION = 'product_mention', // Mentioned in a Katalyst Hub update, reply, ticket or SOP
+  PRODUCT_ASSIGNED = 'product_assigned', // Assigned a Hub ticket or made owner of a demo account / team role
+  PRODUCT_REPLY = 'product_reply', // Someone replied to your Hub update
 }
 
 @Entity('notifications')
@@ -64,6 +67,12 @@ export class Notification {
 
   @Column({ nullable: true })
   assignedToId: string; // For task notifications - the user assigned to the task
+
+  @Column({ nullable: true })
+  productId: string; // Katalyst Hub product the notification is about
+
+  @Column({ nullable: true })
+  link: string; // Frontend path to open, e.g. /products/courseforge/tickets?ticket=CF-12
 
   @Column({ default: false })
   isRead: boolean;

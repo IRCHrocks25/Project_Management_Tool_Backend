@@ -46,26 +46,6 @@ export const SHARE_DURATIONS_MS: Record<'1h' | '24h' | '7d', number> = {
   '7d': 7 * 24 * 60 * 60 * 1000,
 };
 
-/** FRONTEND_URL may be a comma/space separated list; use the first valid http(s) URL. */
-export function normalizeFrontendUrl(rawUrl?: string | null): string {
-  if (!rawUrl) return '';
-  const candidates = rawUrl
-    .split(/[\s,]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-  for (const candidate of candidates) {
-    try {
-      const parsed = new URL(candidate);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-        return parsed.toString().replace(/\/$/, '');
-      }
-    } catch {
-      // Skip invalid candidates.
-    }
-  }
-  return '';
-}
-
 /** Safe user shape for responses. */
 export function safeUser(
   u: { id: string; name: string; avatarUrl?: string | null; role?: string | null } | null | undefined,

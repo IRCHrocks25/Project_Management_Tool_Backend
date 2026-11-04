@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { NotificationsGateway } from './notifications.gateway';
+import { publicAppUrl } from '../shared/public-app-url';
 
 @Injectable()
 export class NotificationsService {
@@ -35,31 +36,6 @@ export class NotificationsService {
       return 'SEO/GEO';
 
     return null;
-  }
-
-  /**
-   * FRONTEND_URL can sometimes be provided as a comma/newline separated list.
-   * We pick the first valid http(s) URL to avoid malformed email links.
-   */
-  private normalizeFrontendUrl(rawUrl?: string): string {
-    if (!rawUrl) return '';
-    const candidates = rawUrl
-      .split(/[\s,]+/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-    for (const candidate of candidates) {
-      try {
-        const parsed = new URL(candidate);
-        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-          return parsed.toString().replace(/\/$/, '');
-        }
-      } catch {
-        // Skip invalid candidates.
-      }
-    }
-
-    return '';
   }
 
   async create(data: {
@@ -139,9 +115,7 @@ export class NotificationsService {
     if (user.emailNotificationsEnabled === false) return;
 
     const appName = this.configService.get<string>('APP_NAME', 'Katalyst PM');
-    const frontendUrl = this.normalizeFrontendUrl(
-      this.configService.get<string>('FRONTEND_URL', ''),
-    );
+    const frontendUrl = publicAppUrl(this.configService.get<string>('FRONTEND_URL', ''));
     let viewLink = '';
     if (frontendUrl) {
       viewLink = link

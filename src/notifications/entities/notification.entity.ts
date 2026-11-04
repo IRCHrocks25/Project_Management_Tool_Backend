@@ -25,6 +25,7 @@ export enum NotificationType {
   PRODUCT_MENTION = 'product_mention', // Mentioned in a Katalyst Hub update, reply, ticket or SOP
   PRODUCT_ASSIGNED = 'product_assigned', // Assigned a Hub ticket or made owner of a demo account / team role
   PRODUCT_REPLY = 'product_reply', // Someone replied to your Hub update
+  FORM_RESPONSE = 'form_response', // A client submitted one of your forms
 }
 
 @Entity('notifications')

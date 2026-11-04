@@ -22,6 +22,7 @@ import { ProductTicketsModule } from './product-tickets/product-tickets.module';
 import { ProductSopsModule } from './product-sops/product-sops.module';
 import { ProductSearchModule } from './product-search/product-search.module';
 import { ProductVaultModule } from './product-vault/product-vault.module';
+import { FormsModule } from './forms/forms.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ProductVaultModule } from './product-vault/product-vault.module';
     ProductSopsModule,
     ProductSearchModule,
     ProductVaultModule,
+    FormsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

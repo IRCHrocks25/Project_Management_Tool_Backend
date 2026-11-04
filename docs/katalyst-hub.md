@@ -13,7 +13,7 @@ Clickable prototype (the UX reference): https://claude.ai/artifact/Tsdq4PcMtET48
 
 ## Going live
 1. Generate a vault key once (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`), set `VAULT_ENCRYPTION_KEY` on the production backend, and store a copy somewhere safe. Losing it makes every saved password unreadable; changing it does the same.
-2. Run `npm run migrate:katalyst-hub` against the production database (it also adds the six products by name).
+2. Run `npm run migrate:katalyst-hub` against the production database. It creates no products; people add them in the Hub.
 3. Deploy backend, then frontend.
 
 ## Conventions (backend, NestJS + TypeORM + Postgres)

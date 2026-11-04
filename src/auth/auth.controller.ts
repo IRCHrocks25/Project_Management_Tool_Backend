@@ -112,18 +112,7 @@ export class AuthController {
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
-    debugLog('\n🚀 [CONTROLLER] /auth/forgot-password endpoint called!');
-    debugLog('🚀 [CONTROLLER] Request body:', JSON.stringify(forgotPasswordDto, null, 2));
-    debugLog('🚀 [CONTROLLER] Calling authService.forgotPassword()...\n');
-
-    try {
-      const result = await this.authService.forgotPassword(forgotPasswordDto);
-      debugLog('🚀 [CONTROLLER] forgotPassword completed successfully');
-      return result;
-    } catch (error) {
-      console.error('🚀 [CONTROLLER] Error in forgotPassword:', error);
-      throw error;
-    }
+    return this.authService.forgotPassword(forgotPasswordDto);
   }
 
   @Post('reset-password')

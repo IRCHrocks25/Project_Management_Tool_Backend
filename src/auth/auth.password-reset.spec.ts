@@ -41,6 +41,8 @@ describe('forgot password', () => {
     const code = await request(ctx);
     expect(code).toMatch(/^\d{6}$/);
     expect(ctx.user.otpCode).not.toContain(code);
+    // users.otpCode is VARCHAR(10) in production; anything longer fails for real accounts
+    expect(ctx.user.otpCode.length).toBeLessThanOrEqual(10);
   });
 
   it('waits a minute before sending another code', async () => {

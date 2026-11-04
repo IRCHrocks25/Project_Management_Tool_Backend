@@ -28,6 +28,7 @@ import { debugLog } from '../shared/debug-log';
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
+const OTP_HASH_LENGTH = 10;
 
 @Injectable()
 export class AuthService {
@@ -363,9 +364,12 @@ export class AuthService {
       .getOne();
   }
 
-  /** Stored instead of the code, so a database leak doesn't hand out working codes. */
+  /**
+   * Stored instead of the code, so a database leak doesn't hand out working codes.
+   * Cut to 10 characters because users.otpCode is VARCHAR(10) in production.
+   */
   private hashOtp(userId: string, code: string): string {
-    return createHash('sha256').update(`${userId}:${code}`).digest('hex');
+    return createHash('sha256').update(`${userId}:${code}`).digest('hex').slice(0, OTP_HASH_LENGTH);
   }
 
   /**

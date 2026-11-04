@@ -6,6 +6,7 @@ import { Notification, NotificationType } from './entities/notification.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { NotificationsGateway } from './notifications.gateway';
 import { publicAppUrl } from '../shared/public-app-url';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class NotificationsService {
@@ -16,6 +17,7 @@ export class NotificationsService {
     private usersRepository: Repository<User>,
     private configService: ConfigService,
     private notificationsGateway: NotificationsGateway,
+    private emailService: EmailService,
   ) {}
 
   /**
@@ -51,14 +53,13 @@ export class NotificationsService {
   }) {
     const notification = this.notificationsRepository.create(data);
     const saved = await this.notificationsRepository.save(notification);
-    // Send email via webhook (n8n); fire-and-forget
+    // Fire-and-forget: a failed email must not break the action that triggered it
     this.sendNotificationEmail(
       data.userId,
       data.title,
       data.message,
       data.projectId,
       data.taskId,
-      data.type,
       data.link,
     ).catch((err) =>
       console.error('[NotificationsService] Failed to send notification email:', err),
@@ -89,24 +90,15 @@ export class NotificationsService {
     return saved;
   }
 
-  /**
-   * Send notification email via n8n webhook when NOTIFICATION_WEBHOOK_URL is set.
-   * If the URL is not set, no email is sent (in-app notification only).
-   */
+  /** Emails the recipient unless they have no address or turned email notifications off. */
   private async sendNotificationEmail(
     userId: string,
     title: string,
     message: string,
     projectId?: string,
     taskId?: string,
-    notificationType?: NotificationType,
     link?: string,
   ): Promise<void> {
-    const webhookUrl =
-      this.configService.get<string>('NOTIFICATION_WEBHOOK_URL') ||
-      'https://katalyst-crm2.fly.dev/webhook/60052967-5dd2-44f1-b81d-771c99f6e133';
-    if (!webhookUrl) return;
-
     const user = await this.usersRepository.findOne({
       where: { id: userId },
       select: ['email', 'name', 'emailNotificationsEnabled'],
@@ -125,121 +117,14 @@ export class NotificationsService {
           : frontendUrl;
     }
 
-    await this.sendNotificationViaWebhook({
-      webhookUrl,
+    await this.emailService.sendNotification({
       to: user.email,
       userName: user.name ?? undefined,
-      notificationType: notificationType ?? null,
       title,
       message,
       viewLink: viewLink || undefined,
-      projectId,
-      taskId,
       appName,
     });
-  }
-
-  /**
-   * POST notification payload to n8n webhook so n8n can send the email.
-   * Fire-and-forget; errors are logged only.
-   */
-  private async sendNotificationViaWebhook(payload: {
-    webhookUrl: string;
-    to: string;
-    userName?: string;
-    notificationType: NotificationType | null;
-    title: string;
-    message: string;
-    viewLink?: string;
-    projectId?: string;
-    taskId?: string;
-    appName: string;
-  }): Promise<void> {
-    const { webhookUrl, ...body } = payload;
-    const requestBody = JSON.stringify({
-      to: body.to,
-      userName: body.userName ?? null,
-      notification_type: body.notificationType ?? 'task_update',
-      title: body.title,
-      message: body.message,
-      view_link: body.viewLink ?? null,
-      project_id: body.projectId ?? null,
-      task_id: body.taskId ?? null,
-      app_name: body.appName,
-      created_at: new Date().toISOString(),
-    });
-    try {
-      const webhookToken = this.configService.get<string>('WEBHOOK_TOKEN', 'katalystPM2026');
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'Webhook-Token': webhookToken,
-        },
-        body: requestBody,
-      });
-      if (!response.ok) {
-        console.error(
-          '[NotificationsService] Notification webhook failed:',
-          response.status,
-          await response.text(),
-        );
-      }
-    } catch (err) {
-      console.error('[NotificationsService] Notification webhook error:', err);
-    }
-  }
-
-  /**
-   * Send a test notification payload to the webhook (for dashboard "Test webhook" button).
-   * Uses NOTIFICATION_WEBHOOK_URL and Webhook-Token: katalystPM2026.
-   */
-  async sendTestWebhook(
-    email: string,
-    userName?: string,
-  ): Promise<{ success: boolean; message?: string }> {
-    const webhookUrl =
-      this.configService.get<string>('NOTIFICATION_WEBHOOK_URL') ||
-      'https://katalyst-crm2.fly.dev/webhook/60052967-5dd2-44f1-b81d-771c99f6e133';
-    if (!webhookUrl) {
-      return { success: false, message: 'NOTIFICATION_WEBHOOK_URL is not configured' };
-    }
-    const appName = this.configService.get<string>('APP_NAME', 'Katalyst PM');
-    const requestBody = JSON.stringify({
-      to: email,
-      userName: userName ?? null,
-      notification_type: 'task_update',
-      title: 'Test notification',
-      message:
-        'This is a test from the dashboard. If you received this email, the webhook is working.',
-      view_link: null,
-      project_id: null,
-      task_id: null,
-      app_name: appName,
-      created_at: new Date().toISOString(),
-    });
-    try {
-      const webhookToken = this.configService.get<string>('WEBHOOK_TOKEN', 'katalystPM2026');
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'Webhook-Token': webhookToken,
-        },
-        body: requestBody,
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        console.error('[NotificationsService] Test webhook failed:', response.status, text);
-        return { success: false, message: `Webhook returned ${response.status}: ${text}` };
-      }
-      return { success: true, message: 'Test notification sent to webhook' };
-    } catch (err: any) {
-      console.error('[NotificationsService] Test webhook error:', err);
-      return { success: false, message: err?.message || 'Request failed' };
-    }
   }
 
   /**

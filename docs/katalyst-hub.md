@@ -7,7 +7,7 @@ Clickable prototype (the UX reference): https://claude.ai/artifact/Tsdq4PcMtET48
 
 ## Decisions
 - Everyone signed in can view and edit every product. "Deleting" a product archives it (`archivedAt`), restorable.
-- Mentions, ticket assignments and replies notify in app (socket `new_notification`) and by email (existing `NotificationsService.create`, which emails through the n8n webhook and now uses `link` for the email button).
+- Mentions, ticket assignments and replies notify in app (socket `new_notification`) and by email (existing `NotificationsService.create`, which emails through Resend).
 - The existing `tickets` table / "Submit ticket" feature is unrelated and must not change. Hub tickets are `product_tickets`.
 - Vault reveal / copy / share is allowed for: product owner, product team members, users with role `FOUNDER/CEO` or `Project Manager`. Everyone else sees the item but not the secret (`canReveal: false`), and can't edit or delete it (403) — otherwise someone who can't read a password could overwrite it or make it shareable.
 
@@ -91,8 +91,8 @@ All child tables: `"productId" ... REFERENCES products(id) ON DELETE CASCADE`.
 
 ## Local development — read before running anything
 - The backend `.env` `DATABASE_URL` is the **live** database. Never run migrations, scripts or servers with it. Always use `DATABASE_URL=postgresql://localhost:5432/telos_local`.
-- The email webhook defaults to the live n8n server. Any locally run process that creates notifications must set `NOTIFICATION_WEBHOOK_URL=http://127.0.0.1:9/disabled`.
-- The user already runs a local backend on port 3000 (`npm run start:local`, auto-reloads) and the frontend on port 3001. Don't stop or kill them, and don't use the port 3000 backend for anything that creates notifications (it emails through the live webhook).
+- Notification emails go through Resend when `RESEND_API_KEY` is set. Addresses ending in `.local` (the seeded local accounts) are skipped, so never add a real address to `telos_local`. To test a real send, use `delivered@resend.dev`.
+- The user already runs a local backend on port 3000 (`npm run start:local`, auto-reloads) and the frontend on port 3001. Don't stop or kill them, and don't use the port 3000 backend for anything that creates notifications (with a real address in the database it would email that person).
 - Helpers building in parallel: don't start servers (builds write the shared `dist/`). Check your work with the type-check and jest unit tests (`src/**/*.spec.ts`, run with `node node_modules/jest/bin/jest.js <path>`). You may apply your own migration to `telos_local` with `DATABASE_URL=postgresql://localhost:5432/telos_local npm run migrate:katalyst-hub` and inspect it with `psql -d telos_local`. The lead runs the end-to-end API test on a separate instance with email disabled.
 - Local logins: see `scripts/seed-local.js` (e.g. `head.pm@telos.local`, password `telos-local-2026`).
 - Type-check with `node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json` (the `.bin` shims lack execute permission).

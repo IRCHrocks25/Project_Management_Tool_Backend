@@ -26,6 +26,7 @@ import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 
 const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
+@UseGuards(JwtAuthGuard)
 @Controller('tasks')
 export class TasksController {
   constructor(

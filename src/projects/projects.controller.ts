@@ -66,14 +66,19 @@ export class ProjectsController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   async findAll(@Request() req: any, @Query('includeArchived') includeArchived?: string) {
     const includeArchivedBool = includeArchived === 'true';
-    return this.projectsService.findAll(req.user?.userId, req.user?.role, includeArchivedBool);
+    // Everyone signed in sees all active projects, as they always have. Passing the PM role
+    // here would narrow Project Managers to their own projects and empty their dashboards.
+    return this.projectsService.findAll(req.user?.userId, '', includeArchivedBool);
   }
 
   @Get('stats')
+  @UseGuards(JwtAuthGuard)
   async getStats(@Request() req: any) {
-    return this.projectsService.getStats(req.user?.userId, req.user?.role);
+    // Company-wide totals, matching the project list above.
+    return this.projectsService.getStats(req.user?.userId, '');
   }
 
   @Get('rapid-prospect')
@@ -83,16 +88,19 @@ export class ProjectsController {
   }
 
   @Get(':id/activity')
+  @UseGuards(JwtAuthGuard)
   async getActivity(@Param('id') id: string) {
     return this.projectsService.getActivity(id);
   }
 
   @Patch(':id/stage')
+  @UseGuards(JwtAuthGuard)
   async updateStage(@Param('id') id: string, @Body() updateStageDto: UpdateProjectStageDto) {
     return this.projectsService.updateStage(id, updateStageDto);
   }
 
   @Patch(':id/close')
+  @UseGuards(JwtAuthGuard)
   async closeProject(@Param('id') id: string) {
     return this.projectsService.closeProject(id);
   }
@@ -153,11 +161,13 @@ export class ProjectsController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async findOne(@Param('id') id: string) {
     return this.projectsService.findOne(id);
   }
 
   @Post(':id/generate-onboarding-tasks')
+  @UseGuards(JwtAuthGuard)
   async generateOnboardingTasks(@Param('id') id: string) {
     try {
       return await this.projectsService.generateOnboardingTasks(id);
@@ -168,16 +178,19 @@ export class ProjectsController {
   }
 
   @Post(':id/team-members')
+  @UseGuards(JwtAuthGuard)
   async addTeamMember(@Param('id') projectId: string, @Body() body: { userId: string }) {
     return this.projectsService.addTeamMember(projectId, body.userId);
   }
 
   @Get(':id/team-members')
+  @UseGuards(JwtAuthGuard)
   async getTeamMembers(@Param('id') projectId: string) {
     return this.projectsService.getTeamMembers(projectId);
   }
 
   @Delete(':id/team-members/:userId')
+  @UseGuards(JwtAuthGuard)
   async removeTeamMember(@Param('id') projectId: string, @Param('userId') userId: string) {
     return this.projectsService.removeTeamMember(projectId, userId);
   }

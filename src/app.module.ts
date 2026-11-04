@@ -23,6 +23,7 @@ import { ProductSopsModule } from './product-sops/product-sops.module';
 import { ProductSearchModule } from './product-search/product-search.module';
 import { ProductVaultModule } from './product-vault/product-vault.module';
 import { FormsModule } from './forms/forms.module';
+import { AssistantModule } from './assistant/assistant.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { FormsModule } from './forms/forms.module';
     ProductSearchModule,
     ProductVaultModule,
     FormsModule,
+    AssistantModule,
   ],
   controllers: [AppController],
   providers: [AppService],

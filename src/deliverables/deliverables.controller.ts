@@ -10,12 +10,14 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DeliverablesService } from './deliverables.service';
 import { UpdateDeliverableStatusDto } from './dto/update-deliverable-status.dto';
 import { UpdateDeliverableDto } from './dto/update-deliverable.dto';
 import { CreateDeliverableDto } from './dto/create-deliverable.dto';
 import { debugLog } from '../shared/debug-log';
 
+@UseGuards(JwtAuthGuard)
 @Controller('deliverables')
 export class DeliverablesController {
   constructor(private readonly deliverablesService: DeliverablesService) {}

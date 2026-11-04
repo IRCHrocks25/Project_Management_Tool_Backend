@@ -47,6 +47,7 @@
     "migrate:tickets": "node scripts/create-tickets-table.js",
     "migrate:katalyst-hub": "node scripts/create-katalyst-hub-tables.js",
     "migrate:forms": "node scripts/create-forms-tables.js",
+    "migrate:assistant": "node scripts/create-assistant-tables.js",
     "migrate:daily-focus-items": "node scripts/create-daily-focus-items.js",
     "migrate:daily-focus-rank-limit": "node scripts/alter-daily-focus-rank-limit.js",
     "migrate:eod-report-snapshots": "node scripts/create-eod-report-snapshots.js",
@@ -69,6 +70,7 @@
     "migrate:performance-indexes": "node scripts/add-performance-indexes.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.0",

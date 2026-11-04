@@ -12,7 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole } from '../users/entities/user.entity';
-import { SignupDto } from './dto/signup.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -37,45 +37,34 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async signup(signupDto: SignupDto) {
-    const { email, password, name, role } = signupDto;
+  /** A Head PM or Founder adds a teammate. No token comes back: the new person logs in themselves. */
+  async createUser(dto: CreateUserDto, actorUserId: string) {
+    const actor = await this.ensureCanManageUsers(actorUserId);
+    this.assertCanGrantRole(actor, dto.role);
 
-    // Normalize email (lowercase and trim)
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Check if user already exists (case-insensitive)
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: normalizedEmail },
-    });
-
+    const email = dto.email.toLowerCase().trim();
+    const existingUser = await this.usersRepository.findOne({ where: { email } });
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException('Someone with this email already has an account');
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const saved = await this.usersRepository.save(
+      this.usersRepository.create({
+        email,
+        password: await bcrypt.hash(dto.password, 10),
+        name: dto.name.trim(),
+        role: dto.role,
+      }),
+    );
+    const { password: _, ...userWithoutPassword } = saved;
+    return userWithoutPassword;
+  }
 
-    // Create user with normalized email
-    const user = this.usersRepository.create({
-      email: normalizedEmail,
-      password: hashedPassword,
-      name,
-      role,
-    });
-
-    const savedUser = await this.usersRepository.save(user);
-
-    // Generate JWT token
-    const payload = { sub: savedUser.id, email: savedUser.email, role: savedUser.role };
-    const token = this.jwtService.sign(payload);
-
-    // Return user data without password
-    const { password: _, ...userWithoutPassword } = savedUser;
-
-    return {
-      user: userWithoutPassword,
-      token,
-    };
+  /** Only a Founder can create or promote another Founder. */
+  private assertCanGrantRole(actor: User, role: UserRole) {
+    if (role === UserRole.FOUNDER_CEO && actor.role !== UserRole.FOUNDER_CEO) {
+      throw new ForbiddenException('Only a Founder can give someone the Founder role');
+    }
   }
 
   async login(loginDto: LoginDto) {
@@ -232,7 +221,8 @@ export class AuthService {
     return { message: 'Password updated successfully' };
   }
 
-  async setTeamLead(userId: string, isTeamLead: boolean) {
+  async setTeamLead(userId: string, isTeamLead: boolean, actorUserId: string) {
+    await this.ensureCanManageUsers(actorUserId);
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -243,7 +233,8 @@ export class AuthService {
     return userWithoutPassword;
   }
 
-  async setHeadPM(userId: string, isHeadPM: boolean) {
+  async setHeadPM(userId: string, isHeadPM: boolean, actorUserId: string) {
+    await this.ensureCanManageUsers(actorUserId);
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -271,6 +262,7 @@ export class AuthService {
 
   async updateUserRole(userId: string, role: UserRole, actorUserId: string) {
     const actor = await this.ensureCanManageUsers(actorUserId);
+    this.assertCanGrantRole(actor, role);
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');

@@ -9,9 +9,10 @@ import {
   UseGuards,
   Param,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { SignupDto } from './dto/signup.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -29,10 +30,10 @@ import { debugLog } from '../shared/debug-log';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /** Public signup is closed: it let anyone register with any role. Teammates are added below. */
   @Post('signup')
-  @HttpCode(HttpStatus.CREATED)
-  async signup(@Body() signupDto: SignupDto) {
-    return this.authService.signup(signupDto);
+  signup() {
+    throw new ForbiddenException('Public signup is closed. Ask your Head PM or Founder to add you.');
   }
 
   @Post('login')
@@ -47,18 +48,32 @@ export class AuthController {
     return this.authService.getAllUsers();
   }
 
+  @Post('users')
+  @UseGuards(JwtAuthGuard)
+  async createUser(@Body() dto: CreateUserDto, @Req() req: { user: { userId: string } }) {
+    return this.authService.createUser(dto, req.user.userId);
+  }
+
   @Post('users/:id/team-lead')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async setTeamLead(@Param('id') id: string, @Body() body: { isTeamLead: boolean }) {
-    return this.authService.setTeamLead(id, body.isTeamLead);
+  async setTeamLead(
+    @Param('id') id: string,
+    @Body() body: { isTeamLead: boolean },
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.authService.setTeamLead(id, body.isTeamLead, req.user.userId);
   }
 
   @Post('users/:id/head-pm')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async setHeadPM(@Param('id') id: string, @Body() body: { isHeadPM: boolean }) {
-    return this.authService.setHeadPM(id, body.isHeadPM);
+  async setHeadPM(
+    @Param('id') id: string,
+    @Body() body: { isHeadPM: boolean },
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.authService.setHeadPM(id, body.isHeadPM, req.user.userId);
   }
 
   @Post('users/:id/role')

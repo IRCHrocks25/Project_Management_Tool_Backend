@@ -1,7 +1,8 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { UserRole } from '../../users/entities/user.entity';
 
-export class SignupDto {
+/** A Head PM or Founder adding a teammate. */
+export class CreateUserDto {
   @IsNotEmpty()
   @IsString()
   name: string;
@@ -12,7 +13,7 @@ export class SignupDto {
 
   @IsNotEmpty()
   @IsString()
-  @MinLength(6)
+  @MinLength(8, { message: 'Password must be at least 8 characters.' })
   password: string;
 
   @IsNotEmpty()

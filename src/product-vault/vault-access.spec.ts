@@ -5,7 +5,6 @@ import {
   generateShareToken,
   hashShareToken,
   isWellFormedShareToken,
-  normalizeFrontendUrl,
   rowsOf,
 } from './vault-access';
 
@@ -66,16 +65,6 @@ describe('share tokens', () => {
     expect(isWellFormedShareToken('abc')).toBe(false);
     expect(isWellFormedShareToken('a'.repeat(42) + '=')).toBe(false);
     expect(isWellFormedShareToken(undefined)).toBe(false);
-  });
-});
-
-describe('normalizeFrontendUrl', () => {
-  it('picks the first valid http(s) URL and strips the trailing slash', () => {
-    expect(normalizeFrontendUrl('nope, https://hub.example.com/ ,http://localhost:3001')).toBe(
-      'https://hub.example.com',
-    );
-    expect(normalizeFrontendUrl('ftp://x.com')).toBe('');
-    expect(normalizeFrontendUrl(undefined)).toBe('');
   });
 });
 

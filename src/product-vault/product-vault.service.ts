@@ -26,10 +26,10 @@ import {
   generateShareToken,
   hashShareToken,
   isWellFormedShareToken,
-  normalizeFrontendUrl,
   rowsOf,
   safeUser,
 } from './vault-access';
+import { publicAppUrl } from '../shared/public-app-url';
 
 export interface VaultActor {
   userId: string;
@@ -360,7 +360,7 @@ export class ProductVaultService {
   // ---------------------------------------------------------------- shares
 
   private shareUrl(token: string): string {
-    const base = normalizeFrontendUrl(this.configService.get<string>('FRONTEND_URL'));
+    const base = publicAppUrl(this.configService.get<string>('FRONTEND_URL'));
     return `${base}/share/${token}`;
   }
 

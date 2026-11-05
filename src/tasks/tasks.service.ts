@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { extractMentionIds } from '../shared/mentions';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Task, TaskStatus, TaskType } from './entities/task.entity';
 import { TaskAssignee } from './entities/task-assignee.entity';
 import { TaskQuestion } from './entities/task-question.entity';
@@ -30,9 +30,20 @@ import { descriptionText, mergeTaskDescription } from './description-merge';
 import { recordTaskActivity } from './task-activity';
 import { TaskActivityLog } from './entities/task-activity-log.entity';
 import { TaskAttachment } from './entities/task-attachment.entity';
+import { BoardColumn } from './entities/board-column.entity';
+import { assertDay, normalizeColumnValue, TASK_PRIORITIES } from './board-fields';
 
 const calendarDay = (value: Date | string | null | undefined): string | null =>
   value ? new Date(value).toISOString().slice(0, 10) : null;
+
+export interface BoardFieldsUpdate {
+  priority?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  notes?: string | null;
+  deliverableId?: string | null;
+  customFields?: Record<string, unknown>;
+}
 
 const questionSnapshot = (question: TaskQuestion) => ({
   by: question.user?.name ?? null,
@@ -454,7 +465,7 @@ export class TasksService {
     return savedTask;
   }
 
-  async assignTaskToMultiple(id: string, userIds: string[]) {
+  async assignTaskToMultiple(id: string, userIds: string[], actorUserId?: string) {
     // Load minimal task info (avoid loading assignee relations to prevent
     // TypeORM trying to sync them when we only want to use the junction table)
     const task = await this.tasksRepository.findOne({
@@ -465,6 +476,9 @@ export class TasksService {
     if (!task) {
       throw new NotFoundException(`Task with id ${id} not found`);
     }
+
+    const before = await this.taskAssigneesRepository.find({ where: { taskId: id }, select: ['userId'] });
+    const beforeIds = before.map((a) => a.userId);
 
     // Remove existing assignees from junction table
     await this.taskAssigneesRepository.delete({ taskId: id });
@@ -480,6 +494,17 @@ export class TasksService {
     // Update legacy assignedToId to first assignee (for backward compatibility)
     const primaryAssignee = userIds[0] ?? null;
     await this.tasksRepository.update(id, { assignedToId: primaryAssignee });
+
+    const changed = beforeIds.length !== userIds.length || beforeIds.some((userId) => !userIds.includes(userId));
+    if (changed) {
+      await recordTaskActivity(this.tasksRepository.manager, {
+        taskId: id,
+        projectId: task.projectId,
+        action: 'owners_changed',
+        actorId: actorUserId,
+        details: { before: await this.userNames(beforeIds), after: await this.userNames(userIds) },
+      });
+    }
 
     // Create notifications for all assigned users
     if (task.project && userIds.length > 0) {
@@ -517,6 +542,14 @@ export class TasksService {
     // TypeScript needs explicit typing after the array check
     // Use type assertion to ensure TypeScript recognizes it as a single Task
     const savedTask = savedTaskResult as Task;
+
+    await recordTaskActivity(this.tasksRepository.manager, {
+      taskId: savedTask.id,
+      projectId: savedTask.projectId,
+      action: 'task_created',
+      actorId: actorUserId,
+      details: { after: savedTask.title },
+    });
 
     // If task has no assignee, notify all department members
     if (!savedTask.assignedToId && savedTask.type && savedTask.projectId) {
@@ -666,6 +699,106 @@ export class TasksService {
           details: { before: calendarDay(current.dueDate), after: calendarDay(changes.dueDate) },
         });
       }
+    });
+
+    return this.findOne(id);
+  }
+
+  private async userNames(userIds: string[]): Promise<string[]> {
+    if (userIds.length === 0) return [];
+    const users = await this.usersRepository.find({ where: { id: In(userIds) }, select: ['id', 'name'] });
+    return userIds.map((id) => users.find((user) => user.id === id)?.name ?? 'Unknown');
+  }
+
+  /** One board cell at a time. The row stays locked so overlapping edits to customFields all land. */
+  async updateBoardFields(id: string, update: BoardFieldsUpdate, actorUserId?: string) {
+    await this.tasksRepository.manager.transaction(async (em) => {
+      const current = await em.findOne(Task, {
+        where: { id },
+        select: ['id', 'projectId', 'priority', 'startDate', 'dueDate', 'notes', 'deliverableId', 'customFields'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!current) throw new NotFoundException(`Task with ID ${id} not found`);
+
+      const changes: Partial<Task> = {};
+      const logged = { taskId: id, projectId: current.projectId, actorId: actorUserId };
+      const log = (action: TaskActivityLog['action'], details: Record<string, unknown>) =>
+        recordTaskActivity(em, { ...logged, action, details });
+
+      if (update.priority !== undefined) {
+        const priority = update.priority || null;
+        if (priority && !TASK_PRIORITIES.includes(priority)) {
+          throw new BadRequestException(`Priority must be one of ${TASK_PRIORITIES.join(', ')}`);
+        }
+        if (priority !== (current.priority ?? null)) changes.priority = priority;
+      }
+
+      const startDay = update.startDate === undefined
+        ? calendarDay(current.startDate)
+        : update.startDate ? assertDay(update.startDate, 'Start date') : null;
+      const dueDay = update.dueDate === undefined
+        ? calendarDay(current.dueDate)
+        : update.dueDate ? assertDay(update.dueDate, 'Due date') : null;
+      if (startDay && dueDay && startDay > dueDay) {
+        throw new BadRequestException('The start date must be on or before the due date');
+      }
+      if (startDay !== calendarDay(current.startDate)) changes.startDate = startDay;
+      if (dueDay !== calendarDay(current.dueDate)) (changes as any).dueDate = dueDay;
+
+      if (update.notes !== undefined) {
+        const notes = (update.notes ?? '').trim() || null;
+        if (notes && notes.length > 2000) throw new BadRequestException('Notes are too long');
+        if (notes !== (current.notes ?? null)) changes.notes = notes;
+      }
+
+      let groupNames: { before: string | null; after: string | null } | null = null;
+      if (update.deliverableId !== undefined) {
+        const target = update.deliverableId || null;
+        if (target !== (current.deliverableId ?? null)) {
+          const groups = await em.find(Deliverable, {
+            where: { projectId: current.projectId },
+            select: ['id', 'type', 'customType'],
+          });
+          const nameOf = (groupId: string | null) => {
+            const group = groups.find((d) => d.id === groupId);
+            return group ? group.customType || group.type : null;
+          };
+          if (target && !groups.some((d) => d.id === target)) {
+            throw new BadRequestException('That deliverable is not part of this project');
+          }
+          (changes as any).deliverableId = target;
+          groupNames = { before: nameOf(current.deliverableId ?? null), after: nameOf(target) };
+        }
+      }
+
+      const fieldLogs: Record<string, unknown>[] = [];
+      if (update.customFields && Object.keys(update.customFields).length > 0) {
+        const columns = await em.find(BoardColumn, { where: { projectId: current.projectId } });
+        const next = { ...(current.customFields || {}) };
+        for (const [columnId, raw] of Object.entries(update.customFields)) {
+          const column = columns.find((c) => c.id === columnId);
+          if (!column) throw new BadRequestException('That column is not on this board');
+          const value = normalizeColumnValue(column, raw);
+          const before = next[columnId] ?? null;
+          if (JSON.stringify(before) === JSON.stringify(value)) continue;
+          if (value === null) delete next[columnId];
+          else next[columnId] = value;
+          const show = async (entry: unknown) => (column.type === 'people' ? (await this.userNames((entry as string[]) || [])).join(', ') || null : entry);
+          fieldLogs.push({ columnId, field: column.name, type: column.type, before: await show(before), after: await show(value) });
+        }
+        if (fieldLogs.length > 0) changes.customFields = next;
+      }
+
+      if (Object.keys(changes).length > 0) {
+        await em.update(Task, id, changes as any);
+      }
+
+      if (changes.priority !== undefined) await log('priority_changed', { before: current.priority ?? null, after: changes.priority });
+      if (changes.startDate !== undefined) await log('start_date_changed', { before: calendarDay(current.startDate), after: changes.startDate });
+      if ((changes as any).dueDate !== undefined) await log('due_date_changed', { before: calendarDay(current.dueDate), after: (changes as any).dueDate });
+      if (changes.notes !== undefined) await log('notes_changed', { before: current.notes ?? null, after: changes.notes });
+      if (groupNames) await log('group_changed', groupNames);
+      for (const details of fieldLogs) await log('field_changed', details);
     });
 
     return this.findOne(id);

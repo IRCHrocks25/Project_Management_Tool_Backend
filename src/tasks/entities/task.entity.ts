@@ -78,6 +78,19 @@ export class Task {
   dueDate: Date;
 
   @Column({ type: 'date', nullable: true })
+  startDate: Date | string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  priority: string | null;
+
+  @Column('text', { nullable: true })
+  notes: string | null;
+
+  // Values for the columns a project adds to its board, keyed by board_columns.id
+  @Column('jsonb', { default: {} })
+  customFields: Record<string, unknown>;
+
+  @Column({ type: 'date', nullable: true })
   movedDueDate: Date;
 
   @Column('text', { nullable: true })

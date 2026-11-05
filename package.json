@@ -70,7 +70,8 @@
     "migrate:task-activity-logs": "node scripts/add-task-activity-logs.js",
     "migrate:performance-indexes": "node scripts/add-performance-indexes.js",
     "migrate:workspace": "node scripts/create-workspace-tables.js",
-    "migrate:meetings": "node scripts/create-meetings-tables.js"
+    "migrate:meetings": "node scripts/create-meetings-tables.js",
+    "migrate:board-views": "node scripts/create-board-views-tables.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0",

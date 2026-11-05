@@ -16,7 +16,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { TasksService } from './tasks.service';
+import { BoardFieldsUpdate, TasksService } from './tasks.service';
 import { AttachmentsService } from './attachments.service';
 import { TransfersService, TransferTaskPayload } from './transfers.service';
 import { TaskStatus } from './entities/task.entity';
@@ -184,13 +184,24 @@ export class TasksController {
     );
   }
 
+  @Patch(':id/fields')
+  async updateBoardFields(
+    @Param('id') id: string,
+    @Body() body: BoardFieldsUpdate,
+    @Request() req: any,
+  ) {
+    return this.tasksService.updateBoardFields(id, body, req.user?.userId || req.user?.id);
+  }
+
   @Patch(':id/assign')
   async assignTask(
     @Param('id') id: string,
     @Body() body: { assignedToId?: string; userIds?: string[] },
+    @Request() req: any,
   ) {
+    const actorId = req.user?.userId || req.user?.id;
     if (body.userIds && Array.isArray(body.userIds)) {
-      return this.tasksService.assignTaskToMultiple(id, body.userIds);
+      return this.tasksService.assignTaskToMultiple(id, body.userIds, actorId);
     } else if (body.assignedToId) {
       return this.tasksService.assignTask(id, body.assignedToId);
     } else {

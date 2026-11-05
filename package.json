@@ -69,7 +69,8 @@
     "migrate:task-due-date-moves": "node scripts/add-task-due-date-moves.js",
     "migrate:task-activity-logs": "node scripts/add-task-activity-logs.js",
     "migrate:performance-indexes": "node scripts/add-performance-indexes.js",
-    "migrate:workspace": "node scripts/create-workspace-tables.js"
+    "migrate:workspace": "node scripts/create-workspace-tables.js",
+    "migrate:meetings": "node scripts/create-meetings-tables.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0",

@@ -25,6 +25,7 @@ import { ProductVaultModule } from './product-vault/product-vault.module';
 import { FormsModule } from './forms/forms.module';
 import { AssistantModule } from './assistant/assistant.module';
 import { WorkspaceModule } from './workspace/workspace.module';
+import { MeetingsModule } from './meetings/meetings.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
     FormsModule,
     AssistantModule,
     WorkspaceModule,
+    MeetingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

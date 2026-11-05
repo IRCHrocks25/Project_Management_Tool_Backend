@@ -28,6 +28,7 @@ export enum NotificationType {
   FORM_RESPONSE = 'form_response', // A client submitted one of your forms
   VAULT_UPDATED = 'vault_updated', // The password or username of a company login you can see changed
   PAGE_SHARED = 'page_shared', // Someone shared a Workspace page with you
+  MEETING_INVITE = 'meeting_invite', // Someone invited you to a meeting
 }
 
 @Entity('notifications')

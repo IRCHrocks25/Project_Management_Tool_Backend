@@ -16,6 +16,7 @@ import { User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { debugLog } from '../shared/debug-log';
+import { recordTaskActivity } from '../tasks/task-activity';
 
 @Injectable()
 export class DeliverablesService {
@@ -99,7 +100,7 @@ export class DeliverablesService {
     return deliverable;
   }
 
-  async remove(id: string) {
+  async remove(id: string, actorUserId?: string) {
     const deliverable = await this.deliverablesRepository.findOne({ where: { id } });
 
     if (!deliverable) {
@@ -120,11 +121,35 @@ export class DeliverablesService {
       throw new BadRequestException('Cannot delete deliverable while tasks are linked to it');
     }
 
-    // Clean up related team members and history first
-    await this.deliverableTeamMembersRepository.delete({ deliverableId: id });
-    await this.historyRepository.delete({ deliverableId: id });
+    const history = await this.historyRepository.find({
+      where: { deliverableId: id },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
 
-    await this.deliverablesRepository.delete(id);
+    await this.deliverablesRepository.manager.transaction(async (em) => {
+      // Clean up related team members and history first
+      await em.delete(DeliverableTeamMember, { deliverableId: id });
+      await em.delete(DeliverableHistory, { deliverableId: id });
+      await em.delete(Deliverable, id);
+      await recordTaskActivity(em, {
+        projectId: deliverable.projectId,
+        action: 'deliverable_deleted',
+        actorId: actorUserId,
+        details: {
+          type: deliverable.type,
+          customType: deliverable.customType,
+          status: deliverable.status,
+          history: history.map((entry) => ({
+            action: entry.action,
+            notes: entry.notes,
+            fileUrl: entry.fileUrl,
+            by: entry.user?.name ?? null,
+            at: entry.createdAt,
+          })),
+        },
+      });
+    });
     return { success: true };
   }
 
@@ -267,7 +292,7 @@ export class DeliverablesService {
     for (const task of relatedTasks) {
       task.status = TaskStatus.IN_PROGRESS;
       task.isCompleted = false;
-      await this.tasksRepository.save(task);
+      await this.tasksRepository.update(task.id, { status: task.status, isCompleted: false });
 
       // Notify ONLY the assigned user for this specific task
       if (
@@ -354,7 +379,7 @@ export class DeliverablesService {
       for (const task of relatedCopyTasks) {
         task.status = TaskStatus.IN_PROGRESS;
         task.isCompleted = false;
-        await this.tasksRepository.save(task);
+        await this.tasksRepository.update(task.id, { status: task.status, isCompleted: false });
       }
 
       // Update project stage to Copy Revision if not already

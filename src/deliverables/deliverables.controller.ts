@@ -63,8 +63,8 @@ export class DeliverablesController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.deliverablesService.remove(id);
+  async remove(@Param('id') id: string, @Request() req: any) {
+    return this.deliverablesService.remove(id, req.user?.userId || req.user?.id);
   }
 
   @Get(':id/history')

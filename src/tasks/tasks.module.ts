@@ -12,6 +12,7 @@ import { TaskQuestion } from './entities/task-question.entity';
 import { TaskComment } from './entities/task-comment.entity';
 import { TaskTransfer } from './entities/task-transfer.entity';
 import { TaskDueDateMove } from './entities/task-due-date-move.entity';
+import { TaskActivityLog } from './entities/task-activity-log.entity';
 import { Deliverable } from '../deliverables/entities/deliverable.entity';
 import { User } from '../users/entities/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -28,6 +29,7 @@ import { SharedModule } from '../shared/shared.module';
       TaskComment,
       TaskTransfer,
       TaskDueDateMove,
+      TaskActivityLog,
       Deliverable,
       User,
     ]),

@@ -26,6 +26,24 @@ import { NotificationType } from '../notifications/entities/notification.entity'
 import { CreateTaskQuestionDto } from './dto/create-task-question.dto';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { debugLog } from '../shared/debug-log';
+import { descriptionText, mergeTaskDescription } from './description-merge';
+import { recordTaskActivity } from './task-activity';
+import { TaskActivityLog } from './entities/task-activity-log.entity';
+import { TaskAttachment } from './entities/task-attachment.entity';
+
+const calendarDay = (value: Date | string | null | undefined): string | null =>
+  value ? new Date(value).toISOString().slice(0, 10) : null;
+
+const questionSnapshot = (question: TaskQuestion) => ({
+  by: question.user?.name ?? null,
+  at: question.createdAt,
+  text: question.text,
+  replies: (question.comments || []).map((comment) => ({
+    by: comment.user?.name ?? null,
+    at: comment.createdAt,
+    text: comment.text,
+  })),
+});
 
 @Injectable()
 export class TasksService {
@@ -210,6 +228,18 @@ export class TasksService {
     return { ...task, dueDateMoves };
   }
 
+  /**
+   * Saves a task loaded earlier without writing its description back. TypeORM would
+   * otherwise restore the old text if someone saved a new note in the meantime.
+   */
+  private async saveWithoutDescription(task: Task): Promise<Task> {
+    const { description } = task;
+    (task as Partial<Task>).description = undefined;
+    const saved = await this.tasksRepository.save(task);
+    saved.description = description;
+    return saved;
+  }
+
   async updateStatus(
     id: string,
     status: TaskStatus,
@@ -267,7 +297,7 @@ export class TasksService {
     if (deliverableId !== undefined) {
       task.deliverableId = deliverableId;
     }
-    const savedTask = await this.tasksRepository.save(task);
+    const savedTask = await this.saveWithoutDescription(task);
 
     // Notify PM when task moves to For Approval (In Review), but skip explicit
     // revision moves where UI marks intent as revision.
@@ -389,7 +419,7 @@ export class TasksService {
   async assignTask(id: string, assignedToId: string) {
     const task = await this.findOne(id);
     task.assignedToId = assignedToId;
-    const savedTask = await this.tasksRepository.save(task);
+    const savedTask = await this.saveWithoutDescription(task);
 
     // Also add to assignees table if not already there
     const existingAssignee = await this.taskAssigneesRepository.findOne({
@@ -575,29 +605,77 @@ export class TasksService {
     task.isCompleted = true;
     task.status = TaskStatus.COMPLETED;
 
-    return this.tasksRepository.save(task);
+    return this.saveWithoutDescription(task);
   }
 
   async update(
     id: string,
-    updateTaskDto: { title?: string; description?: string; dueDate?: Date; deliverableId?: string },
+    updateTaskDto: {
+      title?: string;
+      description?: string;
+      baseDescription?: string | null;
+      dueDate?: Date;
+      deliverableId?: string;
+    },
+    actorUserId?: string,
   ) {
-    const task = await this.findOne(id);
+    const { title, description, baseDescription, dueDate, deliverableId } = updateTaskDto;
 
-    if (updateTaskDto.title !== undefined) {
-      task.title = updateTaskDto.title;
-    }
-    if (updateTaskDto.description !== undefined) {
-      task.description = updateTaskDto.description;
-    }
-    if (updateTaskDto.dueDate !== undefined) {
-      task.dueDate = updateTaskDto.dueDate;
-    }
-    if (updateTaskDto.deliverableId !== undefined) {
-      task.deliverableId = updateTaskDto.deliverableId;
-    }
+    // The row stays locked until the write finishes, so overlapping saves merge one at a time.
+    await this.tasksRepository.manager.transaction(async (em) => {
+      const current = await em.findOne(Task, {
+        where: { id },
+        select: ['id', 'description', 'title', 'dueDate', 'projectId'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!current) {
+        throw new NotFoundException(`Task with ID ${id} not found`);
+      }
 
-    return this.tasksRepository.save(task);
+      const changes: Partial<Task> = {};
+      if (title !== undefined) changes.title = title;
+      if (description !== undefined) {
+        changes.description = mergeTaskDescription(current.description, description, baseDescription);
+      }
+      if (dueDate !== undefined) changes.dueDate = dueDate;
+      if (deliverableId !== undefined) changes.deliverableId = deliverableId;
+
+      if (Object.keys(changes).length > 0) {
+        await em.update(Task, id, changes);
+      }
+
+      const logged = { taskId: id, projectId: current.projectId, actorId: actorUserId };
+      if (changes.description !== undefined) {
+        const before = descriptionText(current.description);
+        const after = descriptionText(changes.description);
+        if (before !== after) {
+          await recordTaskActivity(em, { ...logged, action: 'description_edited', details: { before, after } });
+        }
+      }
+      if (changes.title !== undefined && changes.title !== current.title) {
+        await recordTaskActivity(em, {
+          ...logged,
+          action: 'title_changed',
+          details: { before: current.title, after: changes.title },
+        });
+      }
+      if (changes.dueDate !== undefined && calendarDay(changes.dueDate) !== calendarDay(current.dueDate)) {
+        await recordTaskActivity(em, {
+          ...logged,
+          action: 'due_date_changed',
+          details: { before: calendarDay(current.dueDate), after: calendarDay(changes.dueDate) },
+        });
+      }
+    });
+
+    return this.findOne(id);
+  }
+
+  getActivity(taskId: string): Promise<TaskActivityLog[]> {
+    return this.tasksRepository.manager.find(TaskActivityLog, {
+      where: { taskId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async updateMovedDueDate(
@@ -648,8 +726,9 @@ export class TasksService {
     return this.findOne(taskId);
   }
 
-  async remove(id: string) {
+  async remove(id: string, actorUserId?: string) {
     const task = await this.findOne(id);
+    const details = await this.deletedTaskDetails(task);
 
     // Clean up related notifications first to satisfy FK constraints
     try {
@@ -662,8 +741,47 @@ export class TasksService {
       // Continue anyway; if FK still blocks, the next line will throw
     }
 
-    await this.tasksRepository.remove(task);
+    await this.tasksRepository.manager.transaction(async (em) => {
+      await em.remove(Task, task);
+      await recordTaskActivity(em, {
+        taskId: id,
+        projectId: task.projectId,
+        action: 'task_deleted',
+        actorId: actorUserId,
+        details,
+      });
+    });
     return { message: 'Task deleted successfully' };
+  }
+
+  /** A copy of everything that goes with the task, so what was deleted can be seen and rebuilt. */
+  private async deletedTaskDetails(task: Task): Promise<Record<string, unknown>> {
+    const [attachments, questions] = await Promise.all([
+      this.tasksRepository.manager.find(TaskAttachment, { where: { taskId: task.id }, relations: ['uploadedBy'] }),
+      this.taskQuestionsRepository.find({
+        where: { taskId: task.id },
+        relations: ['user', 'comments', 'comments.user'],
+      }),
+    ]);
+    return {
+      title: task.title,
+      type: task.type,
+      status: task.status,
+      isCompleted: task.isCompleted,
+      dueDate: calendarDay(task.dueDate),
+      description: task.description,
+      deliverableId: task.deliverableId,
+      assignees: (task.assignees || []).map((assignee) => assignee.user?.name).filter(Boolean),
+      attachments: attachments.map((attachment) => ({
+        kind: attachment.kind,
+        filename: attachment.filename,
+        url: attachment.url,
+        note: attachment.note,
+        addedBy: attachment.uploadedBy?.name ?? null,
+        addedAt: attachment.uploadedAt,
+      })),
+      conversation: questions.map(questionSnapshot),
+    };
   }
 
   /** Extract user IDs from text that contains @name[[USER_ID:uuid]] patterns (frontend format). */
@@ -885,14 +1003,27 @@ export class TasksService {
   /**
    * Delete a question and its comments. Used from Forum to remove posts.
    */
-  async deleteQuestion(questionId: string): Promise<void> {
-    const question = await this.taskQuestionsRepository.findOne({ where: { id: questionId } });
+  async deleteQuestion(questionId: string, actorUserId?: string): Promise<void> {
+    const question = await this.taskQuestionsRepository.findOne({
+      where: { id: questionId },
+      relations: ['user', 'comments', 'comments.user', 'task'],
+    });
     if (!question) {
       throw new NotFoundException('Question not found');
     }
-    const comments = await this.taskCommentsRepository.find({ where: { questionId } });
-    await this.taskCommentsRepository.remove(comments);
-    await this.taskQuestionsRepository.remove(question);
+    const { comments, task, taskId } = question;
+    const details = { ...questionSnapshot(question), taskTitle: task?.title ?? null };
+    await this.tasksRepository.manager.transaction(async (em) => {
+      await em.remove(comments || []);
+      await em.delete(TaskQuestion, questionId);
+      await recordTaskActivity(em, {
+        taskId,
+        projectId: task?.projectId,
+        action: 'question_deleted',
+        actorId: actorUserId,
+        details,
+      });
+    });
   }
 
   /**

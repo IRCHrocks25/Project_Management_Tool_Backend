@@ -507,7 +507,10 @@ export class AssistantService {
         const base = (task.description || '').replace(/\n\n--- Column: [^-]+ ---/g, '');
         let log = `\n\n--- Status Change ---\nNew Column: ${STAGE_LABEL[stage]}\nBy: ${user.name || 'Unknown'} (via assistant)\nAt: ${new Date().toLocaleString()}`;
         if (input.note) log += `\nNotes: ${input.note}`;
-        await this.tasksService.update(task.id, { description: `${base}${target.marker || ''}${log}` });
+        await this.tasksService.update(task.id, {
+          description: `${base}${target.marker || ''}${log}`,
+          baseDescription: task.description,
+        }, user.userId);
         return { done: true, stage: STAGE_LABEL[stage] };
       }
       case 'assign_task': {
@@ -518,7 +521,7 @@ export class AssistantService {
       }
       case 'set_task_due_date': {
         const task = await this.visibleTask(input.taskId, user);
-        await this.tasksService.update(task.id, { dueDate: this.parseDate(input.dueDate) });
+        await this.tasksService.update(task.id, { dueDate: this.parseDate(input.dueDate) }, user.userId);
         return { done: true };
       }
       case 'add_task_comment': {

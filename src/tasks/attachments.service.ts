@@ -10,6 +10,8 @@ import { In, Repository } from 'typeorm';
 import { TaskAttachment } from './entities/task-attachment.entity';
 import { User } from '../users/entities/user.entity';
 import { IcebergService } from '../shared/iceberg.service';
+import { recordTaskActivity } from './task-activity';
+import { Task } from './entities/task.entity';
 
 @Injectable()
 export class AttachmentsService {
@@ -105,6 +107,7 @@ export class AttachmentsService {
   async delete(attachmentId: string, requestingUserId: string): Promise<{ success: boolean }> {
     const attachment = await this.attachmentsRepo.findOne({
       where: { id: attachmentId },
+      relations: ['uploadedBy'],
     });
     if (!attachment) {
       throw new NotFoundException('Attachment not found');
@@ -134,7 +137,23 @@ export class AttachmentsService {
     }
 
     try {
-      await this.attachmentsRepo.delete(attachmentId);
+      await this.attachmentsRepo.manager.transaction(async (em) => {
+        await em.delete(TaskAttachment, attachmentId);
+        await recordTaskActivity(em, {
+          taskId: attachment.taskId,
+          projectId: (await em.findOne(Task, { where: { id: attachment.taskId }, select: ['id', 'projectId'] }))?.projectId,
+          action: 'attachment_removed',
+          actorId: requestingUserId,
+          details: {
+            kind: attachment.kind,
+            filename: attachment.filename,
+            url: attachment.url,
+            note: attachment.note,
+            addedBy: attachment.uploadedBy?.name ?? null,
+            addedAt: attachment.uploadedAt,
+          },
+        });
+      });
     } catch (dbError) {
       console.error(
         `[AttachmentsService] CRITICAL: Iceberg asset deleted (key: ${attachment.icebergKey}) ` +

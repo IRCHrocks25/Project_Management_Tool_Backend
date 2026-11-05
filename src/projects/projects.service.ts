@@ -31,6 +31,8 @@ import { UpdateOnboardingPhaseDto } from './dto/update-onboarding-phase.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
 import { debugLog } from '../shared/debug-log';
+import { TaskActivityLog } from '../tasks/entities/task-activity-log.entity';
+import { descriptionText } from '../tasks/description-merge';
 
 const ONBOARDING_PHASE_ORDER: OnboardingPhase[] = [
   OnboardingPhase.PAYMENT_CONFIRMED,
@@ -42,6 +44,52 @@ const ONBOARDING_PHASE_ORDER: OnboardingPhase[] = [
   OnboardingPhase.QA_MONITORING,
   OnboardingPhase.FULL_GO_LIVE,
 ];
+
+const DELETED_ACTION_LABELS: Record<string, string> = {
+  task_deleted: 'Task Deleted',
+  deliverable_deleted: 'Deliverable Deleted',
+  question_deleted: 'Question Deleted',
+};
+
+const withoutMentionIds = (text: string) => text.replace(/\[\[USER_ID:[^\]]+\]\]/g, '');
+
+const deletedItemNotes = (details: any): string => {
+  const attachments: any[] = details.attachments || [];
+  const conversation: any[] = details.conversation || [];
+  const replies: any[] = details.replies || [];
+  return [
+    details.status && `Status: ${details.status}`,
+    details.assignees?.length && `Assigned to: ${details.assignees.join(', ')}`,
+    details.dueDate && `Due: ${details.dueDate}`,
+    details.description && `Description: ${descriptionText(details.description)}`,
+    details.text && `${details.by || 'Unknown'} asked: ${withoutMentionIds(details.text)}`,
+    ...replies.map((reply) => `${reply.by || 'Unknown'} replied: ${withoutMentionIds(reply.text)}`),
+    ...attachments.map((a) => `File or link: ${a.filename || a.url} (${a.url})${a.note ? ` - ${a.note}` : ''}`),
+    conversation.length > 0 && `Conversation: ${conversation.length} question${conversation.length === 1 ? '' : 's'}`,
+    details.history?.length && `History entries: ${details.history.length}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
+const deletedItemActivity = (log: TaskActivityLog) => {
+  const details: any = log.details || {};
+  return {
+    id: `log-${log.id}`,
+    type: 'deleted',
+    action: DELETED_ACTION_LABELS[log.action],
+    department: 'Project Management',
+    user: log.actorName ? { name: log.actorName } : null,
+    userId: log.actorId,
+    createdAt: log.createdAt,
+    metadata: {
+      taskTitle: details.title ?? details.taskTitle,
+      deliverableType: details.type && log.action === 'deliverable_deleted' ? details.type : undefined,
+      deliverableCustomType: details.customType,
+      notes: deletedItemNotes(details),
+    },
+  };
+};
 
 @Injectable()
 export class ProjectsService {
@@ -1061,6 +1109,19 @@ export class ProjectsService {
     }));
   }
 
+  /** Deleted tasks, deliverables and questions no longer have a page of their own, so they're listed here. */
+  private async deletedItemActivities(projectId: string) {
+    let logs: TaskActivityLog[] = [];
+    try {
+      logs = await this.tasksRepository.manager.find(TaskActivityLog, {
+        where: { projectId, action: In(['task_deleted', 'deliverable_deleted', 'question_deleted']) },
+      });
+    } catch (error) {
+      console.error('[ProjectsService] Could not load deleted item activity:', error);
+    }
+    return logs.map((log) => deletedItemActivity(log));
+  }
+
   async getActivity(projectId: string) {
     try {
       debugLog(`[ProjectsService] Getting activity for project: ${projectId}`);
@@ -1304,6 +1365,8 @@ export class ProjectsService {
       }
 
       // Sort by date (oldest first - newest at bottom)
+      activities.push(...(await this.deletedItemActivities(projectId)));
+
       activities.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
       debugLog(

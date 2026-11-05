@@ -62,8 +62,8 @@ export class TasksController {
 
   @Delete('questions/:questionId')
   @UseGuards(JwtAuthGuard)
-  async deleteQuestion(@Param('questionId') questionId: string) {
-    return this.tasksService.deleteQuestion(questionId);
+  async deleteQuestion(@Param('questionId') questionId: string, @Request() req: any) {
+    return this.tasksService.deleteQuestion(questionId, req.user?.userId || req.user?.id);
   }
 
   @Get(':id/conversations')
@@ -86,6 +86,11 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   async getAttachments(@Param('id') taskId: string) {
     return this.attachmentsService.findByTask(taskId);
+  }
+
+  @Get(':id/activity')
+  async getActivity(@Param('id') taskId: string) {
+    return this.tasksService.getActivity(taskId);
   }
 
   @Post(':id/attachments/link')
@@ -205,9 +210,16 @@ export class TasksController {
   async update(
     @Param('id') id: string,
     @Body()
-    updateTaskDto: { title?: string; description?: string; dueDate?: Date; deliverableId?: string },
+    updateTaskDto: {
+      title?: string;
+      description?: string;
+      baseDescription?: string | null;
+      dueDate?: Date;
+      deliverableId?: string;
+    },
+    @Request() req: any,
   ) {
-    return this.tasksService.update(id, updateTaskDto);
+    return this.tasksService.update(id, updateTaskDto, req.user?.userId || req.user?.id);
   }
 
   @Patch(':id/moved-due-date')
@@ -221,8 +233,8 @@ export class TasksController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.tasksService.remove(id);
+  async remove(@Param('id') id: string, @Request() req: any) {
+    return this.tasksService.remove(id, req.user?.userId || req.user?.id);
   }
 
   @Post('questions/:questionId/comments')

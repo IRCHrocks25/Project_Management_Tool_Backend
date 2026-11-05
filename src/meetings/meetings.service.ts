@@ -19,7 +19,7 @@ import { CreateMeetingDto, GuestLinkDto, UpdateMeetingDto } from './dto/meetings
 import { MeetingGuest } from './entities/meeting-guest.entity';
 import { MeetingInvitee } from './entities/meeting-invitee.entity';
 import { Meeting } from './entities/meeting.entity';
-import { LiveKitConfig, createRoomToken, deleteRoom } from './livekit';
+import { LiveKitConfig, createRoomToken, deleteRoom, muteParticipant, removeParticipant } from './livekit';
 import { STALE_AFTER_MS, canJoin, cleanInvitees, isClosed, isGuestPresent } from './meeting-rules';
 
 const NOT_SET_UP = "Video calls aren't set up yet. Add the LiveKit keys to the server.";
@@ -137,6 +137,27 @@ export class MeetingsService {
       }),
       isHost,
     };
+  }
+
+  /** Host only: mutes someone's microphone. They can turn it back on. */
+  async muteParticipant(id: string, identity: string, actor: MeetingActor) {
+    const { meeting, config } = await this.liveCall(id, actor);
+    await this.callLiveKit(() => muteParticipant(config, meeting.roomName, identity), "Couldn't mute them. Try again.");
+    return { muted: true };
+  }
+
+  /**
+   * Host only: takes someone out of the call. A guest is also marked denied, so opening the link
+   * again puts them back in the waiting room as a new request. A teammate can rejoin from the meeting page.
+   */
+  async removeParticipant(id: string, identity: string, actor: MeetingActor) {
+    if (identity === `user:${actor.userId}`) throw new BadRequestException("You can't remove yourself. Use Leave instead.");
+    const { meeting, config } = await this.liveCall(id, actor);
+    if (identity.startsWith('guest:')) {
+      await this.guests.update({ id: identity.slice('guest:'.length), meetingId: id }, { status: 'denied' });
+    }
+    await this.callLiveKit(() => removeParticipant(config, meeting.roomName, identity), "Couldn't remove them. Try again.");
+    return { removed: true };
   }
 
   /** Host only: disconnects everyone and closes the meeting. */
@@ -257,6 +278,21 @@ export class MeetingsService {
     const config = this.liveKit();
     if (!config) throw new ServiceUnavailableException(NOT_SET_UP);
     return config;
+  }
+
+  private async liveCall(id: string, actor: MeetingActor) {
+    const meeting = await this.hostedMeeting(id, actor);
+    if (isClosed(meeting.status)) throw new GoneException('This meeting has finished.');
+    return { meeting, config: this.requireLiveKit() };
+  }
+
+  private async callLiveKit(action: () => Promise<void>, failure: string) {
+    try {
+      await action();
+    } catch (error) {
+      this.logger.warn(`LiveKit call failed: ${error?.message || error}`);
+      throw new ServiceUnavailableException(failure);
+    }
   }
 
   private async closeRoom(meeting: Meeting) {

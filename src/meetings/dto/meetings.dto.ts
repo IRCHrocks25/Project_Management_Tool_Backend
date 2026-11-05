@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -113,4 +114,10 @@ export class GuestStatusDto {
   @IsNotEmpty({ message: 'That link is not valid.' })
   @MaxLength(128, { message: 'That link is not valid.' })
   secret: string;
+}
+
+export class ParticipantActionDto {
+  @IsString({ message: 'Choose someone in the call.' })
+  @Matches(/^(user|guest):[0-9a-f-]{36}$/i, { message: 'Choose someone in the call.' })
+  identity: string;
 }

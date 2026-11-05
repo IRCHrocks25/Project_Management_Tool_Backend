@@ -25,6 +25,9 @@ backend. The backend schedules meetings, decides who may join and signs short-li
 - `POST /meetings/:id/guest-link` `{ enabled?, regenerate? }` (host)
 - `GET /meetings/:id/guests` (host; waiting room)
 - `POST /meetings/:id/guests/:guestId` `{ decision: 'admit' | 'deny' }` (host)
+- `POST /meetings/:id/participants/mute` `{ identity }` (host; they can unmute themselves)
+- `POST /meetings/:id/participants/remove` `{ identity }` (host). A guest goes back to asking to join; a teammate can
+  rejoin from the meeting page. A token already issued stays valid until it expires, so this is not a permanent ban.
 
 ## Public routes (rate limited; the code is the credential)
 
@@ -34,5 +37,4 @@ backend. The backend schedules meetings, decides who may join and signs short-li
 
 ## Not in this version
 
-Recording, transcripts and AI summaries, scheduled reminders (there is no scheduler yet), calendar sync, removing one
-person from a live call, and phone dial-in.
+Recording, transcripts and AI summaries, scheduled reminders (there is no scheduler yet), calendar sync and phone dial-in.

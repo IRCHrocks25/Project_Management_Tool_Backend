@@ -9,6 +9,7 @@ import {
   GuestDecisionDto,
   GuestLinkDto,
   GuestStatusDto,
+  ParticipantActionDto,
   UpdateMeetingDto,
 } from './dto/meetings.dto';
 import { MeetingActor, MeetingsService } from './meetings.service';
@@ -74,6 +75,16 @@ export class MeetingsController {
     @Request() req: any,
   ) {
     return this.meetings.decideGuest(id, guestId, dto.decision, actorOf(req));
+  }
+
+  @Post(':id/participants/mute')
+  muteParticipant(@Param('id', Uuid) id: string, @Body() dto: ParticipantActionDto, @Request() req: any) {
+    return this.meetings.muteParticipant(id, dto.identity, actorOf(req));
+  }
+
+  @Post(':id/participants/remove')
+  removeParticipant(@Param('id', Uuid) id: string, @Body() dto: ParticipantActionDto, @Request() req: any) {
+    return this.meetings.removeParticipant(id, dto.identity, actorOf(req));
   }
 }
 

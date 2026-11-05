@@ -24,6 +24,7 @@ import { ProductSearchModule } from './product-search/product-search.module';
 import { ProductVaultModule } from './product-vault/product-vault.module';
 import { FormsModule } from './forms/forms.module';
 import { AssistantModule } from './assistant/assistant.module';
+import { WorkspaceModule } from './workspace/workspace.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { AssistantModule } from './assistant/assistant.module';
     ProductVaultModule,
     FormsModule,
     AssistantModule,
+    WorkspaceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -140,6 +140,7 @@ export class ProductSearchService {
                FROM product_credentials c
                JOIN products p ON p.id = c."productId"
               WHERE p."archivedAt" IS NULL
+                AND c.scope = 'product'
                 AND c.label ILIKE $1
               ORDER BY c.label ASC
               LIMIT ${MAX_RESULTS}`,

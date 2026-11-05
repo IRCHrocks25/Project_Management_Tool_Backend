@@ -36,6 +36,9 @@ export interface VaultActor {
   role?: string | null;
 }
 
+/** Shown on share links for logins that don't belong to a product. */
+const COMPANY_VAULT_NAME = 'Company vault';
+
 const USER_FIELDS = (alias: string) => [
   `${alias}.id`,
   `${alias}.name`,
@@ -161,12 +164,13 @@ export class ProductVaultService {
       createdBy: safeUser(c.createdBy),
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
-      lastEvent,
+      // Who touched a password and when is only for people who may see it.
+      lastEvent: canReveal ? lastEvent : null,
       canReveal,
     };
   }
 
-  private async lastEvents(credentialIds: string[]) {
+  async lastEvents(credentialIds: string[]) {
     const map = new Map<string, { action: string; user: any; at: Date }>();
     if (!credentialIds.length) return map;
     const rows = await this.dataSource.query(
@@ -337,14 +341,20 @@ export class ProductVaultService {
     return { secret };
   }
 
-  async listEvents(productId: string, credId: string) {
-    await this.getProduct(productId);
+  async listEvents(productId: string, credId: string, actor: VaultActor) {
+    const product = await this.getProduct(productId);
     const cred = await this.getCredential(productId, credId);
+    await this.assertCanReveal(actor, product);
+    return this.recentEvents(cred.id);
+  }
+
+  /** Latest 20 events of a vault item. Callers check access first. */
+  async recentEvents(credentialId: string) {
     const events = await this.eventsRepo
       .createQueryBuilder('e')
       .leftJoin('e.user', 'u')
       .addSelect(USER_FIELDS('u'))
-      .where('e.credentialId = :id', { id: cred.id })
+      .where('e.credentialId = :id', { id: credentialId })
       .orderBy('e.createdAt', 'DESC')
       .take(20)
       .getMany();
@@ -359,7 +369,7 @@ export class ProductVaultService {
 
   // ---------------------------------------------------------------- shares
 
-  private shareUrl(token: string): string {
+  shareUrl(token: string): string {
     const base = publicAppUrl(this.configService.get<string>('FRONTEND_URL'));
     return `${base}/share/${token}`;
   }
@@ -450,16 +460,16 @@ export class ProductVaultService {
         s."revokedAt" IS NULL
     AND s."expiresAt" > NOW()
     AND (s."oneTime" = false OR s."viewedAt" IS NULL)
-    AND c.shareable = true`;
+    AND (c.shareable = true OR s.internal = true)`;
 
   /** Peek at a link without consuming it. */
   async peekShare(token: string) {
     if (!isWellFormedShareToken(token)) this.gone();
     const rows = await this.dataSource.query(
-      `SELECT s."expiresAt", s."oneTime", c.label, p.name AS "productName"
+      `SELECT s."expiresAt", s."oneTime", c.label, COALESCE(p.name, '${COMPANY_VAULT_NAME}') AS "productName"
          FROM product_credential_shares s
          JOIN product_credentials c ON c.id = s."credentialId"
-         JOIN products p ON p.id = c."productId"
+         LEFT JOIN products p ON p.id = c."productId"
         WHERE s."tokenHash" = $1 AND ${ProductVaultService.ACTIVE_SHARE_SQL}
         LIMIT 1`,
       [hashShareToken(token)],
@@ -496,9 +506,9 @@ export class ProductVaultService {
       if (!consumed.length) this.gone();
       const credentialId: string = consumed[0].credentialId;
       const rows = await m.query(
-        `SELECT c.label, c."loginUrl", c.username, c."secretEncrypted", p.name AS "productName"
+        `SELECT c.label, c."loginUrl", c.username, c."secretEncrypted", COALESCE(p.name, '${COMPANY_VAULT_NAME}') AS "productName"
            FROM product_credentials c
-           JOIN products p ON p.id = c."productId"
+           LEFT JOIN products p ON p.id = c."productId"
           WHERE c.id = $1`,
         [credentialId],
       );

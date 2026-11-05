@@ -17,6 +17,8 @@ export enum CredentialEventAction {
   SHARED = 'shared',
   SHARE_VIEWED = 'share_viewed',
   SHARE_REVOKED = 'share_revoked',
+  RESTORED = 'restored',
+  VERSION_REVEALED = 'version_revealed',
 }
 
 /** Audit trail for a vault item. `userId` null = a client opened it through a share link. */

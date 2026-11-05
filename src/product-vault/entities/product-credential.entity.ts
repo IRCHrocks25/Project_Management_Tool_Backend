@@ -16,6 +16,12 @@ export enum CredentialEnvironment {
   DEMO = 'demo',
 }
 
+export enum CredentialScope {
+  PRODUCT = 'product',
+  COMPANY = 'company',
+  PERSONAL = 'personal',
+}
+
 /** A login stored in the Katalyst Hub vault. The secret is AES-256-GCM encrypted. */
 @Entity('product_credentials')
 export class ProductCredential {
@@ -26,8 +32,20 @@ export class ProductCredential {
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  @Column()
-  productId: string;
+  /** Set for scope `product`, always null for `company` and `personal` (enforced by a CHECK constraint). */
+  @Column({ type: 'uuid', nullable: true })
+  productId: string | null;
+
+  @Column({ type: 'varchar', length: 20, default: CredentialScope.PRODUCT })
+  scope: CredentialScope;
+
+  /** Creator of a company or personal item. */
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'ownerId' })
+  owner: User | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  ownerId: string | null;
 
   @Column()
   label: string;
@@ -45,8 +63,27 @@ export class ProductCredential {
   @Column('text', { select: false })
   secretEncrypted: string;
 
+  /** Same format as the secret. Never select into API responses without decrypting for someone with access. */
+  @Column('text', { select: false, nullable: true })
+  notesEncrypted: string | null;
+
   @Column({ type: 'boolean', default: false })
   shareable: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  accessEveryone: boolean;
+
+  @Column('text', { array: true, default: '{}' })
+  accessDepartments: string[];
+
+  @Column('uuid', { array: true, default: '{}' })
+  accessUserIds: string[];
+
+  @Column({ type: 'timestamptz', nullable: true })
+  passwordChangedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  passwordChangedById: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'createdById' })

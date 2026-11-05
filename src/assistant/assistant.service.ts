@@ -15,6 +15,7 @@ import { AuthService } from '../auth/auth.service';
 import { ProductFilesService } from '../products/product-files.service';
 import { ProductsService } from '../products/products.service';
 import { ProductVaultService } from '../product-vault/product-vault.service';
+import { CompanyVaultService } from '../product-vault/company-vault.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AttachmentsService } from '../tasks/attachments.service';
 import { TaskStatus } from '../tasks/entities/task.entity';
@@ -108,6 +109,7 @@ export class AssistantService {
     private readonly productsService: ProductsService,
     private readonly productFiles: ProductFilesService,
     private readonly vault: ProductVaultService,
+    private readonly companyVault: CompanyVaultService,
   ) {}
 
   // ------------------------------------------------------------ public API
@@ -440,6 +442,17 @@ export class AssistantService {
         // The link only goes to the panel. The model and the stored chat get this sentence instead.
         actions.push({ type: 'vault_link', label, url: link.url, expiresAt: link.expiresAt, oneTime: link.oneTime });
         return `A one-time link for "${label}" is now showing to the user, valid for ${expiresIn}. You don't have the link; don't try to repeat it.`;
+      }
+      case 'list_company_logins': {
+        // Name and scope only: usernames, notes and URLs stay out of the conversation.
+        const items = await this.companyVault.listLabels({ userId: user.userId, role: user.role });
+        return items.map((c) => ({ id: c.id, label: c.label, scope: c.scope }));
+      }
+      case 'create_company_login_link': {
+        const link = await this.companyVault.createInternalLink(String(input.itemId || ''), { userId: user.userId, role: user.role });
+        // The link only goes to the panel. The model and the stored chat get this sentence instead.
+        actions.push({ type: 'vault_link', label: link.label, url: link.url, expiresAt: link.expiresAt, oneTime: link.oneTime });
+        return `A one-time link for "${link.label}" is now showing to the user, valid for 1 hour. You don't have the link; don't try to repeat it.`;
       }
       case 'open_page': {
         if (!isAllowedPagePath(input.path)) throw new BadRequestException(`"${input.path}" is not a page I can open.`);

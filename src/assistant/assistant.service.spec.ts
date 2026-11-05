@@ -36,6 +36,10 @@ const setup = (script: any[]) => {
     createShare: jest.fn(async () => ({ id: 's1', url: VAULT_URL, expiresAt: new Date(), oneTime: true })),
     listCredentials: jest.fn(async () => [{ id: 'c1', label: 'Stripe', canReveal: true, shareable: true, username: 'admin@x.com' }]),
   };
+  const companyVault = {
+    listLabels: jest.fn(async () => [{ id: 'v1', label: 'Gmail', scope: 'company', username: 'leak@x.com', notes: 'leak-note', loginUrl: 'https://leak.example' }]),
+    createInternalLink: jest.fn(async () => ({ label: 'Gmail', url: VAULT_URL, expiresAt: new Date(), oneTime: true })),
+  };
   const service = new AssistantService(
     conversations as any,
     messages as any,
@@ -49,6 +53,7 @@ const setup = (script: any[]) => {
     {} as any,
     {} as any,
     vault as any,
+    companyVault as any,
   );
   service.clientFactory = () => ({
     beta: {
@@ -60,7 +65,7 @@ const setup = (script: any[]) => {
       },
     },
   });
-  return { service, requests, tasksService, vault, messages, conversations };
+  return { service, requests, tasksService, vault, companyVault, messages, conversations };
 };
 
 const toolUse = (name: string, input: any, id = 'tu1') => ({
@@ -124,6 +129,29 @@ describe('AssistantService', () => {
     ]);
     await service.chat({ message: 'x' }, USER);
     expect(vault.createShare).toHaveBeenCalledWith('pr1', 'c1', { expiresIn: '1h', oneTime: true }, { userId: 'user-1', role: USER.role });
+  });
+
+  it('shows company login links only to the user, and checks access as the signed-in user', async () => {
+    const { service, requests, companyVault } = setup([toolUse('create_company_login_link', { itemId: 'v1' }), say('Done')]);
+    const reply = await service.chat({ message: 'Gmail password please' }, USER);
+    expect(reply.actions).toEqual([expect.objectContaining({ type: 'vault_link', url: VAULT_URL, label: 'Gmail', oneTime: true })]);
+    expect(companyVault.createInternalLink).toHaveBeenCalledWith('v1', { userId: 'user-1', role: USER.role });
+    expect(JSON.stringify(requests)).not.toContain(VAULT_URL);
+  });
+
+  it('gives the model only names and scope for company logins', async () => {
+    const { service, requests } = setup([toolUse('list_company_logins', {}), say('ok')]);
+    await service.chat({ message: 'what logins do I have' }, USER);
+    const sent = JSON.stringify(requests[1]);
+    expect(sent).toContain('Gmail');
+    for (const leak of ['leak@x.com', 'leak-note', 'leak.example']) expect(sent).not.toContain(leak);
+  });
+
+  it('allows the new workspace pages in open_page', () => {
+    for (const path of ['/vault', '/pages', '/my-day', '/pages/3f2b8c1e-1234-4abc-8def-0123456789ab']) {
+      expect(isAllowedPagePath(path)).toBe(true);
+    }
+    expect(isAllowedPagePath('/pages/not-a-page')).toBe(false);
   });
 
   it('keeps usernames out of vault listings', async () => {

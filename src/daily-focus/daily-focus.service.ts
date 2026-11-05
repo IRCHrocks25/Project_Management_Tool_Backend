@@ -67,6 +67,12 @@ export class DailyFocusService {
     };
   }
 
+  /** Today's calendar date (YYYY-MM-DD) in ORG_TIMEZONE. */
+  getOrgToday(): string {
+    const tz = this.configService.get<string>('ORG_TIMEZONE', 'UTC');
+    return DateTime.now().setZone(tz).toISODate() as string;
+  }
+
   async findByDate(dateStr: string) {
     this.assertValidDate(dateStr);
     const rows = await this.dailyFocusRepository.find({

@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import * as pg from 'pg';
 import { AppModule } from './app.module';
 
@@ -11,7 +12,9 @@ pg.types.setTypeParser(1082, (val: string) => val);
 
 async function bootstrap() {
   try {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create<NestExpressApplication>(AppModule);
+    // Workspace pages can be up to 1 MB of JSON (docs/workspace.md); the default limit is 100 KB.
+    app.useBodyParser('json', { limit: '1500kb' });
     app.useWebSocketAdapter(new IoAdapter(app));
 
     // Enable CORS for frontend communication

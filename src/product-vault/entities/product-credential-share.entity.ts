@@ -37,6 +37,10 @@ export class ProductCredentialShare {
   @Column({ type: 'timestamptz', nullable: true })
   revokedAt: Date | null;
 
+  /** Works even when the login isn't shareable. Only the assistant creates these. */
+  @Column({ type: 'boolean', default: false })
+  internal: boolean;
+
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'createdById' })
   createdBy: User;

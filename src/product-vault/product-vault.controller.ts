@@ -25,11 +25,11 @@ import { ProductVaultService, VaultActor } from './product-vault.service';
 import { DemoAccountsService } from './demo-accounts.service';
 
 /** 400 with a readable message instead of Nest's default for malformed ids. */
-const Uuid = new ParseUUIDPipe({
+export const Uuid = new ParseUUIDPipe({
   exceptionFactory: () => new BadRequestException('That link points to an invalid id.'),
 });
 
-const actorOf = (req: any): VaultActor => ({
+export const actorOf = (req: any): VaultActor => ({
   userId: req.user?.userId || req.user?.id,
   role: req.user?.role ?? null,
 });
@@ -77,8 +77,8 @@ export class ProductCredentialsController {
   }
 
   @Get(':credId/events')
-  events(@Param('id', Uuid) id: string, @Param('credId', Uuid) credId: string) {
-    return this.vault.listEvents(id, credId);
+  events(@Param('id', Uuid) id: string, @Param('credId', Uuid) credId: string, @Request() req: any) {
+    return this.vault.listEvents(id, credId, actorOf(req));
   }
 
   @Post(':credId/shares')

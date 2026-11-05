@@ -18,8 +18,9 @@ import { Project } from '../projects/entities/project.entity';
 import { CreateMeetingDto, GuestLinkDto, UpdateMeetingDto } from './dto/meetings.dto';
 import { MeetingGuest } from './entities/meeting-guest.entity';
 import { MeetingInvitee } from './entities/meeting-invitee.entity';
+import { MeetingRecording } from './entities/meeting-recording.entity';
 import { Meeting } from './entities/meeting.entity';
-import { LiveKitConfig, createRoomToken, deleteRoom, muteParticipant, removeParticipant } from './livekit';
+import { LiveKitConfig, createRoomToken, deleteRoom, muteParticipant, removeParticipant, updateRoomMetadata } from './livekit';
 import { STALE_AFTER_MS, canJoin, cleanInvitees, isClosed, isGuestPresent } from './meeting-rules';
 
 const NOT_SET_UP = "Video calls aren't set up yet. Add the LiveKit keys to the server.";
@@ -42,6 +43,7 @@ export class MeetingsService {
     @InjectRepository(Meeting) private readonly meetings: Repository<Meeting>,
     @InjectRepository(MeetingInvitee) private readonly invitees: Repository<MeetingInvitee>,
     @InjectRepository(MeetingGuest) private readonly guests: Repository<MeetingGuest>,
+    @InjectRepository(MeetingRecording) private readonly recordings: Repository<MeetingRecording>,
     @InjectRepository(Project) private readonly projects: Repository<Project>,
     private readonly hubUsers: HubUsersService,
     private readonly notifications: NotificationsService,
@@ -124,7 +126,9 @@ export class MeetingsService {
     const isHost = meeting.hostId === actor.userId;
 
     await this.markLive(meeting);
-    if (!isHost) {
+    if (isHost) {
+      await this.closeOrphanRecordings(meeting);
+    } else {
       await this.invitees.update({ meetingId: id, userId: actor.userId, joinedAt: IsNull() }, { joinedAt: new Date() });
     }
     return {
@@ -220,6 +224,8 @@ export class MeetingsService {
       startsAt: meeting.startsAt,
       status: meeting.status,
       videoReady: !!this.liveKit(),
+      // Guests are told before they join, so joining is informed consent.
+      isRecording: (await this.recordings.count({ where: { meetingId: meeting.id, status: 'recording' } })) > 0,
     };
   }
 
@@ -274,7 +280,7 @@ export class MeetingsService {
     return url && apiKey && apiSecret ? { url, apiKey, apiSecret } : null;
   }
 
-  private requireLiveKit(): LiveKitConfig {
+  requireLiveKit(): LiveKitConfig {
     const config = this.liveKit();
     if (!config) throw new ServiceUnavailableException(NOT_SET_UP);
     return config;
@@ -295,7 +301,26 @@ export class MeetingsService {
     }
   }
 
+  /** Tells everyone in the call that recording has stopped. The call may already be gone, which is fine. */
+  async clearRecordingFlag(meeting: Meeting) {
+    const config = this.liveKit();
+    if (!config) return;
+    await updateRoomMetadata(config, meeting.roomName, '{}').catch((error) =>
+      this.logger.warn(`Could not clear the recording flag on meeting ${meeting.id}: ${error?.message || error}`),
+    );
+  }
+
+  /** A recording still running when its host rejoins was cut off, because recording happens in the host's browser. */
+  private async closeOrphanRecordings(meeting: Meeting) {
+    const result = await this.recordings.update(
+      { meetingId: meeting.id, status: 'recording' },
+      { status: 'failed', endedAt: new Date() },
+    );
+    if (result.affected) await this.clearRecordingFlag(meeting);
+  }
+
   private async closeRoom(meeting: Meeting) {
+    await this.recordings.update({ meetingId: meeting.id, status: 'recording' }, { status: 'failed', endedAt: new Date() });
     const config = this.liveKit();
     if (!config || !meeting.startedAt) return;
     try {
@@ -320,7 +345,7 @@ export class MeetingsService {
   }
 
   /** 404 rather than 403, so people outside a meeting can't tell it exists. */
-  private async visibleMeeting(id: string, actor: MeetingActor) {
+  async visibleMeeting(id: string, actor: MeetingActor) {
     const meeting = await this.meetings.findOne({ where: { id } });
     if (!meeting) throw new NotFoundException("This meeting doesn't exist.");
     if (meeting.hostId === actor.userId) return meeting;
@@ -329,7 +354,7 @@ export class MeetingsService {
     return meeting;
   }
 
-  private async hostedMeeting(id: string, actor: MeetingActor) {
+  async hostedMeeting(id: string, actor: MeetingActor) {
     const meeting = await this.visibleMeeting(id, actor);
     if (meeting.hostId !== actor.userId) throw new ForbiddenException('Only the host can do that.');
     return meeting;
@@ -381,6 +406,7 @@ export class MeetingsService {
     if (!rows.length) return [];
     const ids = rows.map((m) => m.id);
     const allInvitees = await this.invitees.find({ where: { meetingId: In(ids) } });
+    const recordingNow = await this.recordings.find({ select: ['meetingId'], where: { meetingId: In(ids), status: 'recording' } });
     const users = await this.hubUsers.load([...rows.map((m) => m.hostId), ...allInvitees.map((i) => i.userId)]);
     const projectIds = [...new Set(rows.map((m) => m.projectId).filter((id): id is string => !!id))];
     const projects = projectIds.length
@@ -401,6 +427,7 @@ export class MeetingsService {
         status: m.status,
         startedAt: m.startedAt,
         endedAt: m.endedAt,
+        isRecording: recordingNow.some((r) => r.meetingId === m.id),
         host: userOf(m.hostId),
         isHost,
         project: project ? { id: project.id, name: project.clientName } : null,

@@ -53,7 +53,7 @@ export function apiBaseUrl(url: string): string {
   return url.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
 }
 
-type RoomServiceMethod = 'DeleteRoom' | 'RemoveParticipant' | 'GetParticipant' | 'MutePublishedTrack';
+type RoomServiceMethod = 'DeleteRoom' | 'RemoveParticipant' | 'GetParticipant' | 'MutePublishedTrack' | 'UpdateRoomMetadata';
 
 /** Calls LiveKit's room API. Returns null on a 404, which means the room or person has already gone. */
 async function roomService(
@@ -110,4 +110,14 @@ export async function muteParticipant(
       roomService(config, room, 'MutePublishedTrack', { identity, track_sid: track.sid, muted: true }, fetchFn),
     ),
   );
+}
+
+/** Room metadata reaches everyone in the call, including people who join later. */
+export async function updateRoomMetadata(
+  config: LiveKitConfig,
+  room: string,
+  metadata: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<void> {
+  await roomService(config, room, 'UpdateRoomMetadata', { metadata }, fetchFn);
 }

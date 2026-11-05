@@ -1,17 +1,21 @@
-import { Body, Controller, Get, Header, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ClientIpThrottlerGuard } from '../forms/forms.controller';
 import { Uuid } from '../product-vault/product-vault.controller';
 import {
   AskToJoinDto,
+  BeginRecordingUploadDto,
+  CompleteRecordingDto,
   CreateMeetingDto,
   GuestDecisionDto,
   GuestLinkDto,
   GuestStatusDto,
   ParticipantActionDto,
+  StopRecordingDto,
   UpdateMeetingDto,
 } from './dto/meetings.dto';
+import { MeetingRecordingsService } from './meeting-recordings.service';
 import { MeetingActor, MeetingsService } from './meetings.service';
 
 const actorOf = (req: any): MeetingActor => ({ userId: req.user?.userId || req.user?.id });
@@ -19,11 +23,26 @@ const actorOf = (req: any): MeetingActor => ({ userId: req.user?.userId || req.u
 @Controller('meetings')
 @UseGuards(JwtAuthGuard)
 export class MeetingsController {
-  constructor(private readonly meetings: MeetingsService) {}
+  constructor(
+    private readonly meetings: MeetingsService,
+    private readonly recordings: MeetingRecordingsService,
+  ) {}
 
   @Get()
   list(@Query('view') view: string, @Request() req: any) {
     return this.meetings.list(view, actorOf(req));
+  }
+
+  // Before the :id routes, so "recordings" isn't read as a meeting id.
+  @Get('recordings')
+  listRecordings(@Request() req: any) {
+    return this.recordings.list(actorOf(req));
+  }
+
+  @Post('recordings/:recordingId/playback')
+  @Header('Cache-Control', 'no-store')
+  playback(@Param('recordingId', Uuid) recordingId: string, @Request() req: any) {
+    return this.recordings.playback(recordingId, actorOf(req));
   }
 
   @Post()
@@ -85,6 +104,62 @@ export class MeetingsController {
   @Post(':id/participants/remove')
   removeParticipant(@Param('id', Uuid) id: string, @Body() dto: ParticipantActionDto, @Request() req: any) {
     return this.meetings.removeParticipant(id, dto.identity, actorOf(req));
+  }
+
+  @Post(':id/recordings')
+  startRecording(@Param('id', Uuid) id: string, @Request() req: any) {
+    return this.recordings.start(id, actorOf(req));
+  }
+
+  @Post(':id/recordings/:recordingId/stop')
+  stopRecording(
+    @Param('id', Uuid) id: string,
+    @Param('recordingId', Uuid) recordingId: string,
+    @Body() dto: StopRecordingDto,
+    @Request() req: any,
+  ) {
+    return this.recordings.stop(id, recordingId, dto, actorOf(req));
+  }
+
+  @Post(':id/recordings/:recordingId/upload')
+  beginRecordingUpload(
+    @Param('id', Uuid) id: string,
+    @Param('recordingId', Uuid) recordingId: string,
+    @Body() dto: BeginRecordingUploadDto,
+    @Request() req: any,
+  ) {
+    return this.recordings.beginUpload(id, recordingId, dto, actorOf(req));
+  }
+
+  /** The body is one raw part of the video, passed on to storage as it arrives. */
+  @Put(':id/recordings/:recordingId/parts/:partNumber')
+  uploadRecordingPart(
+    @Param('id', Uuid) id: string,
+    @Param('recordingId', Uuid) recordingId: string,
+    @Param('partNumber', ParseIntPipe) partNumber: number,
+    @Request() req: any,
+  ) {
+    return this.recordings.uploadPart(id, recordingId, partNumber, req, actorOf(req));
+  }
+
+  @Post(':id/recordings/:recordingId/complete')
+  completeRecording(
+    @Param('id', Uuid) id: string,
+    @Param('recordingId', Uuid) recordingId: string,
+    @Body() dto: CompleteRecordingDto,
+    @Request() req: any,
+  ) {
+    return this.recordings.complete(id, recordingId, dto.parts, actorOf(req));
+  }
+
+  @Post(':id/recordings/:recordingId/fail')
+  failRecording(@Param('id', Uuid) id: string, @Param('recordingId', Uuid) recordingId: string, @Request() req: any) {
+    return this.recordings.fail(id, recordingId, actorOf(req));
+  }
+
+  @Delete(':id/recordings/:recordingId')
+  deleteRecording(@Param('id', Uuid) id: string, @Param('recordingId', Uuid) recordingId: string, @Request() req: any) {
+    return this.recordings.remove(id, recordingId, actorOf(req));
   }
 }
 

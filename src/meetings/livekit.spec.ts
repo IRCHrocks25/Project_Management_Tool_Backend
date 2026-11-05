@@ -1,5 +1,5 @@
 import { JwtService } from '@nestjs/jwt';
-import { apiBaseUrl, createRoomToken, deleteRoom, muteParticipant, removeParticipant } from './livekit';
+import { apiBaseUrl, createRoomToken, deleteRoom, muteParticipant, removeParticipant, updateRoomMetadata } from './livekit';
 
 const config = { url: 'wss://demo.livekit.cloud', apiKey: 'key123', apiSecret: 'a-long-enough-test-secret-value' };
 const jwt = new JwtService({});
@@ -85,5 +85,12 @@ describe('LiveKit helpers', () => {
     const fetchFn = jest.fn().mockResolvedValue(reply(404));
     await muteParticipant(config, 'r', 'user:1', fetchFn as any);
     expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells the room when it is being recorded', async () => {
+    const fetchFn = jest.fn().mockResolvedValue(reply(200));
+    await updateRoomMetadata(config, 'r', '{"recording":true}', fetchFn as any);
+    expect(fetchFn.mock.calls[0][0]).toContain('/UpdateRoomMetadata');
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({ room: 'r', metadata: '{"recording":true}' });
   });
 });

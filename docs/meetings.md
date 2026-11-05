@@ -5,7 +5,7 @@ backend. The backend schedules meetings, decides who may join and signs short-li
 
 ## Setup
 
-1. Run `npm run migrate:meetings` before deploying this code.
+1. Run `npm run migrate:meetings` before deploying this code. It is safe to run again after each new migration.
 2. Set `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. Without them everything works except joining a
    call, which answers 503 with a plain message.
 
@@ -29,6 +29,21 @@ backend. The backend schedules meetings, decides who may join and signs short-li
 - `POST /meetings/:id/participants/remove` `{ identity }` (host). A guest goes back to asking to join; a teammate can
   rejoin from the meeting page. A token already issued stays valid until it expires, so this is not a permanent ban.
 
+## Recordings
+
+Made in the host's browser and stored as private videos in Iceberg, under `PM_tool/meetings/<meetingId>/`. LiveKit's own
+recording isn't used because it can't upload to Iceberg. Stopping when the host's tab closes is the known trade-off.
+
+- `POST /meetings/:id/recordings` (host) starts one and sets `{ recording: true }` on the room, which drives the badge.
+- `POST /meetings/:id/recordings/:rid/stop` `{ durationSeconds }`
+- `POST /meetings/:id/recordings/:rid/upload` `{ contentType, sizeBytes }` returns `{ partSize }`
+- `PUT /meetings/:id/recordings/:rid/parts/:n` raw bytes, returns `{ etag }`. The backend streams each part to storage
+  because the Iceberg bucket doesn't accept browser uploads from this site.
+- `POST /meetings/:id/recordings/:rid/complete` `{ parts: [{ partNumber, etag, size }] }` finishes and makes it private
+- `POST /meetings/:id/recordings/:rid/fail`, `DELETE /meetings/:id/recordings/:rid` (host)
+- `GET /meetings/recordings` lists those of meetings you host or were invited to, with no CEO or PM override
+- `POST /meetings/recordings/:rid/playback` returns a 4-hour private link
+
 ## Public routes (rate limited; the code is the credential)
 
 - `GET /public/meetings/:code`
@@ -37,4 +52,4 @@ backend. The backend schedules meetings, decides who may join and signs short-li
 
 ## Not in this version
 
-Recording, transcripts and AI summaries, scheduled reminders (there is no scheduler yet), calendar sync and phone dial-in.
+Transcripts and AI summaries, scheduled reminders (there is no scheduler yet), calendar sync and phone dial-in.

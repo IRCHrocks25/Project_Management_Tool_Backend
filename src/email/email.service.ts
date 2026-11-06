@@ -18,6 +18,15 @@ export interface NotificationEmail {
   userName?: string;
   viewLink?: string;
   appName?: string;
+  /** Replaces the default button text and footer, and adds headed sections under the message. */
+  viewLabel?: string;
+  footer?: string;
+  sections?: EmailSection[];
+}
+
+export interface EmailSection {
+  heading: string;
+  bullets: string[];
 }
 
 const escapeHtml = (value: string) =>
@@ -48,19 +57,33 @@ export class EmailService {
     }
     const appName = email.appName || 'Katalyst PM';
     const greeting = email.userName ? `Hi ${email.userName},` : 'Hi,';
-    const footer = `You get these emails from ${appName}. You can turn them off in Settings.`;
+    const footer = email.footer || `You get these emails from ${appName}. You can turn them off in Settings.`;
+    const viewLabel = email.viewLabel || `View in ${appName}`;
+    const sections = email.sections || [];
     const body = JSON.stringify({
       from: this.configService.get<string>('RESEND_FROM') || DEFAULT_FROM,
       to: [email.to],
       subject: email.title,
-      text: [greeting, email.message, email.viewLink ? `View it here: ${email.viewLink}` : '', footer]
+      text: [
+        greeting,
+        email.message,
+        ...sections.map((section) => `${section.heading}\n${section.bullets.map((b) => `- ${b}`).join('\n')}`),
+        email.viewLink ? `${viewLabel}: ${email.viewLink}` : '',
+        footer,
+      ]
         .filter(Boolean)
         .join('\n\n'),
       html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111111">
   <h1 style="margin:0 0 16px;font-size:20px">${escapeHtml(email.title)}</h1>
   <p style="margin:0 0 16px;line-height:1.5">${escapeHtml(greeting)}</p>
   <p style="margin:0 0 16px;line-height:1.5;white-space:pre-line">${escapeHtml(email.message)}</p>
-  ${email.viewLink ? `<p style="margin:0 0 16px"><a href="${escapeHtml(email.viewLink)}" style="display:inline-block;padding:10px 16px;background:#111111;color:#ffffff;border-radius:8px;text-decoration:none">View in ${escapeHtml(appName)}</a></p>` : ''}
+  ${sections
+    .map(
+      (section) => `<h2 style="margin:0 0 8px;font-size:16px">${escapeHtml(section.heading)}</h2>
+  <ul style="margin:0 0 16px;padding-left:20px;line-height:1.5">${section.bullets.map((b) => `<li style="margin:0 0 6px">${escapeHtml(b)}</li>`).join('')}</ul>`,
+    )
+    .join('\n  ')}
+  ${email.viewLink ? `<p style="margin:0 0 16px"><a href="${escapeHtml(email.viewLink)}" style="display:inline-block;padding:10px 16px;background:#111111;color:#ffffff;border-radius:8px;text-decoration:none">${escapeHtml(viewLabel)}</a></p>` : ''}
   <p style="margin:0;color:#555555;font-size:13px;line-height:1.5">${escapeHtml(footer)}</p>
 </div>`,
     });

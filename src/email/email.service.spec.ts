@@ -84,3 +84,25 @@ describe('EmailService.sendNotification', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('EmailService sections', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('adds escaped sections and uses the given button text and footer', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async () => reply(200));
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    await setup().sendNotification({
+      ...email,
+      sections: [{ heading: 'Action <items>', bullets: ['Send & confirm'] }],
+      viewLabel: 'View in Telos',
+      footer: 'Because you had notes on.',
+    });
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as any).body);
+    expect(body.html).toContain('Action &lt;items&gt;');
+    expect(body.html).toContain('<li style="margin:0 0 6px">Send &amp; confirm</li>');
+    expect(body.html).toContain('View in Telos</a>');
+    expect(body.html).toContain('Because you had notes on.');
+    expect(body.html).not.toContain('turn them off in Settings');
+    expect(body.text).toContain('Action <items>\n- Send & confirm');
+  });
+});

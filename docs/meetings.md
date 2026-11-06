@@ -8,6 +8,8 @@ backend. The backend schedules meetings, decides who may join and signs short-li
 1. Run `npm run migrate:meetings` before deploying this code. It is safe to run again after each new migration.
 2. Set `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. Without them everything works except joining a
    call, which answers 503 with a plain message.
+3. For notes, set `DEEPGRAM_API_KEY` as well as the existing `ANTHROPIC_API_KEY`. `DEEPGRAM_BASE_URL` is optional and
+   points transcription at another region. Without both keys the notes button and Auto notes switch stay off.
 
 ## Who can do what
 
@@ -44,6 +46,35 @@ recording isn't used because it can't upload to Iceberg. Stopping when the host'
 - `GET /meetings/recordings` lists those of meetings you host or were invited to, with no CEO or PM override
 - `POST /meetings/recordings/:rid/playback` returns a 4-hour private link
 
+## Notes
+
+Otter-style notes: call audio is captured, transcribed by Deepgram and summarised by Claude, then emailed.
+
+- **Capture:** one browser captures per call, the first with notes on. It sends 32 kbps audio every 15 seconds, stored
+  in `meeting_note_chunks`. Everyone with notes on checks in every 15 seconds, and if the capturer's 45-second lease
+  lapses, one of them takes over. Each take-over is a new segment, because the audio only joins up within a segment.
+- **Finishing:** a timer in this service runs every 30 seconds. Notes close when the host ends the call, when the last
+  listener leaves, or 3 minutes after the last check-in if tabs just closed. It tries 3 times, then marks them failed.
+- **Audio:** deleted as soon as the transcript is saved. It's kept for 7 days if transcription failed.
+- **Access:** only recipients can see notes, meaning people who had them on, or who they were shared with. No CEO or PM
+  override. Being shared notes doesn't give access to the recording.
+- **Notice:** everyone in the call sees a notes badge from the room's metadata. Guests are told before joining if notes
+  are running or anyone on the meeting has Auto notes on. The host can stop notes for the call, which deletes what was
+  captured.
+- **Speaker names** come from LiveKit's active speaker events matched to Deepgram's lines, falling back to "Speaker N".
+
+Routes (all need a login):
+
+- `GET /meetings/notes/preferences`, `PATCH /meetings/notes/preferences` `{ autoNotes }`
+- `GET /meetings/notes`, `GET /meetings/notes/:noteId`
+- `DELETE /meetings/notes/:noteId` removes your copy; the notes go when nobody has them
+- `POST /meetings/notes/:noteId/retry`, `POST /meetings/notes/:noteId/share` `{ userIds }`
+- `PATCH /meetings/notes/:noteId/items/:itemId` `{ done }`
+- `POST /meetings/notes/:noteId/items/:itemId/task` `{ projectId? }` makes a task assigned to the caller
+- `POST /meetings/:id/notes/listen` `{ segment?, contentType?, speakers? }` returns `{ blocked, capturing, noteId, segment }`
+- `POST /meetings/:id/notes/leave`, `POST /meetings/:id/notes/block` `{ blocked }` (host)
+- `PUT /meetings/:id/notes/:noteId/chunks/:segment/:seq` raw audio, up to 1 MB
+
 ## Public routes (rate limited; the code is the credential)
 
 - `GET /public/meetings/:code`
@@ -52,4 +83,4 @@ recording isn't used because it can't upload to Iceberg. Stopping when the host'
 
 ## Not in this version
 
-Transcripts and AI summaries, scheduled reminders (there is no scheduler yet), calendar sync and phone dial-in.
+Notes for calls outside this platform, scheduled reminders (there is no scheduler yet), calendar sync and phone dial-in.

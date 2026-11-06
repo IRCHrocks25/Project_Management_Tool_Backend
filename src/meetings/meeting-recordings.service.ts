@@ -17,7 +17,6 @@ import { BeginRecordingUploadDto, StopRecordingDto } from './dto/meetings.dto';
 import { MeetingInvitee } from './entities/meeting-invitee.entity';
 import { MeetingRecording } from './entities/meeting-recording.entity';
 import { Meeting } from './entities/meeting.entity';
-import { updateRoomMetadata } from './livekit';
 import { isClosed } from './meeting-rules';
 import { MeetingActor, MeetingsService } from './meetings.service';
 
@@ -42,13 +41,13 @@ export class MeetingRecordingsService {
   async start(meetingId: string, actor: MeetingActor) {
     const meeting = await this.meetingsService.hostedMeeting(meetingId, actor);
     if (isClosed(meeting.status)) throw new GoneException('This meeting has finished.');
-    const config = this.meetingsService.requireLiveKit();
+    this.meetingsService.requireLiveKit();
     await this.recordings.update({ meetingId, status: 'recording' }, { status: 'failed', endedAt: new Date() });
     const recording = await this.recordings.save(
       this.recordings.create({ meetingId, startedById: actor.userId, status: 'recording' }),
     );
     try {
-      await updateRoomMetadata(config, meeting.roomName, JSON.stringify({ recording: true }));
+      await this.meetingsService.syncRoomFlags(meeting, true);
     } catch (error) {
       await this.recordings.delete(recording.id);
       this.logger.warn(`Could not flag recording on meeting ${meetingId}: ${error?.message || error}`);
@@ -65,7 +64,7 @@ export class MeetingRecordingsService {
       recording.durationSeconds = dto.durationSeconds;
       await this.recordings.save(recording);
     }
-    await this.meetingsService.clearRecordingFlag(meeting);
+    await this.meetingsService.syncRoomFlags(meeting);
     return { status: recording.status };
   }
 
@@ -136,7 +135,7 @@ export class MeetingRecordingsService {
       recording.status = 'failed';
       await this.recordings.save(recording);
     }
-    await this.meetingsService.clearRecordingFlag(meeting);
+    await this.meetingsService.syncRoomFlags(meeting);
     return { status: recording.status };
   }
 

@@ -173,3 +173,76 @@ export class CompleteRecordingDto {
   @Type(() => RecordingPartDto)
   parts: RecordingPartDto[];
 }
+
+export class NotePreferencesDto {
+  @IsBoolean({ message: 'Turn Auto notes on or off.' })
+  autoNotes: boolean;
+}
+
+export class SpeakerSpanDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  segment: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  name: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  startMs: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  endMs: number;
+}
+
+export class ListenDto {
+  /** The segment this browser is recording, if any. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  segment?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^audio\/(webm|mp4)(;|$)/, { message: 'That audio format is not supported.' })
+  @MaxLength(60)
+  contentType?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => SpeakerSpanDto)
+  speakers?: SpeakerSpanDto[];
+}
+
+export class BlockNotesDto {
+  @IsBoolean({ message: 'Turn notes on or off for this call.' })
+  blocked: boolean;
+}
+
+export class ShareNoteDto {
+  @IsArray({ message: 'Choose who to share with.' })
+  @ArrayMinSize(1, { message: 'Choose who to share with.' })
+  @ArrayMaxSize(MAX_INVITEES, { message: `You can share with up to ${MAX_INVITEES} people at once.` })
+  @IsUUID('all', { each: true, message: 'Choose who to share with.' })
+  userIds: string[];
+}
+
+export class NoteItemDto {
+  @IsBoolean({ message: 'Mark this as done or not done.' })
+  done: boolean;
+}
+
+export class NoteItemTaskDto {
+  @IsOptional()
+  @IsUUID('all', { message: 'Choose a valid project.' })
+  projectId?: string;
+}

@@ -39,6 +39,10 @@ export class Meeting {
   @Column({ default: true })
   guestLinkEnabled: boolean;
 
+  /** The host turned notes off for this call. */
+  @Column({ default: false })
+  notesBlocked: boolean;
+
   @Column({ type: 'timestamptz', nullable: true })
   startedAt: Date | null;
 

@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -10,9 +11,11 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 
 export const MAX_INVITEES = 50;
@@ -113,4 +116,133 @@ export class GuestStatusDto {
   @IsNotEmpty({ message: 'That link is not valid.' })
   @MaxLength(128, { message: 'That link is not valid.' })
   secret: string;
+}
+
+export class ParticipantActionDto {
+  @IsString({ message: 'Choose someone in the call.' })
+  @Matches(/^(user|guest):[0-9a-f-]{36}$/i, { message: 'Choose someone in the call.' })
+  identity: string;
+}
+
+export const MAX_RECORDING_BYTES = 8 * 1024 * 1024 * 1024;
+
+export class StopRecordingDto {
+  @Type(() => Number)
+  @IsInt({ message: 'Length must be a whole number of seconds.' })
+  @Min(0, { message: 'Length must be a whole number of seconds.' })
+  @Max(86400, { message: 'A recording can be at most 24 hours.' })
+  durationSeconds: number;
+}
+
+export class BeginRecordingUploadDto {
+  @IsString({ message: 'Only video recordings can be saved.' })
+  @Matches(/^video\/(webm|mp4)(;|$)/, { message: 'Only video recordings can be saved.' })
+  @MaxLength(80, { message: 'Only video recordings can be saved.' })
+  contentType: string;
+
+  @Type(() => Number)
+  @IsInt({ message: 'That recording is empty.' })
+  @Min(1, { message: 'That recording is empty.' })
+  @Max(MAX_RECORDING_BYTES, { message: 'That recording is too large to save.' })
+  sizeBytes: number;
+}
+
+export class RecordingPartDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10000)
+  partNumber: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  etag: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  size: number;
+}
+
+export class CompleteRecordingDto {
+  @IsArray({ message: 'The upload is incomplete.' })
+  @ArrayMinSize(1, { message: 'The upload is incomplete.' })
+  @ArrayMaxSize(10000, { message: 'The upload is too large.' })
+  @ValidateNested({ each: true })
+  @Type(() => RecordingPartDto)
+  parts: RecordingPartDto[];
+}
+
+export class NotePreferencesDto {
+  @IsBoolean({ message: 'Turn Auto notes on or off.' })
+  autoNotes: boolean;
+}
+
+export class SpeakerSpanDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  segment: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  name: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  startMs: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  endMs: number;
+}
+
+export class ListenDto {
+  /** The segment this browser is recording, if any. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  segment?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^audio\/(webm|mp4)(;|$)/, { message: 'That audio format is not supported.' })
+  @MaxLength(60)
+  contentType?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => SpeakerSpanDto)
+  speakers?: SpeakerSpanDto[];
+}
+
+export class BlockNotesDto {
+  @IsBoolean({ message: 'Turn notes on or off for this call.' })
+  blocked: boolean;
+}
+
+export class ShareNoteDto {
+  @IsArray({ message: 'Choose who to share with.' })
+  @ArrayMinSize(1, { message: 'Choose who to share with.' })
+  @ArrayMaxSize(MAX_INVITEES, { message: `You can share with up to ${MAX_INVITEES} people at once.` })
+  @IsUUID('all', { each: true, message: 'Choose who to share with.' })
+  userIds: string[];
+}
+
+export class NoteItemDto {
+  @IsBoolean({ message: 'Mark this as done or not done.' })
+  done: boolean;
+}
+
+export class NoteItemTaskDto {
+  @IsOptional()
+  @IsUUID('all', { message: 'Choose a valid project.' })
+  projectId?: string;
 }

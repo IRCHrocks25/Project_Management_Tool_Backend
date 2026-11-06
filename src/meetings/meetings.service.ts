@@ -10,7 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { HubUsersService, SafeUser } from '../products/hub-users.service';
@@ -18,8 +18,10 @@ import { Project } from '../projects/entities/project.entity';
 import { CreateMeetingDto, GuestLinkDto, UpdateMeetingDto } from './dto/meetings.dto';
 import { MeetingGuest } from './entities/meeting-guest.entity';
 import { MeetingInvitee } from './entities/meeting-invitee.entity';
+import { MeetingNote, MeetingNotePreference, MeetingNoteRecipient } from './entities/meeting-note.entity';
+import { MeetingRecording } from './entities/meeting-recording.entity';
 import { Meeting } from './entities/meeting.entity';
-import { LiveKitConfig, createRoomToken, deleteRoom } from './livekit';
+import { LiveKitConfig, createRoomToken, deleteRoom, muteParticipant, removeParticipant, updateRoomMetadata } from './livekit';
 import { STALE_AFTER_MS, canJoin, cleanInvitees, isClosed, isGuestPresent } from './meeting-rules';
 
 const NOT_SET_UP = "Video calls aren't set up yet. Add the LiveKit keys to the server.";
@@ -42,6 +44,10 @@ export class MeetingsService {
     @InjectRepository(Meeting) private readonly meetings: Repository<Meeting>,
     @InjectRepository(MeetingInvitee) private readonly invitees: Repository<MeetingInvitee>,
     @InjectRepository(MeetingGuest) private readonly guests: Repository<MeetingGuest>,
+    @InjectRepository(MeetingRecording) private readonly recordings: Repository<MeetingRecording>,
+    @InjectRepository(MeetingNote) private readonly notes: Repository<MeetingNote>,
+    @InjectRepository(MeetingNoteRecipient) private readonly noteRecipients: Repository<MeetingNoteRecipient>,
+    @InjectRepository(MeetingNotePreference) private readonly notePreferences: Repository<MeetingNotePreference>,
     @InjectRepository(Project) private readonly projects: Repository<Project>,
     private readonly hubUsers: HubUsersService,
     private readonly notifications: NotificationsService,
@@ -124,7 +130,9 @@ export class MeetingsService {
     const isHost = meeting.hostId === actor.userId;
 
     await this.markLive(meeting);
-    if (!isHost) {
+    if (isHost) {
+      await this.closeOrphanRecordings(meeting);
+    } else {
       await this.invitees.update({ meetingId: id, userId: actor.userId, joinedAt: IsNull() }, { joinedAt: new Date() });
     }
     return {
@@ -137,6 +145,27 @@ export class MeetingsService {
       }),
       isHost,
     };
+  }
+
+  /** Host only: mutes someone's microphone. They can turn it back on. */
+  async muteParticipant(id: string, identity: string, actor: MeetingActor) {
+    const { meeting, config } = await this.liveCall(id, actor);
+    await this.callLiveKit(() => muteParticipant(config, meeting.roomName, identity), "Couldn't mute them. Try again.");
+    return { muted: true };
+  }
+
+  /**
+   * Host only: takes someone out of the call. A guest is also marked denied, so opening the link
+   * again puts them back in the waiting room as a new request. A teammate can rejoin from the meeting page.
+   */
+  async removeParticipant(id: string, identity: string, actor: MeetingActor) {
+    if (identity === `user:${actor.userId}`) throw new BadRequestException("You can't remove yourself. Use Leave instead.");
+    const { meeting, config } = await this.liveCall(id, actor);
+    if (identity.startsWith('guest:')) {
+      await this.guests.update({ id: identity.slice('guest:'.length), meetingId: id }, { status: 'denied' });
+    }
+    await this.callLiveKit(() => removeParticipant(config, meeting.roomName, identity), "Couldn't remove them. Try again.");
+    return { removed: true };
   }
 
   /** Host only: disconnects everyone and closes the meeting. */
@@ -199,6 +228,9 @@ export class MeetingsService {
       startsAt: meeting.startsAt,
       status: meeting.status,
       videoReady: !!this.liveKit(),
+      // Guests are told before they join, so joining is informed consent.
+      isRecording: (await this.recordings.count({ where: { meetingId: meeting.id, status: 'recording' } })) > 0,
+      mayTakeNotes: await this.mayTakeNotes(meeting),
     };
   }
 
@@ -253,13 +285,78 @@ export class MeetingsService {
     return url && apiKey && apiSecret ? { url, apiKey, apiSecret } : null;
   }
 
-  private requireLiveKit(): LiveKitConfig {
+  requireLiveKit(): LiveKitConfig {
     const config = this.liveKit();
     if (!config) throw new ServiceUnavailableException(NOT_SET_UP);
     return config;
   }
 
+  private async liveCall(id: string, actor: MeetingActor) {
+    const meeting = await this.hostedMeeting(id, actor);
+    if (isClosed(meeting.status)) throw new GoneException('This meeting has finished.');
+    return { meeting, config: this.requireLiveKit() };
+  }
+
+  private async callLiveKit(action: () => Promise<void>, failure: string) {
+    try {
+      await action();
+    } catch (error) {
+      this.logger.warn(`LiveKit call failed: ${error?.message || error}`);
+      throw new ServiceUnavailableException(failure);
+    }
+  }
+
+  /** Tells everyone in the call that recording has stopped. The call may already be gone, which is fine. */
+  /**
+   * Tells everyone in the call what's being captured, from what the database says now.
+   * `strict` throws if the room can't be told, for when capture mustn't start without the notice.
+   */
+  async syncRoomFlags(meeting: Meeting, strict = false) {
+    const config = this.liveKit();
+    if (!config) return;
+    try {
+      await updateRoomMetadata(config, meeting.roomName, JSON.stringify(await this.roomFlags(meeting)));
+    } catch (error) {
+      if (strict) throw error;
+      this.logger.warn(`Could not update the call notices on meeting ${meeting.id}: ${error?.message || error}`);
+    }
+  }
+
+  private async roomFlags(meeting: Meeting) {
+    const recording = (await this.recordings.count({ where: { meetingId: meeting.id, status: 'recording' } })) > 0;
+    const note = await this.notes.findOne({ select: ['id'], where: { meetingId: meeting.id, status: 'capturing' } });
+    let notesBy: string[] = [];
+    if (note) {
+      const listeners = await this.noteRecipients.find({ where: { noteId: note.id, lastSeenAt: Not(IsNull()) } });
+      const users = await this.hubUsers.load(listeners.map((l) => l.userId));
+      notesBy = listeners.map((l) => users.get(l.userId)?.name ?? 'Teammate');
+    }
+    return { recording, notes: !!note, notesBy, notesBlocked: meeting.notesBlocked };
+  }
+
+  /** Guests are told before they join if anyone on the call could have notes taken. */
+  private async mayTakeNotes(meeting: Meeting) {
+    if (meeting.notesBlocked) return false;
+    if ((await this.notes.count({ where: { meetingId: meeting.id, status: 'capturing' } })) > 0) return true;
+    const invited = await this.invitees.find({ select: ['userId'], where: { meetingId: meeting.id } });
+    const count = await this.notePreferences.count({
+      where: { userId: In([meeting.hostId, ...invited.map((i) => i.userId)]), autoNotes: true },
+    });
+    return count > 0;
+  }
+
+  /** A recording still running when its host rejoins was cut off, because recording happens in the host's browser. */
+  private async closeOrphanRecordings(meeting: Meeting) {
+    const result = await this.recordings.update(
+      { meetingId: meeting.id, status: 'recording' },
+      { status: 'failed', endedAt: new Date() },
+    );
+    if (result.affected) await this.syncRoomFlags(meeting);
+  }
+
   private async closeRoom(meeting: Meeting) {
+    await this.recordings.update({ meetingId: meeting.id, status: 'recording' }, { status: 'failed', endedAt: new Date() });
+    await this.notes.update({ meetingId: meeting.id, status: 'capturing' }, { status: 'closing', closingAt: new Date(), capturerId: null });
     const config = this.liveKit();
     if (!config || !meeting.startedAt) return;
     try {
@@ -284,7 +381,7 @@ export class MeetingsService {
   }
 
   /** 404 rather than 403, so people outside a meeting can't tell it exists. */
-  private async visibleMeeting(id: string, actor: MeetingActor) {
+  async visibleMeeting(id: string, actor: MeetingActor) {
     const meeting = await this.meetings.findOne({ where: { id } });
     if (!meeting) throw new NotFoundException("This meeting doesn't exist.");
     if (meeting.hostId === actor.userId) return meeting;
@@ -293,7 +390,7 @@ export class MeetingsService {
     return meeting;
   }
 
-  private async hostedMeeting(id: string, actor: MeetingActor) {
+  async hostedMeeting(id: string, actor: MeetingActor) {
     const meeting = await this.visibleMeeting(id, actor);
     if (meeting.hostId !== actor.userId) throw new ForbiddenException('Only the host can do that.');
     return meeting;
@@ -345,6 +442,7 @@ export class MeetingsService {
     if (!rows.length) return [];
     const ids = rows.map((m) => m.id);
     const allInvitees = await this.invitees.find({ where: { meetingId: In(ids) } });
+    const recordingNow = await this.recordings.find({ select: ['meetingId'], where: { meetingId: In(ids), status: 'recording' } });
     const users = await this.hubUsers.load([...rows.map((m) => m.hostId), ...allInvitees.map((i) => i.userId)]);
     const projectIds = [...new Set(rows.map((m) => m.projectId).filter((id): id is string => !!id))];
     const projects = projectIds.length
@@ -365,6 +463,7 @@ export class MeetingsService {
         status: m.status,
         startedAt: m.startedAt,
         endedAt: m.endedAt,
+        isRecording: recordingNow.some((r) => r.meetingId === m.id),
         host: userOf(m.hostId),
         isHost,
         project: project ? { id: project.id, name: project.clientName } : null,

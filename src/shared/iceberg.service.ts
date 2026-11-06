@@ -28,8 +28,23 @@ interface IcebergAssetResponse {
   content_type?: string;
 }
 
+export interface IcebergMultipartPart {
+  partNumber: number;
+  etag: string;
+  size: number;
+}
+
+export interface IcebergPrivateLink {
+  deliveryUrl: string;
+  embedUrl: string;
+  expiresAt: string;
+}
+
 @Injectable()
 export class IcebergService {
+  /** Iceberg's fixed multipart part size. */
+  readonly maxPartBytes = 64 * 1024 * 1024;
+
   private readonly logger = new Logger(IcebergService.name);
   private readonly apiUrl: string;
   private readonly token: string;
@@ -278,23 +293,7 @@ export class IcebergService {
    */
   async deleteAsset(key: string): Promise<void> {
     if (!key) return;
-    this.assertConfigured();
-
-    const trashed = await fetch(`${this.apiUrl}/assets/trash`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ key, tenant_id: this.tenantId }),
-    });
-
-    if (trashed.status === 404) return;
-    if (!trashed.ok) {
-      const detail = await trashed.text().catch(() => '');
-      this.logger.error(`Iceberg trash failed (${trashed.status}) for key ${key}: ${detail}`);
-      throw new InternalServerErrorException('File delete failed');
-    }
+    if (!(await this.trashAsset(key))) return;
 
     const path = key
       .split('/')
@@ -312,5 +311,89 @@ export class IcebergService {
       this.logger.error(`Iceberg delete failed (${response.status}) for key ${key}: ${detail}`);
       throw new InternalServerErrorException('File delete failed');
     }
+  }
+
+  /**
+   * Moves an asset to Iceberg's trash, where it stops being served and Iceberg clears it out later.
+   * Answers false if it was already gone. Permanent deletion needs a token with purge rights.
+   */
+  async trashAsset(key: string): Promise<boolean> {
+    if (!key) return false;
+    this.assertConfigured();
+
+    const trashed = await fetch(`${this.apiUrl}/assets/trash`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ key, tenant_id: this.tenantId }),
+    });
+
+    if (trashed.status === 404) return false;
+    if (!trashed.ok) {
+      const detail = await trashed.text().catch(() => '');
+      this.logger.error(`Iceberg trash failed (${trashed.status}) for key ${key}: ${detail}`);
+      throw new InternalServerErrorException('File delete failed');
+    }
+    return true;
+  }
+
+  /** Starts an upload of known size. The same idempotency key resumes the same upload. */
+  async initMultipartUpload(key: string, contentType: string, sizeBytes: number, idempotencyKey: string) {
+    const res = await this.call('/assets/uploads', 'POST', {
+      key,
+      tenant_id: this.tenantId,
+      content_type: contentType,
+      expected_size: sizeBytes,
+      idempotency_key: idempotencyKey,
+    });
+    return { uploadId: res.upload_id as string, assetId: res.asset_id as string, partSize: res.part_size as number };
+  }
+
+  async signMultipartPart(uploadId: string, partNumber: number): Promise<string> {
+    const res = await this.call(`/assets/uploads/${encodeURIComponent(uploadId)}/parts/${partNumber}`, 'POST', { tenant_id: this.tenantId });
+    return res.upload_url;
+  }
+
+  /** Safe to call again. The answer's `status` is `completed` once Iceberg has checked the file and accepted it. */
+  async completeMultipartUpload(uploadId: string, parts: IcebergMultipartPart[]) {
+    const res = await this.call(`/assets/uploads/${encodeURIComponent(uploadId)}/complete`, 'POST', {
+      tenant_id: this.tenantId,
+      parts: parts.map((p) => ({ part_number: p.partNumber, etag: p.etag, size: p.size })),
+    });
+    return { status: res.status as string, reason: (res.terminal_reason as string) || null };
+  }
+
+  async abortMultipartUpload(uploadId: string): Promise<void> {
+    await this.call(`/assets/uploads/${encodeURIComponent(uploadId)}?tenant_id=${encodeURIComponent(this.tenantId)}`, 'DELETE');
+  }
+
+  async setAssetPrivate(assetId: string): Promise<void> {
+    await this.call(`/assets/${encodeURIComponent(assetId)}/privacy?tenant_id=${encodeURIComponent(this.tenantId)}`, 'PUT', { private: true });
+  }
+
+  /** A link to a private asset that stops working after `lifetimeSeconds` (24 hours at most). */
+  async issuePrivateLink(assetId: string, lifetimeSeconds: number): Promise<IcebergPrivateLink> {
+    const res = await this.call(`/assets/${encodeURIComponent(assetId)}/delivery-links?tenant_id=${encodeURIComponent(this.tenantId)}`, 'POST', {
+      lifetime_seconds: lifetimeSeconds,
+    });
+    return { deliveryUrl: res.delivery_url, embedUrl: res.embed_url, expiresAt: res.expires_at };
+  }
+
+  private async call(path: string, method: string, body?: unknown): Promise<any> {
+    this.assertConfigured();
+    const response = await fetch(`${this.apiUrl}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      this.logger.error(`Iceberg ${method} ${path.split('?')[0]} failed (${response.status}): ${detail}`);
+      throw new InternalServerErrorException('File storage request failed');
+    }
+    return response.json().catch(() => ({}));
   }
 }

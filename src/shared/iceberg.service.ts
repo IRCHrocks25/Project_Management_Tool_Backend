@@ -257,25 +257,6 @@ export class IcebergService {
     };
   }
 
-  /**
-   * Moves an asset to Iceberg's trash. Permanent deletion needs an owner token and a 30-day retention,
-   * so this is as far as an app delete can go. A missing asset counts as done.
-   */
-  async trashAsset(key: string): Promise<void> {
-    if (!key) return;
-    this.assertConfigured();
-    const response = await fetch(`${this.apiUrl}/assets/trash`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, tenant_id: this.tenantId }),
-    });
-    if (!response.ok && response.status !== 404) {
-      const detail = await response.text().catch(() => '');
-      this.logger.error(`Iceberg trash failed (${response.status}) for key ${key}: ${detail}`);
-      throw new InternalServerErrorException('File delete failed');
-    }
-  }
-
   /** Parity helper for callers that only need the delivery URL. */
   async uploadImage(file: Express.Multer.File, folder?: string): Promise<string> {
     const result = await this.upload(file, folder);

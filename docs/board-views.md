@@ -35,6 +35,11 @@ Stage moves still use `PATCH /tasks/:id/status` plus the description marker, thr
 
 ## Status changes
 
-On a board a status change is one click with no notes prompt. Moving an unowned task to Owned/In Progress assigns it to
-whoever moved it. A task with an owner can't go back to Not yet started until the owner is removed, because the shared
-stage rules would put it straight back in progress.
+A status change on a board asks for notes first, and they are required. Links are optional. This covers the status
+menu, dragging a kanban card and dragging a row between status groups. Cancelling leaves the task where it was.
+
+New tasks can only be added at Not yet started when the view is arranged by status, since adding one further along
+would skip the notes.
+
+Moving an unowned task to Owned/In Progress assigns it to whoever moved it. A task with an owner can't go back to Not
+yet started until the owner is removed, because the shared stage rules would put it straight back in progress.

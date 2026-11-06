@@ -14,12 +14,15 @@ import { Repository } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
 import { ProductFilesService } from '../products/product-files.service';
 import { ProductsService } from '../products/products.service';
+import { DrivelyService } from '../drively/drively.service';
+import { FormsService } from '../forms/forms.service';
 import { ProductVaultService } from '../product-vault/product-vault.service';
 import { CompanyVaultService } from '../product-vault/company-vault.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AttachmentsService } from '../tasks/attachments.service';
 import { TaskStatus } from '../tasks/entities/task.entity';
 import { TasksService } from '../tasks/tasks.service';
+import { buildDoc, buildFormItems, buildGrid, buildPdf, buildSlides } from './assistant.documents';
 import {
   ASSISTANT_TOOLS,
   STAGE_IDS,
@@ -53,7 +56,8 @@ export interface AssistantUser {
 /** Instructions for the chat panel. Never stored or sent to the model. */
 export type ClientAction =
   | { type: 'navigate'; path: string; label: string }
-  | { type: 'vault_link'; label: string; url: string; expiresAt: Date; oneTime: boolean };
+  | { type: 'vault_link'; label: string; url: string; expiresAt: Date; oneTime: boolean }
+  | { type: 'open_file'; label: string; kind: string; path: string };
 
 export interface AssistantReply {
   conversationId: string;
@@ -110,6 +114,8 @@ export class AssistantService {
     private readonly productFiles: ProductFilesService,
     private readonly vault: ProductVaultService,
     private readonly companyVault: CompanyVaultService,
+    private readonly drively: DrivelyService,
+    private readonly forms: FormsService,
   ) {}
 
   // ------------------------------------------------------------ public API
@@ -192,9 +198,10 @@ export class AssistantService {
     if (!state) throw new BadRequestException('Nothing is waiting for your confirmation.');
 
     const results = [...state.results];
+    const actions: ClientAction[] = [];
     for (const action of state.actions) {
       if (decisions?.[action.toolUseId] === 'approve') {
-        results.push(await this.runSafely(action.toolUseId, () => this.runWriteTool(action, user)));
+        results.push(await this.runSafely(action.toolUseId, () => this.runWriteTool(action, user, actions)));
       } else {
         results.push(this.toolResult(action.toolUseId, 'The user declined, so this was not done.'));
       }
@@ -202,7 +209,7 @@ export class AssistantService {
     conversation.pendingState = null;
     await this.conversations.save(conversation);
     await this.appendMessage(conversation.id, 'user', results, null);
-    return this.runLoop(conversation, user, []);
+    return this.runLoop(conversation, user, actions);
   }
 
   // ------------------------------------------------------------ agent loop
@@ -488,7 +495,24 @@ export class AssistantService {
 
   // ------------------------------------------------------------ write tools (after Confirm)
 
-  private async runWriteTool(action: PendingAction, user: AssistantUser): Promise<unknown> {
+  /** Puts a new file in the person's own My Drive, where only they can see it, and shows them a button to open it. */
+  private async createDriveFile(
+    kind: 'doc' | 'grid' | 'slides',
+    label: string,
+    name: unknown,
+    built: { content: Record<string, unknown>; preview: Record<string, unknown> },
+    user: AssistantUser,
+    actions: ClientAction[],
+  ) {
+    const item = await this.drively.create(
+      { kind, name: typeof name === 'string' ? name : undefined, parentId: null, content: built.content, preview: built.preview },
+      { userId: user.userId, role: user.role },
+    );
+    actions.push({ type: 'open_file', label: item.name, kind: label, path: `/drively/d/${item.id}` });
+    return { done: true, name: item.name, note: 'The button to open it is showing to the user.' };
+  }
+
+  private async runWriteTool(action: PendingAction, user: AssistantUser, actions: ClientAction[]): Promise<unknown> {
     const input = action.input || {};
     switch (action.name) {
       case 'create_task': {
@@ -566,6 +590,43 @@ export class AssistantService {
         }
         return { done: true, fileName: file.fileName };
       }
+      case 'create_document':
+        return this.createDriveFile('doc', 'Document', input.name, buildDoc(input.blocks), user, actions);
+      case 'create_spreadsheet':
+        return this.createDriveFile('grid', 'Grid', input.name, buildGrid(input.sheets), user, actions);
+      case 'create_slides':
+        return this.createDriveFile('slides', 'Slides', input.name, buildSlides(input.theme, input.slides), user, actions);
+      case 'create_pdf': {
+        const name = `${String(input.name || 'Untitled PDF').trim().replace(/\.pdf$/i, '')}.pdf`;
+        const { bytes, replaced } = await buildPdf(name, input.blocks);
+        const upload = {
+          // Uploads carry their names as latin1, the way multer reads them.
+          originalname: Buffer.from(name, 'utf8').toString('latin1'),
+          mimetype: 'application/pdf',
+          size: bytes.length,
+          buffer: bytes,
+        } as Express.Multer.File;
+        const [item] = await this.drively.upload([upload], null, { userId: user.userId, role: user.role });
+        actions.push({ type: 'open_file', label: item.name, kind: 'PDF', path: `/drively/d/${item.id}` });
+        return {
+          done: true,
+          name: item.name,
+          note: 'The button to open it is showing to the user.',
+          ...(replaced ? { warning: `${replaced} characters aren't supported in PDFs and show as "?". Tell the user.` } : {}),
+        };
+      }
+      case 'create_form': {
+        const items = buildFormItems(input.items);
+        const form: any = await this.forms.create({ title: String(input.title || '').trim().slice(0, 200) || undefined }, user.userId);
+        try {
+          await this.forms.update(form.id, { description: String(input.description || '').slice(0, 5000), items });
+        } catch (error) {
+          await this.forms.remove(form.id).catch(() => undefined);
+          throw error;
+        }
+        actions.push({ type: 'open_file', label: form.title, kind: 'Form', path: `/forms/${form.id}` });
+        return { done: true, title: form.title, status: 'unpublished draft', note: 'The button to open it is showing to the user.' };
+      }
       default:
         throw new BadRequestException(`Unknown action ${action.name}.`);
     }
@@ -605,6 +666,23 @@ export class AssistantService {
           if (product) target = `product "${product.name}"`;
         }
         return `Attach "${file?.fileName || 'file'}" to ${target}`;
+      }
+      case 'create_document':
+        return `Create document "${input.name}" in your Drively`;
+      case 'create_spreadsheet': {
+        const sheets = Array.isArray(input.sheets) ? input.sheets : [];
+        const rows = sheets.reduce((sum: number, s: any) => sum + (Array.isArray(s?.rows) ? s.rows.length : 0), 0);
+        return `Create spreadsheet "${input.name}" in your Drively (${rows} rows${sheets.length > 1 ? `, ${sheets.length} sheets` : ''})`;
+      }
+      case 'create_slides': {
+        const count = Array.isArray(input.slides) ? input.slides.length : 0;
+        return `Create presentation "${input.name}" in your Drively (${count} slides)`;
+      }
+      case 'create_pdf':
+        return `Create PDF "${input.name}" in your Drively`;
+      case 'create_form': {
+        const count = (Array.isArray(input.items) ? input.items : []).filter((i: any) => i?.type === 'question').length;
+        return `Create draft form "${input.title}" (${count} questions), not published`;
       }
       default:
         return name;

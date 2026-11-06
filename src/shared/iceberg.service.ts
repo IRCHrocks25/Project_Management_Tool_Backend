@@ -139,6 +139,128 @@ export class IcebergService {
     };
   }
 
+  /**
+   * Uploads an asset that can only be read through an expiring link. If it can't be made private the
+   * asset is removed again, so a private file is never left on a public URL.
+   */
+  async uploadPrivate(file: Express.Multer.File, folder: string): Promise<IcebergUploadResult> {
+    const result = await this.upload(file, folder);
+    try {
+      await this.setPrivate(result.assetId);
+    } catch (error) {
+      await this.trashAsset(result.key).catch((e) =>
+        this.logger.error(`Could not remove ${result.key} after its privacy change failed: ${e?.message || e}`),
+      );
+      throw error;
+    }
+    return result;
+  }
+
+  private async setPrivate(assetId: string): Promise<void> {
+    const response = await fetch(`${this.apiUrl}/assets/${encodeURIComponent(assetId)}/privacy`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ private: true }),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      this.logger.error(`Iceberg privacy change failed (${response.status}) for ${assetId}: ${detail}`);
+      throw new InternalServerErrorException('File upload failed');
+    }
+  }
+
+  /** An expiring link to a private asset. Iceberg allows at most 24 hours. */
+  async deliveryLink(assetId: string, lifetimeSeconds = 60 * 60): Promise<{ url: string; expiresAt: string }> {
+    this.assertConfigured();
+    const response = await fetch(`${this.apiUrl}/assets/${encodeURIComponent(assetId)}/delivery-links`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lifetime_seconds: lifetimeSeconds }),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      this.logger.error(`Iceberg delivery link failed (${response.status}) for ${assetId}: ${detail}`);
+      throw new InternalServerErrorException("Couldn't open the file");
+    }
+    // `delivery_url` serves the bytes; `embed_url` is an HTML viewer page, no use to fetch() or <img>.
+    const body = (await response.json()) as { delivery_url: string; expires_at: string };
+    return { url: body.delivery_url, expiresAt: body.expires_at };
+  }
+
+  /** Reads a private asset as text through a short-lived link. */
+  async readPrivateText(assetId: string): Promise<string> {
+    const { url } = await this.deliveryLink(assetId, 300);
+    const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) {
+      this.logger.error(`Iceberg read failed (${response.status}) for ${assetId}`);
+      throw new InternalServerErrorException("Couldn't open the file");
+    }
+    return response.text();
+  }
+
+  /** Ends every link issued for an asset. Trashing alone leaves them working until they expire. */
+  async revokeLinks(assetId: string): Promise<void> {
+    this.assertConfigured();
+    const response = await fetch(`${this.apiUrl}/assets/${encodeURIComponent(assetId)}/delivery-links/revoke`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    if (!response.ok && response.status !== 404) {
+      const detail = await response.text().catch(() => '');
+      this.logger.error(`Iceberg link revoke failed (${response.status}) for ${assetId}: ${detail}`);
+      throw new InternalServerErrorException('File delete failed');
+    }
+  }
+
+  /** Overwrites an asset's bytes. The id and privacy stay; Iceberg archives the old bytes as a version. */
+  async replace(key: string, file: Express.Multer.File): Promise<{ sizeBytes: number | null; contentType: string }> {
+    this.assertConfigured();
+    const contentType = file.mimetype || 'application/octet-stream';
+    const bytes = new Uint8Array(file.buffer.buffer, file.buffer.byteOffset, file.buffer.byteLength) as Uint8Array<ArrayBuffer>;
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: contentType }), file.originalname || 'file');
+    form.append('key', key);
+    form.append('content_type', contentType);
+    form.append('tenant_id', this.tenantId);
+    const response = await fetch(`${this.apiUrl}/assets/replace`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}` },
+      body: form,
+      // Callers may hold a row lock while this runs, so it can't be allowed to hang.
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      this.logger.error(`Iceberg replace failed (${response.status}) for key ${key}: ${detail}`);
+      throw new InternalServerErrorException('File save failed');
+    }
+    const asset = (await response.json()) as IcebergAssetResponse;
+    const size = asset.Size ?? asset.size;
+    return {
+      sizeBytes: typeof size === 'number' ? size : file.size ?? null,
+      contentType: asset.ContentType || asset.content_type || contentType,
+    };
+  }
+
+  /**
+   * Moves an asset to Iceberg's trash. Permanent deletion needs an owner token and a 30-day retention,
+   * so this is as far as an app delete can go. A missing asset counts as done.
+   */
+  async trashAsset(key: string): Promise<void> {
+    if (!key) return;
+    this.assertConfigured();
+    const response = await fetch(`${this.apiUrl}/assets/trash`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, tenant_id: this.tenantId }),
+    });
+    if (!response.ok && response.status !== 404) {
+      const detail = await response.text().catch(() => '');
+      this.logger.error(`Iceberg trash failed (${response.status}) for key ${key}: ${detail}`);
+      throw new InternalServerErrorException('File delete failed');
+    }
+  }
+
   /** Parity helper for callers that only need the delivery URL. */
   async uploadImage(file: Express.Multer.File, folder?: string): Promise<string> {
     const result = await this.upload(file, folder);

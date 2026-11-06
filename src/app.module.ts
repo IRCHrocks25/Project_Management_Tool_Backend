@@ -23,6 +23,7 @@ import { ProductSopsModule } from './product-sops/product-sops.module';
 import { ProductSearchModule } from './product-search/product-search.module';
 import { ProductVaultModule } from './product-vault/product-vault.module';
 import { FormsModule } from './forms/forms.module';
+import { DrivelyModule } from './drively/drively.module';
 import { AssistantModule } from './assistant/assistant.module';
 import { WorkspaceModule } from './workspace/workspace.module';
 import { MeetingsModule } from './meetings/meetings.module';
@@ -55,6 +56,7 @@ import { MeetingsModule } from './meetings/meetings.module';
     ProductSearchModule,
     ProductVaultModule,
     FormsModule,
+    DrivelyModule,
     AssistantModule,
     WorkspaceModule,
     MeetingsModule,

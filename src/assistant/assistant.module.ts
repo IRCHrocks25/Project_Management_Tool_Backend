@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { DrivelyModule } from '../drively/drively.module';
+import { FormsModule } from '../forms/forms.module';
 import { ProductVaultModule } from '../product-vault/product-vault.module';
 import { ProductsModule } from '../products/products.module';
 import { ProjectsModule } from '../projects/projects.module';
@@ -17,6 +19,8 @@ import { AssistantConversation, AssistantFile, AssistantMemory, AssistantMessage
     TasksModule,
     ProductsModule,
     ProductVaultModule,
+    DrivelyModule,
+    FormsModule,
   ],
   controllers: [AssistantController],
   providers: [AssistantService],

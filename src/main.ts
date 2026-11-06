@@ -13,8 +13,10 @@ pg.types.setTypeParser(1082, (val: string) => val);
 async function bootstrap() {
   try {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
-    // Workspace pages can be up to 1 MB of JSON (docs/workspace.md); the default limit is 100 KB.
-    app.useBodyParser('json', { limit: '1500kb' });
+    // Drively saves a whole Doc, Grid or Slides file as JSON, up to 10 MB (docs/drively.md).
+    app.useBodyParser('json', { limit: '12mb' });
+    // Lets Drively write open files to Iceberg when a deploy stops this process.
+    app.enableShutdownHooks();
     app.useWebSocketAdapter(new IoAdapter(app));
 
     // Enable CORS for frontend communication

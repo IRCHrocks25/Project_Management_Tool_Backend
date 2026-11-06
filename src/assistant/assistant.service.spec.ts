@@ -40,6 +40,15 @@ const setup = (script: any[]) => {
     listLabels: jest.fn(async () => [{ id: 'v1', label: 'Gmail', scope: 'company', username: 'leak@x.com', notes: 'leak-note', loginUrl: 'https://leak.example' }]),
     createInternalLink: jest.fn(async () => ({ label: 'Gmail', url: VAULT_URL, expiresAt: new Date(), oneTime: true })),
   };
+  const drively = {
+    create: jest.fn(async (dto: any) => ({ id: 'file-1', name: dto.name })),
+    upload: jest.fn(async (files: any[]) => [{ id: 'pdf-1', name: Buffer.from(files[0].originalname, 'latin1').toString('utf8') }]),
+  };
+  const forms = {
+    create: jest.fn(async (dto: any) => ({ id: 'form-1', title: dto.title })),
+    update: jest.fn(async () => undefined),
+    remove: jest.fn(async () => undefined),
+  };
   const service = new AssistantService(
     conversations as any,
     messages as any,
@@ -54,6 +63,8 @@ const setup = (script: any[]) => {
     {} as any,
     vault as any,
     companyVault as any,
+    drively as any,
+    forms as any,
   );
   service.clientFactory = () => ({
     beta: {
@@ -65,7 +76,7 @@ const setup = (script: any[]) => {
       },
     },
   });
-  return { service, requests, tasksService, vault, companyVault, messages, conversations };
+  return { service, requests, tasksService, vault, companyVault, messages, conversations, drively, forms };
 };
 
 const toolUse = (name: string, input: any, id = 'tu1') => ({
@@ -176,6 +187,86 @@ describe('AssistantService', () => {
   });
 
   it('treats every data-changing tool as needing confirmation', () => {
-    expect([...WRITE_TOOLS].sort()).toEqual(['add_task_comment', 'assign_task', 'attach_file', 'create_task', 'move_task', 'set_task_due_date']);
+    expect([...WRITE_TOOLS].sort()).toEqual([
+      'add_task_comment',
+      'assign_task',
+      'attach_file',
+      'create_document',
+      'create_form',
+      'create_pdf',
+      'create_slides',
+      'create_spreadsheet',
+      'create_task',
+      'move_task',
+      'set_task_due_date',
+    ]);
+  });
+
+  it('creates a file only after Confirm, as the signed-in user, in their own My Drive, and shows a button', async () => {
+    const { service, drively } = setup([
+      toolUse('create_document', { name: 'Plan', blocks: [{ type: 'paragraph', text: 'Hello' }] }),
+      say('Done.'),
+    ]);
+    const first = await service.chat({ message: 'make a doc' }, USER);
+    expect(drively.create).not.toHaveBeenCalled();
+    expect(first.pending[0].summary).toBe('Create document "Plan" in your Drively');
+
+    const second = await service.decide(first.conversationId, { tu1: 'approve' }, USER);
+    expect(drively.create).toHaveBeenCalledTimes(1);
+    const [dto, actor] = drively.create.mock.calls[0] as any[];
+    expect(dto).toMatchObject({ kind: 'doc', name: 'Plan', parentId: null });
+    expect(actor).toEqual({ userId: 'user-1', role: 'Project Manager' });
+    expect(second.actions).toEqual([{ type: 'open_file', label: 'Plan', kind: 'Document', path: '/drively/d/file-1' }]);
+  });
+
+  it('does not create the file when the user declines', async () => {
+    const { service, drively } = setup([
+      toolUse('create_slides', { name: 'Deck', theme: 'plain', slides: [{ layout: 'title', title: 'Hi' }] }),
+      say('Okay.'),
+    ]);
+    const first = await service.chat({ message: 'make slides' }, USER);
+    const second = await service.decide(first.conversationId, { tu1: 'reject' }, USER);
+    expect(drively.create).not.toHaveBeenCalled();
+    expect(second.actions).toEqual([]);
+  });
+
+  it('keeps accented PDF names through the upload and adds the extension once', async () => {
+    const { service, drively } = setup([
+      toolUse('create_pdf', { name: 'Zürich.pdf', blocks: [{ type: 'paragraph', text: 'Hello' }] }),
+      say('Done.'),
+    ]);
+    const first = await service.chat({ message: 'pdf' }, USER);
+    const second = await service.decide(first.conversationId, { tu1: 'approve' }, USER);
+    expect(drively.upload).toHaveBeenCalledTimes(1);
+    expect(second.actions[0]).toMatchObject({ label: 'Zürich.pdf', kind: 'PDF', path: '/drively/d/pdf-1' });
+  });
+
+  it('removes the form again if its questions cannot be saved', async () => {
+    const { service, forms } = setup([
+      toolUse('create_form', { title: 'Intake', description: '', items: [{ type: 'question', kind: 'short_text', title: 'Name' }] }),
+      say('Sorry.'),
+    ]);
+    forms.update.mockRejectedValueOnce(new Error('bad'));
+    const first = await service.chat({ message: 'form' }, USER);
+    const second = await service.decide(first.conversationId, { tu1: 'approve' }, USER);
+    expect(forms.remove).toHaveBeenCalledWith('form-1');
+    expect(second.actions).toEqual([]);
+  });
+
+  it('never publishes a form it creates', async () => {
+    const { service, forms } = setup([
+      toolUse('create_form', { title: 'Intake', description: 'Hi', items: [{ type: 'question', kind: 'short_text', title: 'Name' }] }),
+      say('Done.'),
+    ]);
+    const first = await service.chat({ message: 'form' }, USER);
+    const second = await service.decide(first.conversationId, { tu1: 'approve' }, USER);
+    expect((forms as any).publish).toBeUndefined();
+    expect(second.actions[0]).toMatchObject({ kind: 'Form', path: '/forms/form-1' });
+  });
+
+  it('can open Drively pages but not arbitrary ones under it', () => {
+    expect(isAllowedPagePath('/drively')).toBe(true);
+    expect(isAllowedPagePath('/drively/d/3f2b8c1e-1234-4abc-8def-0123456789ab')).toBe(true);
+    expect(isAllowedPagePath('/drively/d/nope')).toBe(false);
   });
 });

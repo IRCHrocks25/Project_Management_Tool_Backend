@@ -23,5 +23,6 @@ import { FormsService } from './forms.service';
   ],
   controllers: [FormsController, PublicFormsController],
   providers: [FormsService],
+  exports: [FormsService],
 })
 export class FormsModule {}

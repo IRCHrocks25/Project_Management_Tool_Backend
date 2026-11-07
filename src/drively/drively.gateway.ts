@@ -18,6 +18,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import * as Y from 'yjs';
 import { HubUsersService } from '../products/hub-users.service';
+import { DriveClientsService } from './drive-clients.service';
 import { canEdit } from './drively.logic';
 import { DrivelyService } from './drively.service';
 
@@ -53,6 +54,8 @@ interface Room {
 interface DriveSocket extends Socket {
   userId?: string;
   role?: string | null;
+  /** Set instead of userId for someone outside the company. They only ever watch. */
+  portalClient?: { clientId: string; tokenVersion: number };
 }
 
 const asBytes = (data: unknown): Uint8Array | null => {
@@ -75,6 +78,7 @@ export class DrivelyGateway implements OnGatewayConnection, OnGatewayDisconnect,
     private readonly config: ConfigService,
     private readonly drive: DrivelyService,
     private readonly users: HubUsersService,
+    private readonly clients: DriveClientsService,
   ) {}
 
   onModuleInit() {
@@ -95,8 +99,20 @@ export class DrivelyGateway implements OnGatewayConnection, OnGatewayDisconnect,
       });
       client.userId = payload.sub;
     } catch {
-      client.disconnect();
+      const portalClient = this.clients.verifyToken(client.handshake.auth?.token);
+      if (portalClient) client.portalClient = portalClient;
+      else client.disconnect();
     }
+  }
+
+  /** What this socket may do with a file right now. Looked up fresh, since access and roles change while a token lives. */
+  private async accessFor(client: DriveSocket, itemId: string): Promise<Level | null> {
+    if (client.portalClient) {
+      const { clientId, tokenVersion } = client.portalClient;
+      if (!(await this.clients.activeSession(clientId, tokenVersion))) return null;
+      return this.drive.clientLiveAccess(itemId, clientId);
+    }
+    return this.drive.liveAccess(itemId, { userId: client.userId as string, role: client.role });
   }
 
   handleDisconnect(client: DriveSocket) {
@@ -138,11 +154,11 @@ export class DrivelyGateway implements OnGatewayConnection, OnGatewayDisconnect,
 
   @SubscribeMessage('join')
   async join(@ConnectedSocket() client: DriveSocket, @MessageBody() body: { itemId: string; stateVector?: unknown; clientId?: number }) {
-    if (!client.userId || typeof body?.itemId !== 'string') return { ok: false };
+    if ((!client.userId && !client.portalClient) || typeof body?.itemId !== 'string') return { ok: false };
     try {
       // The role can change while a token lives, so it comes from the database.
-      client.role = (await this.users.findOne(client.userId))?.role ?? null;
-      const level = await this.drive.liveAccess(body.itemId, { userId: client.userId, role: client.role });
+      if (client.userId) client.role = (await this.users.findOne(client.userId))?.role ?? null;
+      const level = await this.accessFor(client, body.itemId);
       if (!level) return { ok: false, error: 'not_found' };
       const room = await this.openRoom(body.itemId);
       room.members.set(client.id, { socket: client, level, clientId: typeof body.clientId === 'number' ? body.clientId : null });
@@ -224,7 +240,8 @@ export class DrivelyGateway implements OnGatewayConnection, OnGatewayDisconnect,
   awareness(@ConnectedSocket() client: DriveSocket, @MessageBody() body: { itemId: string; update: unknown }) {
     const room = this.rooms.get(body?.itemId);
     const bytes = asBytes(body?.update);
-    if (!room?.members.has(client.id) || !bytes || bytes.length > MAX_AWARENESS_BYTES) return;
+    // Clients see who's in the file but don't announce themselves to it.
+    if (client.portalClient || !room?.members.has(client.id) || !bytes || bytes.length > MAX_AWARENESS_BYTES) return;
     client.to(room.id).emit('awareness', { itemId: room.id, update: bytes });
   }
 
@@ -272,7 +289,7 @@ export class DrivelyGateway implements OnGatewayConnection, OnGatewayDisconnect,
       for (const member of [...room.members.values()]) {
         const { socket } = member;
         try {
-          const level = await this.drive.liveAccess(room.id, { userId: socket.userId as string, role: socket.role });
+          const level = await this.accessFor(socket, room.id);
           if (!level) {
             socket.emit('removed', { itemId: room.id });
             socket.leave(room.id);

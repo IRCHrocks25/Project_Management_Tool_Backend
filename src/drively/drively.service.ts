@@ -123,6 +123,116 @@ export class DrivelyService {
     return parentId;
   }
 
+  /** For the client account routes, which all answer to the file's owner alone. */
+  async assertOwner(id: string, actor: WorkspaceActor, action: string): Promise<void> {
+    await this.requireOwner(id, actor, action);
+  }
+
+  /* ---------------------------- clients ---------------------------- */
+
+  /**
+   * The item and its parent folders, each marked if this client was given it. Clients only ever match their own
+   * rows in drive_client_shares: company sharing, including "Everyone at the company", never applies to them.
+   */
+  private async clientChain(id: string, clientId: string): Promise<{ id: string; name: string; kind: string; trashedAt: Date | null; shared: boolean }[]> {
+    return this.db.query(
+      `WITH RECURSIVE up AS (
+         SELECT id, name, kind, "parentId", "trashedAt", 0 AS depth FROM drive_items WHERE id = $1
+         UNION ALL
+         SELECT p.id, p.name, p.kind, p."parentId", p."trashedAt", up.depth + 1
+         FROM drive_items p JOIN up ON p.id = up."parentId" WHERE up.depth < 100
+       )
+       SELECT up.id, up.name, up.kind, up."trashedAt",
+         EXISTS (SELECT 1 FROM drive_client_shares s WHERE s."itemId" = up.id AND s."clientId" = $2) AS shared
+       FROM up ORDER BY up.depth`,
+      [id, clientId],
+    );
+  }
+
+  private async requireClientAccess(id: string, clientId: string) {
+    const chain = await this.clientChain(id, clientId);
+    if (!chain.length || chain[0].trashedAt || !chain.some((link) => link.shared)) throw new NotFoundException(NOT_FOUND);
+    return chain;
+  }
+
+  /** The fields a client sees, with no team details beyond the owner's name and picture. */
+  private async presentToClient(rows: any[]) {
+    const users = await this.hubUsers.load(rows.map((r) => r.ownerId));
+    return rows.map((r) => {
+      const owner = r.ownerId ? users.get(r.ownerId) : null;
+      return {
+        id: r.id,
+        kind: r.kind,
+        name: r.name,
+        parentId: r.parentId,
+        preview: r.preview,
+        revision: r.revision,
+        contentType: r.contentType,
+        sizeBytes: Number(r.sizeBytes || 0),
+        trashedAt: null,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        owner: owner ? { id: owner.id, name: owner.name, avatarUrl: owner.avatarUrl, role: '' } : null,
+        updatedBy: null,
+        isOwner: false,
+        starred: false,
+        lastOpenedAt: null,
+      };
+    });
+  }
+
+  /** With no folder: what was shared with this client directly. With one: what's inside it. */
+  async clientList(parentId: string | null, clientId: string) {
+    if (parentId) await this.requireClientAccess(parentId, clientId);
+    const rows = parentId
+      ? await this.db.query(
+          `SELECT ${COLUMNS} FROM drive_items i WHERE i."parentId" = $1 AND i."trashedAt" IS NULL
+           ORDER BY (i.kind = 'folder') DESC, lower(i.name) LIMIT ${MAX_RESULTS}`,
+          [parentId],
+        )
+      : await this.db.query(
+          `SELECT ${COLUMNS} FROM drive_items i JOIN drive_client_shares s ON s."itemId" = i.id
+           WHERE s."clientId" = $1 AND i."trashedAt" IS NULL
+           ORDER BY (i.kind = 'folder') DESC, i."updatedAt" DESC LIMIT ${MAX_RESULTS}`,
+          [clientId],
+        );
+    return this.presentToClient(rows);
+  }
+
+  async clientGet(id: string, clientId: string) {
+    const chain = await this.requireClientAccess(id, clientId);
+    const [row] = await this.db.query(`SELECT ${COLUMNS}, i."assetId", i."hasLiveState" FROM drive_items i WHERE i.id = $1`, [id]);
+    const [detail] = await this.presentToClient([row]);
+    // Folders above the one they were given stay hidden.
+    const path: { id: string; name: string }[] = [];
+    for (let i = 1; i < chain.length; i++) {
+      if (!chain.slice(i).some((link) => link.shared)) break;
+      path.unshift({ id: chain[i].id, name: chain[i].name });
+    }
+    return {
+      ...detail,
+      myAccess: 'view' as const,
+      path,
+      hasLiveState: row.hasLiveState,
+      content: EDITABLE_KINDS.includes(row.kind) && !row.hasLiveState ? decodeStored(await this.iceberg.readPrivateText(row.assetId)).content : null,
+      assetLinks: EDITABLE_KINDS.includes(row.kind) ? await this.assetLinks(id) : {},
+    };
+  }
+
+  async clientLink(id: string, clientId: string) {
+    await this.requireClientAccess(id, clientId);
+    const [row] = await this.db.query(`SELECT "assetId" FROM drive_items WHERE id = $1`, [id]);
+    if (!row?.assetId) throw new BadRequestException('This file has nothing to download.');
+    return this.iceberg.deliveryLink(row.assetId);
+  }
+
+  /** Clients only ever watch a live file. */
+  async clientLiveAccess(id: string, clientId: string): Promise<'view' | null> {
+    const chain = await this.clientChain(id, clientId);
+    if (!chain.length || chain[0].trashedAt || !EDITABLE_KINDS.includes(chain[0].kind)) return null;
+    return chain.some((link) => link.shared) ? 'view' : null;
+  }
+
   /* ---------------------------- reading ---------------------------- */
 
   private async decorate(rows: any[], actor: WorkspaceActor) {

@@ -1,7 +1,7 @@
 # Drively
 
 The company's Drive: folders, Docs, Grid, Slides, PDFs and uploads. The backend implements this contract;
-`src/services/drively.service.ts` in the frontend mirrors it. All routes need a login (`JwtAuthGuard`). The frontend
+`src/services/drively.service.ts` in the frontend mirrors it. All `/drively` routes need a team login (`JwtAuthGuard`); people outside the company use `/client-portal` (see Clients). The frontend
 lives in `src/components/drively` under `/drively`, outside the side navigation. Forms stay at `/forms`; the New menu links there.
 
 ## Storage
@@ -97,3 +97,38 @@ The assistant can create a Document, Grid, Slides, PDF or draft form (`create_do
 ## Deploy
 
 `npm run migrate:drively` before the backend deploys. The JSON body limit in `main.ts` went from 1.5 MB to 12 MB. Run a single backend instance (see Live co-editing).
+
+## Clients (people outside the company)
+
+Someone outside the company opens a one-time link, sets a name and a 6-digit code, and only ever sees what was shared with them. Frontend pages are under `/client`. Run `npm run migrate:drively` before deploying (`migrations/drively-02-clients.sql`).
+
+**How they're kept out of everything else**
+
+- **Their own table.** Clients are in `drive_clients`, not `users`, so nothing that lists, assigns, mentions or authorizes team members can reach them.
+- **Their own token secret.** Client sessions are signed with a secret derived from `JWT_SECRET` (`clientTokenSecret`). Every team route and socket verifies against `JWT_SECRET`, so a client token fails all of them, including any added later, without those routes knowing clients exist. To let clients reach something new, add it to `DriveClientPortalController` on purpose.
+- **Their own shares.** Access is only `drive_client_shares`, never `drive_item_shares`, so "Everyone at the company" and department shares can't reach a client and saving team sharing can't remove a client. Sharing a folder shares what's inside it. Folders above the one they were given stay hidden.
+- **Read-only.** `/client-portal` has no route that writes to a file. In the `/drively` socket they join at `view`, their updates are refused and they don't send presence.
+
+**Routes**
+
+| Route | Who | What |
+|---|---|---|
+| `GET /client-portal/links/:token` | Holder of the link | What the link is for |
+| `POST /client-portal/links/:token/claim` | Holder of the link | `{ name, email?, code }` sets up or adds to an account; `{ code }` on a new code link. Spends the link. |
+| `POST /client-portal/sign-in` | Anyone | `{ name, code }` |
+| `POST /client-portal/forgot-code`, `reset-code` | Anyone | Emails a reset code; sets a new code with it |
+| `GET /client-portal/me`, `items?parentId=`, `items/:id`, `items/:id/link` | Client | What they can see |
+| `POST /drively/items/:id/client-links`, `DELETE .../client-links/:linkId` | File owner | Make or cancel an invite link |
+| `GET`, `POST /drively/items/:id/client-access`, `DELETE .../:clientId`, `POST .../:clientId/new-code-link` | File owner | See, add, remove, send a new code link |
+| `GET /drively/clients` | Team | Existing clients, to share another file without a new link |
+
+**Rules**
+
+- **Links** work once and stop after 30 days, or if the file is trashed. Only a hash of the token is stored, so a link can't be shown again.
+- **Names aren't unique.** The code picks out who it is. If the name and code already match an account on a new link, the file joins that account. A wrong guess there creates a new account and spends the link, so a link gives one try.
+- **An email already in use** with the wrong code is refused without spending the link, and counts toward that account's lockout.
+- **Lockout:** every 5th wrong code locks the account, 15 minutes at first and doubling up to a day. A correct code resets the count. Someone who knows a client's name can trigger this, so it can inconvenience them for a while but not expose anything.
+- **Rate limit:** `ClientIpThrottlerGuard`, 10 sign-ins a minute per address. It trusts the first `X-Forwarded-For` entry, which a caller can set, so the per-account lockout is the real limit on guessing.
+- **Codes** are hashed with bcrypt, and easy ones (`123456`, `111111`, `121212`) are refused. Six digits is a small space: this suits review documents, not highly sensitive files.
+- **Changing a code** raises `tokenVersion`, which ends every session using the old one. Sessions otherwise last 14 days.
+- **Forgot code:** with an email, a 10-minute reset code (5 tries, 60 seconds between sends, same answer whether or not the email is known). Without one, the owner sends a new code link, which only works for a client who has access to that owner's file; their old code keeps working until it's used.

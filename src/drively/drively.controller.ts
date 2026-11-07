@@ -20,6 +20,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { DriveClientsService } from './drive-clients.service';
+import { ShareWithClientDto } from './dto/drive-client.dto';
 import { CreateDriveItemDto, SetDriveSharesDto, StarDriveItemDto, UpdateDriveItemDto } from './dto/drively.dto';
 import { DriveView, DrivelyService, MAX_IMAGE_BYTES, MAX_UPLOAD_BYTES } from './drively.service';
 
@@ -30,7 +32,46 @@ const actor = (req: any) => ({ userId: req.user?.userId || req.user?.id, role: r
 @Controller('drively')
 @UseGuards(JwtAuthGuard)
 export class DrivelyController {
-  constructor(private readonly drive: DrivelyService) {}
+  constructor(
+    private readonly drive: DrivelyService,
+    private readonly clients: DriveClientsService,
+  ) {}
+
+  @Get('clients')
+  listClients() {
+    return this.clients.listClients();
+  }
+
+  @Get('items/:id/client-access')
+  clientAccess(@ItemId() id: string, @Request() req: any) {
+    return this.clients.listAccess(id, actor(req));
+  }
+
+  @Post('items/:id/client-access')
+  @HttpCode(200)
+  shareWithClient(@ItemId() id: string, @Body() dto: ShareWithClientDto, @Request() req: any) {
+    return this.clients.shareWithClient(id, dto.clientId, actor(req));
+  }
+
+  @Delete('items/:id/client-access/:clientId')
+  removeClientAccess(@ItemId() id: string, @Param('clientId', ParseUUIDPipe) clientId: string, @Request() req: any) {
+    return this.clients.removeAccess(id, clientId, actor(req));
+  }
+
+  @Post('items/:id/client-access/:clientId/new-code-link')
+  newCodeLink(@ItemId() id: string, @Param('clientId', ParseUUIDPipe) clientId: string, @Request() req: any) {
+    return this.clients.createNewCodeLink(id, clientId, actor(req));
+  }
+
+  @Post('items/:id/client-links')
+  createClientLink(@ItemId() id: string, @Request() req: any) {
+    return this.clients.createInvite(id, actor(req));
+  }
+
+  @Delete('items/:id/client-links/:linkId')
+  cancelClientLink(@ItemId() id: string, @Param('linkId', ParseUUIDPipe) linkId: string, @Request() req: any) {
+    return this.clients.cancelLink(id, linkId, actor(req));
+  }
 
   @Get('items')
   list(

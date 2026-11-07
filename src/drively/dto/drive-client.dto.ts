@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 
 const SIX_DIGITS = /^\d{6}$/;
 const SIX_DIGITS_MESSAGE = 'Your code needs exactly 6 digits.';
@@ -56,4 +56,8 @@ export class ClientResetCodeDto {
 export class ShareWithClientDto {
   @IsUUID()
   clientId: string;
+
+  @IsOptional()
+  @IsIn(['view', 'comment'])
+  permission?: 'view' | 'comment';
 }

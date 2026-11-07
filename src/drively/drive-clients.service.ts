@@ -62,6 +62,7 @@ interface LinkRow {
   itemName: string;
   itemKind: string;
   createdById: string | null;
+  permission: 'view' | 'comment';
 }
 
 const LINK_GONE = 'This link has already been used or has expired. Ask the person who sent it for a new one.';
@@ -173,7 +174,7 @@ export class DriveClientsService {
 
   private async usableLink(token: string): Promise<LinkRow> {
     const [link] = await this.db.query(
-      `SELECT l.id, l."itemId", l."clientId", l."createdById", i.name AS "itemName", i.kind AS "itemKind"
+      `SELECT l.id, l."itemId", l."clientId", l."createdById", l.permission, i.name AS "itemName", i.kind AS "itemKind"
        FROM drive_client_links l JOIN drive_items i ON i.id = l."itemId"
        WHERE l."tokenHash" = $1 AND l."usedAt" IS NULL AND l."expiresAt" > NOW() AND i."trashedAt" IS NULL`,
       [hashLinkToken(token)],
@@ -275,8 +276,10 @@ export class DriveClientsService {
           account = row;
         }
         await m.query(
-          `INSERT INTO drive_client_shares ("itemId", "clientId", "createdById") VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-          [link.itemId, account!.id, link.createdById],
+          // A new link never lowers what someone already has.
+          `INSERT INTO drive_client_shares ("itemId", "clientId", "createdById", permission) VALUES ($1, $2, $3, $4)
+           ON CONFLICT ("itemId", "clientId") DO UPDATE SET permission = CASE WHEN drive_client_shares.permission = 'comment' THEN 'comment' ELSE EXCLUDED.permission END`,
+          [link.itemId, account!.id, link.createdById, link.permission],
         );
         return account!;
       });
@@ -338,20 +341,20 @@ export class DriveClientsService {
 
   /* ---------------------------- for a file's owner ---------------------------- */
 
-  private async newLink(itemId: string, clientId: string | null, actor: WorkspaceActor) {
+  private async newLink(itemId: string, clientId: string | null, actor: WorkspaceActor, permission: 'view' | 'comment' = 'comment') {
     const token = randomBytes(32).toString('base64url');
     const [row] = await this.db.query(
-      `INSERT INTO drive_client_links ("tokenHash", "itemId", "clientId", "createdById", "expiresAt")
-       VALUES ($1, $2, $3, $4, NOW() + make_interval(days => $5)) RETURNING id, "expiresAt"`,
-      [hashLinkToken(token), itemId, clientId, actor.userId, CLIENT_LINK_DAYS],
+      `INSERT INTO drive_client_links ("tokenHash", "itemId", "clientId", "createdById", "expiresAt", permission)
+       VALUES ($1, $2, $3, $4, NOW() + make_interval(days => $5), $6) RETURNING id, "expiresAt"`,
+      [hashLinkToken(token), itemId, clientId, actor.userId, CLIENT_LINK_DAYS, permission],
     );
     // The token is only ever available here; the database keeps just its hash.
     return { id: row.id, token, expiresAt: row.expiresAt };
   }
 
-  async createInvite(itemId: string, actor: WorkspaceActor) {
+  async createInvite(itemId: string, permission: 'view' | 'comment' | undefined, actor: WorkspaceActor) {
     await this.drive.assertOwner(itemId, actor, 'create a client link');
-    return this.newLink(itemId, null, actor);
+    return this.newLink(itemId, null, actor, permission);
   }
 
   /** For a client with no email who forgot their code. Their current code keeps working until this link is used. */
@@ -376,7 +379,7 @@ export class DriveClientsService {
         [itemId],
       ),
       this.db.query(
-        `SELECT l.id, l."expiresAt", l."createdAt", c.name AS "clientName"
+        `SELECT l.id, l."expiresAt", l."createdAt", l.permission, c.name AS "clientName"
          FROM drive_client_links l LEFT JOIN drive_clients c ON c.id = l."clientId"
          WHERE l."itemId" = $1 AND l."usedAt" IS NULL AND l."expiresAt" > NOW() ORDER BY l."createdAt" DESC`,
         [itemId],
@@ -404,13 +407,21 @@ export class DriveClientsService {
     return this.db.query(`SELECT id, name, email FROM drive_clients ORDER BY lower(name) LIMIT 500`);
   }
 
-  async shareWithClient(itemId: string, clientId: string, actor: WorkspaceActor) {
+  async setClientPermission(itemId: string, clientId: string, permission: 'view' | 'comment', actor: WorkspaceActor) {
+    await this.drive.assertOwner(itemId, actor, 'change client access');
+    await this.requireClientOnItem(itemId, clientId);
+    await this.db.query(`UPDATE drive_client_shares SET permission = $3 WHERE "itemId" = $1 AND "clientId" = $2`, [itemId, clientId, permission]);
+    this.drive.onAccessChanged();
+    return { permission };
+  }
+
+  async shareWithClient(itemId: string, clientId: string, permission: 'view' | 'comment' = 'comment', actor: WorkspaceActor) {
     await this.drive.assertOwner(itemId, actor, 'share this with a client');
     const [client] = await this.db.query(`SELECT 1 FROM drive_clients WHERE id = $1`, [clientId]);
     if (!client) throw new NotFoundException('Client not found.');
     await this.db.query(
-      `INSERT INTO drive_client_shares ("itemId", "clientId", "createdById") VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-      [itemId, clientId, actor.userId],
+      `INSERT INTO drive_client_shares ("itemId", "clientId", "createdById", permission) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+      [itemId, clientId, actor.userId, permission],
     );
     return { shared: true };
   }

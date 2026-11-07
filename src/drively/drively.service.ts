@@ -16,6 +16,7 @@ import { CreateDriveItemDto, SetDriveSharesDto, UpdateDriveItemDto } from './dto
 import {
   ChainLink,
   DEFAULT_NAMES,
+  DriveAccess,
   MAX_CONTENT_BYTES,
   StoredFile,
   assertContentSize,
@@ -134,7 +135,7 @@ export class DrivelyService {
    * The item and its parent folders, each marked if this client was given it. Clients only ever match their own
    * rows in drive_client_shares: company sharing, including "Everyone at the company", never applies to them.
    */
-  private async clientChain(id: string, clientId: string): Promise<{ id: string; name: string; kind: string; trashedAt: Date | null; shared: boolean }[]> {
+  private async clientChain(id: string, clientId: string): Promise<{ id: string; name: string; kind: string; trashedAt: Date | null; permission: 'view' | 'comment' | null }[]> {
     return this.db.query(
       `WITH RECURSIVE up AS (
          SELECT id, name, kind, "parentId", "trashedAt", 0 AS depth FROM drive_items WHERE id = $1
@@ -143,7 +144,7 @@ export class DrivelyService {
          FROM drive_items p JOIN up ON p.id = up."parentId" WHERE up.depth < 100
        )
        SELECT up.id, up.name, up.kind, up."trashedAt",
-         EXISTS (SELECT 1 FROM drive_client_shares s WHERE s."itemId" = up.id AND s."clientId" = $2) AS shared
+         (SELECT s.permission FROM drive_client_shares s WHERE s."itemId" = up.id AND s."clientId" = $2) AS permission
        FROM up ORDER BY up.depth`,
       [id, clientId],
     );
@@ -151,8 +152,52 @@ export class DrivelyService {
 
   private async requireClientAccess(id: string, clientId: string) {
     const chain = await this.clientChain(id, clientId);
-    if (!chain.length || chain[0].trashedAt || !chain.some((link) => link.shared)) throw new NotFoundException(NOT_FOUND);
+    if (!chain.length || chain[0].trashedAt || !chain.some((link) => link.permission)) throw new NotFoundException(NOT_FOUND);
     return chain;
+  }
+
+  /** The strongest level given on the item or a folder above it. */
+  private clientLevelOf(chain: { permission: 'view' | 'comment' | null }[]): 'view' | 'comment' | null {
+    if (chain.some((link) => link.permission === 'comment')) return 'comment';
+    return chain.some((link) => link.permission === 'view') ? 'view' : null;
+  }
+
+  async clientLevel(id: string, clientId: string): Promise<'view' | 'comment'> {
+    return this.clientLevelOf(await this.requireClientAccess(id, clientId)) as 'view' | 'comment';
+  }
+
+  async clientLevelOrNull(id: string, clientId: string): Promise<'view' | 'comment' | null> {
+    const chain = await this.clientChain(id, clientId);
+    return chain.length && !chain[0].trashedAt ? this.clientLevelOf(chain) : null;
+  }
+
+  /* ---------------------------- for comments ---------------------------- */
+
+  async teamLevel(id: string, actor: WorkspaceActor): Promise<DriveAccess> {
+    return (await this.requireLive(id, actor)).level;
+  }
+
+  async teamCanOpen(id: string, actor: WorkspaceActor): Promise<boolean> {
+    const chain = await this.chain(id);
+    return chain.length > 0 && !chain[0].trashedAt && !!driveAccessLevel(actor, chain);
+  }
+
+  async commentFileInfo(id: string): Promise<{ name: string; ownerId: string | null } | null> {
+    const [row] = await this.db.query(`SELECT name, "ownerId" FROM drive_items WHERE id = $1`, [id]);
+    return row ?? null;
+  }
+
+  /** Whether a client can read shown threads on this file, directly or through a folder above it. */
+  async hasCommentingClients(id: string): Promise<boolean> {
+    const [row] = await this.db.query(
+      `WITH RECURSIVE up AS (
+         SELECT id, "parentId", 0 AS depth FROM drive_items WHERE id = $1
+         UNION ALL SELECT p.id, p."parentId", up.depth + 1 FROM drive_items p JOIN up ON p.id = up."parentId" WHERE up.depth < 100
+       )
+       SELECT EXISTS (SELECT 1 FROM drive_client_shares s JOIN up ON up.id = s."itemId" WHERE s.permission = 'comment') AS yes`,
+      [id],
+    );
+    return !!row?.yes;
   }
 
   /** The fields a client sees, with no team details beyond the owner's name and picture. */
@@ -206,12 +251,12 @@ export class DrivelyService {
     // Folders above the one they were given stay hidden.
     const path: { id: string; name: string }[] = [];
     for (let i = 1; i < chain.length; i++) {
-      if (!chain.slice(i).some((link) => link.shared)) break;
+      if (!chain.slice(i).some((link) => link.permission)) break;
       path.unshift({ id: chain[i].id, name: chain[i].name });
     }
     return {
       ...detail,
-      myAccess: 'view' as const,
+      myAccess: this.clientLevelOf(chain) as 'view' | 'comment',
       path,
       hasLiveState: row.hasLiveState,
       content: EDITABLE_KINDS.includes(row.kind) && !row.hasLiveState ? decodeStored(await this.iceberg.readPrivateText(row.assetId)).content : null,
@@ -226,11 +271,11 @@ export class DrivelyService {
     return this.iceberg.deliveryLink(row.assetId);
   }
 
-  /** Clients only ever watch a live file. */
-  async clientLiveAccess(id: string, clientId: string): Promise<'view' | null> {
+  /** Clients only ever watch a live file: neither of their levels can edit it. */
+  async clientLiveAccess(id: string, clientId: string): Promise<'view' | 'comment' | null> {
     const chain = await this.clientChain(id, clientId);
     if (!chain.length || chain[0].trashedAt || !EDITABLE_KINDS.includes(chain[0].kind)) return null;
-    return chain.some((link) => link.shared) ? 'view' : null;
+    return this.clientLevelOf(chain);
   }
 
   /* ---------------------------- reading ---------------------------- */
@@ -376,7 +421,7 @@ export class DrivelyService {
   /* ---------------------------- live editing ---------------------------- */
 
   /** What a person may do with a file being edited live; trashed files count as no access. */
-  async liveAccess(id: string, actor: WorkspaceActor): Promise<'owner' | 'edit' | 'view' | null> {
+  async liveAccess(id: string, actor: WorkspaceActor): Promise<DriveAccess | null> {
     const chain = await this.chain(id);
     if (!chain.length || chain[0].trashedAt || !EDITABLE_KINDS.includes(chain[0].kind)) return null;
     return driveAccessLevel(actor, chain);

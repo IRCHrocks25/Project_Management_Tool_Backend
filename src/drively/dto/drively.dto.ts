@@ -74,8 +74,8 @@ export class DriveShareDto {
   @MaxLength(100)
   target?: string | null;
 
-  @IsIn(['view', 'edit'])
-  permission: 'view' | 'edit';
+  @IsIn(['view', 'comment', 'edit'])
+  permission: 'view' | 'comment' | 'edit';
 }
 
 export class SetDriveSharesDto {

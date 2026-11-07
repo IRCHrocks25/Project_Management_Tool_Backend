@@ -107,7 +107,7 @@ Someone outside the company opens a one-time link, sets a name and a 6-digit cod
 - **Their own table.** Clients are in `drive_clients`, not `users`, so nothing that lists, assigns, mentions or authorizes team members can reach them.
 - **Their own token secret.** Client sessions are signed with a secret derived from `JWT_SECRET` (`clientTokenSecret`). Every team route and socket verifies against `JWT_SECRET`, so a client token fails all of them, including any added later, without those routes knowing clients exist. To let clients reach something new, add it to `DriveClientPortalController` on purpose.
 - **Their own shares.** Access is only `drive_client_shares`, never `drive_item_shares`, so "Everyone at the company" and department shares can't reach a client and saving team sharing can't remove a client. Sharing a folder shares what's inside it. Folders above the one they were given stay hidden.
-- **Read-only.** `/client-portal` has no route that writes to a file. In the `/drively` socket they join at `view`, their updates are refused and they don't send presence.
+- **They can't change a file.** The only thing `/client-portal` lets a client add is a comment. In the `/drively` socket they join at `view` or `comment`, their updates are refused and they don't send presence.
 
 **Routes**
 
@@ -118,8 +118,9 @@ Someone outside the company opens a one-time link, sets a name and a 6-digit cod
 | `POST /client-portal/sign-in` | Anyone | `{ name, code }` |
 | `POST /client-portal/forgot-code`, `reset-code` | Anyone | Emails a reset code; sets a new code with it |
 | `GET /client-portal/me`, `items?parentId=`, `items/:id`, `items/:id/link` | Client | What they can see |
+| `GET`, `POST /client-portal/items/:id/comments`, `PATCH`, `DELETE /client-portal/comments/:id`, `POST .../resolve` | Client with comment access | See Comments |
 | `POST /drively/items/:id/client-links`, `DELETE .../client-links/:linkId` | File owner | Make or cancel an invite link |
-| `GET`, `POST /drively/items/:id/client-access`, `DELETE .../:clientId`, `POST .../:clientId/new-code-link` | File owner | See, add, remove, send a new code link |
+| `GET`, `POST /drively/items/:id/client-access`, `PATCH`, `DELETE .../:clientId`, `POST .../:clientId/new-code-link` | File owner | See, add, change level, remove, send a new code link |
 | `GET /drively/clients` | Team | Existing clients, to share another file without a new link |
 
 **Rules**
@@ -132,3 +133,26 @@ Someone outside the company opens a one-time link, sets a name and a 6-digit cod
 - **Codes** are hashed with bcrypt, and easy ones (`123456`, `111111`, `121212`) are refused. Six digits is a small space: this suits review documents, not highly sensitive files.
 - **Changing a code** raises `tokenVersion`, which ends every session using the old one. Sessions otherwise last 14 days.
 - **Forgot code:** with an email, a 10-minute reset code (5 tries, 60 seconds between sends, same answer whether or not the email is known). Without one, the owner sends a new code link, which only works for a client who has access to that owner's file; their old code keeps working until it's used.
+
+## Comments
+
+Run `npm run migrate:drively` before deploying (`migrations/drively-03-comments.sql`). Routes are the same shape for both sides: `/drively/...` for team members and `/client-portal/...` for clients.
+
+**Levels:** `view`, `comment`, `edit` and `owner`. `comment` can read and add comments but can't change the file. `driveAccessLevel` handles it itself, because `pageAccessLevel` for Pages only knows `view` and `edit`. In the frontend, check `canEditLevel(level)`, not `level !== 'view'`. Clients can be `view` or `comment`, never `edit`; a new client link defaults to `comment`.
+
+**Who sees what**
+
+- Team members with any access can read comments. They need `comment` or higher to add one.
+- Team threads default to **Team only** (`visibility = 'team'`) so nothing reaches a client by accident. A team member can tick "Show to clients"; the box appears when a client with comment access can reach the file. Replies take their thread's visibility.
+- A client's threads are always visible to clients. A client with `comment` access sees every thread shown to clients on that file, including other clients' comments on it.
+- A `view` client sees no comments. For a client, a comment they can't see answers 404, the same as an ID that doesn't exist.
+
+**Who can do what:** authors edit their own, while they still have comment access. Authors and the file's owner delete. Team members with comment access resolve any thread; a client resolves their own. A new reply reopens a resolved thread.
+
+**Where a comment points** (`anchor`, null for the whole file)
+
+- **Docs** store the words, the text around them and their old offset, not a position. Highlights are ProseMirror decorations, so nothing is written to the shared document and people who can't edit get them too. The copy with the most matching text around it wins. If the words are gone, the thread stays and says the text changed. A new document's first tab has a fixed id (`first-tab`), because someone viewing a never-opened file draws a local copy that has to match the shared one.
+- **PDFs** store a page number and rectangles as fractions of the page, from selected text or from a dragged box ("Comment on an area", for scanned pages). They aren't adjusted if an editor later reorders or rotates pages. A thread whose page is gone says so.
+- **Grid, Slides and other files** have whole-file comments in this release.
+
+**Alerts:** a comment notifies the file's owner and team members already in the thread, in the app and by email. Clients in a shown thread who have an email get one. Everyone is re-checked first, so someone who has lost access isn't sent the words. Other people's comments appear within 20 seconds, or on returning to the tab.

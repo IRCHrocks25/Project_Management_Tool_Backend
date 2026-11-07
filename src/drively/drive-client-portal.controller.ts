@@ -2,6 +2,7 @@ import {
   Body,
   CanActivate,
   Controller,
+  Delete,
   ExecutionContext,
   Get,
   HttpCode,
@@ -9,6 +10,7 @@ import {
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Request,
@@ -19,7 +21,9 @@ import { Throttle } from '@nestjs/throttler';
 import { isUUID } from 'class-validator';
 import { ClientIpThrottlerGuard } from '../forms/forms.controller';
 import { DriveClientsService } from './drive-clients.service';
+import { CommentActor, DriveCommentsService } from './drive-comments.service';
 import { ClaimClientLinkDto, ClientForgotCodeDto, ClientResetCodeDto, ClientSignInDto } from './dto/drive-client.dto';
+import { CreateCommentDto, ResolveCommentDto, UpdateCommentDto } from './dto/drive-comment.dto';
 import { DrivelyService } from './drively.service';
 
 /** Only a client session gets through. A team member's token fails, and a client's token fails everywhere else. */
@@ -41,13 +45,18 @@ export class DriveClientGuard implements CanActivate {
 const ItemId = () =>
   Param('id', new ParseUUIDPipe({ exceptionFactory: () => new NotFoundException('File not found.') }));
 
-/** The whole of what a client can reach. Read-only on purpose: nothing here writes to a file. */
+const CommentId = () =>
+  Param('commentId', new ParseUUIDPipe({ exceptionFactory: () => new NotFoundException('Comment not found.') }));
+const client = (req: any): CommentActor => ({ kind: 'client', clientId: req.driveClient.id, name: req.driveClient.name });
+
+/** The whole of what a client can reach. Nothing here changes a file: the only thing a client can add is a comment. */
 @Controller('client-portal')
 @UseGuards(ClientIpThrottlerGuard)
 export class DriveClientPortalController {
   constructor(
     private readonly clients: DriveClientsService,
     private readonly drive: DrivelyService,
+    private readonly comments: DriveCommentsService,
   ) {}
 
   @Get('links/:token')
@@ -108,5 +117,39 @@ export class DriveClientPortalController {
   @UseGuards(DriveClientGuard)
   link(@ItemId() id: string, @Request() req: any) {
     return this.drive.clientLink(id, req.driveClient.id);
+  }
+
+  @Get('items/:id/comments')
+  @UseGuards(DriveClientGuard)
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  listComments(@ItemId() id: string, @Request() req: any) {
+    return this.comments.list(id, client(req));
+  }
+
+  @Post('items/:id/comments')
+  @UseGuards(DriveClientGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  addComment(@ItemId() id: string, @Body() dto: CreateCommentDto, @Request() req: any) {
+    return this.comments.create(id, dto, client(req));
+  }
+
+  @Patch('comments/:commentId')
+  @UseGuards(DriveClientGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  updateComment(@CommentId() commentId: string, @Body() dto: UpdateCommentDto, @Request() req: any) {
+    return this.comments.update(commentId, dto.body, client(req));
+  }
+
+  @Delete('comments/:commentId')
+  @UseGuards(DriveClientGuard)
+  deleteComment(@CommentId() commentId: string, @Request() req: any) {
+    return this.comments.remove(commentId, client(req));
+  }
+
+  @Post('comments/:commentId/resolve')
+  @HttpCode(200)
+  @UseGuards(DriveClientGuard)
+  resolveComment(@CommentId() commentId: string, @Body() dto: ResolveCommentDto, @Request() req: any) {
+    return this.comments.resolve(commentId, dto.resolved, client(req));
   }
 }

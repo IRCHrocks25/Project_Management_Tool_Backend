@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { PageAccessLevel, PageShareRule, WorkspaceActor, pageAccessLevel } from '../workspace/workspace-access';
+import { PageShareRule, WorkspaceActor, shareMatches } from '../workspace/workspace-access';
 
 export const MAX_CONTENT_BYTES = 10 * 1024 * 1024;
 export const MAX_NAME_LENGTH = 255;
@@ -13,7 +13,7 @@ export const DEFAULT_NAMES: Record<string, string> = {
   file: 'Untitled file',
 };
 
-export type DriveAccess = PageAccessLevel;
+export type DriveAccess = 'owner' | 'edit' | 'comment' | 'view';
 
 export interface ChainLink {
   ownerId: string | null;
@@ -31,14 +31,19 @@ export function driveAccessLevel(actor: WorkspaceActor, chain: ChainLink[]): Dri
   if (chain[0].ownerId === actor.userId) return 'owner';
   let best: DriveAccess | null = null;
   for (const link of chain) {
-    const level = pageAccessLevel(actor, link, link.shares);
-    if (level === 'owner' || level === 'edit') return 'edit';
-    if (level === 'view') best = 'view';
+    if (link.ownerId === actor.userId) return 'edit';
+    for (const share of link.shares) {
+      if (!shareMatches(actor, share)) continue;
+      if (share.permission === 'edit') return 'edit';
+      if (share.permission === 'comment') best = 'comment';
+      else if (share.permission === 'view' && !best) best = 'view';
+    }
   }
   return best;
 }
 
 export const canEdit = (level: DriveAccess | null) => level === 'owner' || level === 'edit';
+export const canComment = (level: DriveAccess | null) => canEdit(level) || level === 'comment';
 
 /** Names can't be blank or carry control characters; slashes are fine because names aren't paths. */
 export function cleanName(raw: string | undefined | null, fallback: string): string {

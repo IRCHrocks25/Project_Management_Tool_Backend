@@ -21,13 +21,18 @@ import {
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DriveClientsService } from './drive-clients.service';
+import { CommentActor, DriveCommentsService } from './drive-comments.service';
 import { ShareWithClientDto } from './dto/drive-client.dto';
+import { ClientPermissionDto, CreateCommentDto, OptionalClientPermissionDto, ResolveCommentDto, UpdateCommentDto } from './dto/drive-comment.dto';
 import { CreateDriveItemDto, SetDriveSharesDto, StarDriveItemDto, UpdateDriveItemDto } from './dto/drively.dto';
 import { DriveView, DrivelyService, MAX_IMAGE_BYTES, MAX_UPLOAD_BYTES } from './drively.service';
 
 const ItemId = () =>
   Param('id', new ParseUUIDPipe({ exceptionFactory: () => new NotFoundException('File not found.') }));
+const CommentId = () =>
+  Param('commentId', new ParseUUIDPipe({ exceptionFactory: () => new NotFoundException('Comment not found.') }));
 const actor = (req: any) => ({ userId: req.user?.userId || req.user?.id, role: req.user?.role });
+const team = (req: any): CommentActor => ({ kind: 'team', actor: actor(req) });
 
 @Controller('drively')
 @UseGuards(JwtAuthGuard)
@@ -35,7 +40,34 @@ export class DrivelyController {
   constructor(
     private readonly drive: DrivelyService,
     private readonly clients: DriveClientsService,
+    private readonly comments: DriveCommentsService,
   ) {}
+
+  @Get('items/:id/comments')
+  listComments(@ItemId() id: string, @Request() req: any) {
+    return this.comments.list(id, team(req));
+  }
+
+  @Post('items/:id/comments')
+  addComment(@ItemId() id: string, @Body() dto: CreateCommentDto, @Request() req: any) {
+    return this.comments.create(id, dto, team(req));
+  }
+
+  @Patch('comments/:commentId')
+  updateComment(@CommentId() commentId: string, @Body() dto: UpdateCommentDto, @Request() req: any) {
+    return this.comments.update(commentId, dto.body, team(req));
+  }
+
+  @Delete('comments/:commentId')
+  deleteComment(@CommentId() commentId: string, @Request() req: any) {
+    return this.comments.remove(commentId, team(req));
+  }
+
+  @Post('comments/:commentId/resolve')
+  @HttpCode(200)
+  resolveComment(@CommentId() commentId: string, @Body() dto: ResolveCommentDto, @Request() req: any) {
+    return this.comments.resolve(commentId, dto.resolved, team(req));
+  }
 
   @Get('clients')
   listClients() {
@@ -50,7 +82,12 @@ export class DrivelyController {
   @Post('items/:id/client-access')
   @HttpCode(200)
   shareWithClient(@ItemId() id: string, @Body() dto: ShareWithClientDto, @Request() req: any) {
-    return this.clients.shareWithClient(id, dto.clientId, actor(req));
+    return this.clients.shareWithClient(id, dto.clientId, dto.permission, actor(req));
+  }
+
+  @Patch('items/:id/client-access/:clientId')
+  setClientPermission(@ItemId() id: string, @Param('clientId', ParseUUIDPipe) clientId: string, @Body() dto: ClientPermissionDto, @Request() req: any) {
+    return this.clients.setClientPermission(id, clientId, dto.permission, actor(req));
   }
 
   @Delete('items/:id/client-access/:clientId')
@@ -64,8 +101,8 @@ export class DrivelyController {
   }
 
   @Post('items/:id/client-links')
-  createClientLink(@ItemId() id: string, @Request() req: any) {
-    return this.clients.createInvite(id, actor(req));
+  createClientLink(@ItemId() id: string, @Body() dto: OptionalClientPermissionDto, @Request() req: any) {
+    return this.clients.createInvite(id, dto?.permission, actor(req));
   }
 
   @Delete('items/:id/client-links/:linkId')

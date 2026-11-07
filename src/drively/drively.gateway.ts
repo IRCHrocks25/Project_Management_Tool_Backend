@@ -19,7 +19,7 @@ import { Server, Socket } from 'socket.io';
 import * as Y from 'yjs';
 import { HubUsersService } from '../products/hub-users.service';
 import { DriveClientsService } from './drive-clients.service';
-import { canEdit } from './drively.logic';
+import { DriveAccess, canEdit } from './drively.logic';
 import { DrivelyService } from './drively.service';
 
 /** Edits wait for a pause, because every write archives the previous copy in Iceberg. */
@@ -28,7 +28,7 @@ const SAVE_AT_MOST_EVERY_MS = 30_000;
 const RETRY_MS = 15_000;
 const MAX_AWARENESS_BYTES = 64 * 1024;
 
-type Level = 'owner' | 'edit' | 'view';
+type Level = DriveAccess;
 
 interface Member {
   socket: DriveSocket;

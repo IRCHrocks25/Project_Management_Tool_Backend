@@ -71,7 +71,7 @@ export function sameAccess(a: Access, b: Access): boolean {
   return a.everyone === b.everyone && same(a.departments, b.departments) && same(a.userIds, b.userIds);
 }
 
-function shareMatches(actor: WorkspaceActor, share: PageShareRule): boolean {
+export function shareMatches(actor: WorkspaceActor, share: PageShareRule): boolean {
   if (share.kind === 'everyone') return true;
   if (share.kind === 'department') return !!actor.role && share.target === actor.role;
   if (share.kind === 'user') return share.target === actor.userId;
